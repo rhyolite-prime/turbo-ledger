@@ -350,3 +350,76 @@ Based on the Fineract CN microservice architecture, you should absolutely start 
   By starting with the Identity service, you are building the solid, secure foundation that will make developing all subsequent services much more straightforward.
 
 
+
+
+Here is a logical and strategic order for building the Fineract CN microservices after you have completed the Identity service.
+
+  This order is designed to build upon previous services, tackle dependencies logically, and deliver core functionality incrementally.
+
+  The Development Roadmap
+
+  Phase 1: The Foundation
+
+   1. Identity Service
+       * Status: You are here. This is the essential first block.
+       * Core Function: Manages tenants, users, roles, permissions, and authentication (JWTs).
+
+  Phase 2: The Core Pillars
+
+  Once Identity is stable, you need to build the services that form the absolute core of any financial system.
+
+   2. Provisioner Service
+       * Why next? This service automates the setup of new tenants. It will use the Identity service to create the first admin user and will be responsible for creating the database schemas for all other services. Building
+         it now forces you to think about your database strategy and tenant isolation early.
+       * Core Function: Onboards new financial institutions (tenants).
+
+   3. Accounting Service
+       * Why next? This is the General Ledger. Every single financial transaction from any other service will result in a call to Accounting. It's the ultimate source of truth for all money movements. Building it before
+         the product services (loans/deposits) ensures your financial recording mechanism is solid.
+       * Core Function: Manages the chart of accounts and records all debit/credit journal entries.
+
+  Phase 3: The Business Logic (Customer-Facing Products)
+
+  With the foundational services in place, you can now build the services that your end-users will interact with. These can be developed in parallel if you have the resources, as they primarily depend on Identity and
+  Accounting, not each other.
+
+   4. Deposit Account Management Service
+       * Why next? It's often simpler than the loan service. It handles savings accounts, which are fundamental. It will be the first service to post real business transactions to your Accounting service.
+       * Core Function: Manages savings products, customer deposit accounts, deposits, and withdrawals.
+
+   5. Portfolio Service
+       * Why next? This handles the lending side of the business. It's typically more complex than deposits due to loan lifecycles, credit checks, and repayment schedules.
+       * Core Function: Manages loan products, loan applications (cases), and the entire loan lifecycle.
+
+  Phase 4: The Automation and Support Services
+
+  These services add critical automation and functionality that ties the whole system together.
+
+   6. Rhythm Service (or your chosen name, like `Scheduler`)
+       * Why next? Now that you have services with recurring needs (like "end-of-day interest calculation" in Deposits or "late payment checks" in Portfolio), you need a scheduler to automate them.
+       * Core Function: The time-based job scheduler that triggers actions in other services.
+
+   7. Customer Service
+       * Why next? This service provides a unified view of the customer. It's less critical for initial transactions but essential for a complete system. It aggregates customer data that might be spread across other
+         services.
+       * Core Function: Manages customer profiles, documents, and identifiers.
+
+  Phase 5: The Integration Layer
+
+  This is the final piece that makes your system accessible and manageable.
+
+   8. API Gateway
+       * Why last? You can develop and test all your services by calling them directly. The Gateway is the front door you add when you're ready to expose your system to the outside world in a controlled way.
+       * Core Function: A single entry point for all API traffic. Handles routing, rate limiting, and initial authentication.
+
+  Summary of the Order:
+
+   1. Identity (Foundation)
+   2. Provisioner (Tenant Onboarding)
+   3. Accounting (Financial Source of Truth)
+   4. Deposit Account Management (Savings Business Logic)
+   5. Portfolio (Lending Business Logic)
+   6. Rhythm / Scheduler (Automation)
+   7. Customer (Unified Customer View)
+   8. API Gateway (External Access)
+

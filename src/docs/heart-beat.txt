@@ -1,0 +1,89 @@
+The Rhythm / Scheduler service is a crucial piece of infrastructure. Its API is different from the others because it's primarily an internal tool. Its consumers are other microservices (during their
+  startup/registration phase) and system administrators, not end-users.
+
+  The main purpose of its API is to manage a list of scheduled tasks—what needs to be run, and when.
+
+  Here are the essential endpoints for the Rhythm / Scheduler service.
+
+  ---
+  A Note on Tenancy: Unlike other services, the Scheduler's own management API is not tenant-specific. It operates at a system level. When it executes a job, it fetches the list of all tenants from the Identity service
+  and then makes tenant-specific calls (with the X-Tenant-Identifier header) to the target services.
+  ---
+
+  1. Schedule Management
+
+  These endpoints are for creating, viewing, and managing the scheduled jobs themselves.
+
+  POST /scheduler/v1/schedules
+  Registers a new scheduled job. This would typically be called by another microservice (e.g., Portfolio) when it first starts up.
+   * Request Body:
+
+   1     {
+   2       "identifier": "daily_interest_accrual",
+   3       "description": "Accrues interest on all active loan accounts at midnight.",
+   4       "targetService": "portfolio",
+   5       "targetEndpoint": "/portfolio/v1/actions/accrue-interest",
+   6       "httpMethod": "POST",
+   7       "cronExpression": "0 0 * * *", // Every day at midnight
+   8       "authenticationToken": "long_lived_system_token_for_portfolio"
+   9     }
+       * `cronExpression`: The standard format for defining the schedule.
+       * `authenticationToken`: A non-expiring token that Rhythm will use to authenticate itself when calling the target service.
+   * Response: 202 Accepted
+
+  GET /scheduler/v1/schedules
+  Retrieves a list of all currently scheduled jobs. Useful for system administration.
+   * Response: 200 OK with a list of schedule objects.
+
+  GET /scheduler/v1/schedules/{identifier}
+  Retrieves the details of a single scheduled job.
+   * Response: 200 OK with the schedule object.
+
+  DELETE /scheduler/v1/schedules/{identifier}
+  Removes a job from the schedule.
+   * Response: 202 Accepted
+
+  ---
+
+  2. Execution and Auditing
+
+  These endpoints are for monitoring the history of job executions and manually triggering them.
+
+  GET /scheduler/v1/schedules/{identifier}/executions
+  Fetches the recent execution history for a specific scheduled job. This is critical for auditing and debugging.
+   * Response: 200 OK with a list of execution logs.
+
+    1     [
+    2       {
+    3         "executedOn": "2023-10-27T00:00:05Z",
+    4         "tenantIdentifier": "tenant_a",
+    5         "status": "SUCCESS",
+    6         "targetResponseCode": 202
+    7       },
+    8       {
+    9         "executedOn": "2023-10-27T00:00:10Z",
+   10         "tenantIdentifier": "tenant_b",
+   11         "status": "FAILURE",
+   12         "targetResponseCode": 500,
+   13         "errorMessage": "Connection to portfolio service timed out."
+   14       }
+   15     ]
+
+  POST /scheduler/v1/schedules/{identifier}/actions
+  Manually triggers the execution of a scheduled job outside of its normal schedule. This is extremely useful for testing or re-running a failed job.
+   * Request Body:
+
+   1     {
+   2       "action": "EXECUTE",
+   3       // Optionally specify a single tenant to run for, otherwise it runs for all
+   4       "tenantIdentifier": "tenant_b"
+   5     }
+   * Response: 202 Accepted. This response means the execution has been queued, not that it has completed.
+
+  Summary of Role
+
+   * `POST /schedules` is for other services to register their tasks.
+   * The other endpoints (`GET`, `DELETE`, `/actions`, `/executions`) are for system administrators to manage and monitor the scheduler.
+
+  This API design gives you a powerful, auditable, and controllable "heartbeat" for your entire Fineract CN ecosystem.
+

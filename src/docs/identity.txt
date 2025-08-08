@@ -1,0 +1,43 @@
+Based on the Fineract CN microservice architecture, you should absolutely start by building the Identity service.
+
+  Why the Identity Service is the Correct Starting Point
+
+  The Identity service is the foundational cornerstone of the entire system. Nearly every other service you build will depend on it to function correctly.
+
+  Think of it as building the digital passport control and resident registration office for your entire application ecosystem before you build any of the banks or businesses.
+
+  Here’s why it must come first:
+
+   1. It Manages Tenants: The entire Fineract CN architecture is multi-tenant. The Identity service is where tenants (the financial institutions you will be serving) are defined. Without it, no other service can know which
+      institution's data it should be working with.
+
+   2. It Handles Authentication: The Identity service is responsible for issuing authentication tokens (JWTs). Every API call to every other microservice (like Portfolio or Accounting) will need to be secured. They will
+      rely on the Identity service to validate these tokens to ensure the caller is legitimate.
+
+   3. It Manages Users and Permissions: You can't create a loan or a deposit account without a user to associate it with. The Identity service manages these users and their roles/permissions, which other services will need
+      to check.
+
+   4. It Has Minimal Dependencies: Critically, the Identity service can be built and tested almost entirely on its own. It doesn't need the Portfolio or Accounting services to exist for it to perform its core functions.
+      This makes it the perfect, isolated starting block.
+
+  Your First Steps in Building the Identity Service
+
+  Here is a concrete plan for your first development sprint:
+
+   1. Define the API Contract: Using OpenAPI/Swagger, define the initial, most critical endpoints for the Identity service based on the Fineract CN specs. Focus on:
+       * POST /token: To authenticate a user and issue a JWT.
+       * POST /tenants: To create a new tenant.
+       * POST /users: To create a new user within a tenant.
+
+   2. Set up the Database: Create the initial database schema with the core tables:
+       * tenants
+       * users (with columns for username, hashed password, tenant_id, etc.)
+       * roles
+       * permissions
+
+   3. Implement the Core Logic in Drogon:
+       * Create a Drogon project for the identity service.
+       * Implement the logic for the /token endpoint first. This will involve:
+           * Securely hashing and salting passwords for storage.
+           * Comparing a submitted password against the stored hash.
+           * Generating a signed JWT upon successful authentication.

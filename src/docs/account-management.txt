@@ -1,0 +1,119 @@
+The Deposit Account Management service is the core of your retail banking operations. It manages savings products, customer accounts, and the transactions related to them.
+
+  This service is highly interactive. It will receive requests from your front-end channels (like a mobile app or teller application) and will, in turn, make calls to the Accounting service to record every financial
+  movement.
+
+  Like all services, every request must include the X-Tenant-Identifier header.
+
+  Here are the essential endpoints for the Deposit Account Management service.
+
+  ---
+
+  1. Deposit Product Management
+
+  These endpoints define the types of savings accounts your institution offers.
+
+  POST /deposit-accounts/v1/products
+  Creates a new deposit product template.
+   * Request Body:
+
+    1     {
+    2       "identifier": "simple_savings",
+    3       "name": "Simple Savings Account",
+    4       "type": "SAVINGS",
+    5       "currency": "USD",
+    6       "interestRate": "1.50", // Annual percentage rate
+    7       "terms": {
+    8         "minimumBalance": "10.00",
+    9         "maximumBalance": "100000.00"
+   10       }
+   11     }
+   * Response: 202 Accepted
+
+  GET /deposit-accounts/v1/products
+  Fetches all available deposit products.
+   * Response: 200 OK with a list of product objects.
+
+  ---
+
+  2. Customer Deposit Account Management
+
+  These endpoints manage individual accounts held by customers.
+
+  POST /deposit-accounts/v1/accounts
+  Opens a new deposit account for a customer.
+   * Request Body:
+
+   1     {
+   2       "productIdentifier": "simple_savings",
+   3       "customerIdentifier": "cust_12345", // From the Customer service
+   4       "accountIdentifier": "SAV-0001",
+   5       "state": "OPEN",
+   6       "balance": "50.00" // Initial deposit
+   7     }
+   * Response: 202 Accepted
+
+  GET /deposit-accounts/v1/accounts/{accountIdentifier}
+  Fetches the details of a specific customer account, including its current balance and state.
+   * Response: 200 OK with the account object.
+
+  POST /deposit-accounts/v1/accounts/{accountIdentifier}/actions
+  Performs a state change on an account.
+   * Request Body:
+   1     {
+   2       "action": "CLOSE", // Other actions: LOCK, FREEZE
+   3       "note": "Customer requested account closure."
+   4     }
+   * Response: 202 Accepted
+
+  ---
+
+  3. Transaction Processing (The Core Business Logic)
+
+  This is the most critical endpoint. It handles deposits and withdrawals.
+
+  POST /deposit-accounts/v1/accounts/{accountIdentifier}/transactions
+  Posts a transaction to a customer's account.
+
+  Workflow for this endpoint:
+   1. Validate the request against business rules (e.g., check for sufficient funds on a withdrawal).
+   2. Update the account's balance in the Deposit service's own database.
+   3. Make a secure, internal API call to POST /accounting/v1/transactions to create the corresponding journal entry.
+   4. If the accounting post is successful, return success. If it fails, the transaction must be rolled back.
+
+   * Request Body:
+
+   1     {
+   2       "transactionIdentifier": "unique_id_for_idempotency",
+   3       "type": "DEPOSIT", // or WITHDRAWAL
+   4       "amount": "100.00",
+   5       "note": "Cash deposit at branch."
+   6     }
+   * Responses:
+       * 202 Accepted: The transaction was successful.
+       * 400 Bad Request: Invalid request (e.g., type is unknown).
+       * 409 Conflict: A transaction with the same transactionIdentifier already exists, or a business rule was violated (e.g., insufficient funds).
+
+  ---
+
+  4. Automation Endpoints (For the Rhythm/Scheduler Service)
+
+  These endpoints are not for public use but are called by your internal scheduler to run batch processes. They must be protected to only allow calls from Rhythm.
+
+  POST /deposit-accounts/v1/actions/calculate-interest
+  Triggers the process to calculate and apply interest for all eligible accounts.
+   * Request Body:
+   1     {
+   2       "forDate": "2023-10-31"
+   3     }
+   * Response: 202 Accepted
+
+  POST /deposit-accounts/v1/actions/apply-fees
+  Triggers the application of monthly maintenance fees or other recurring charges.
+   * Request Body:
+
+   1     {
+   2       "feeIdentifier": "monthly_service_fee",
+   3       "forDate": "2023-10-31"
+   4     }
+   * Response: 202 Accepted
