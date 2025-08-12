@@ -23,6 +23,7 @@ add_executable(${PROJECT_NAME} main.cc
         filters/AuthFilter.cc
         filters/TenantFilter.cc
         dto/BaseApiResponse.h
+        dto/CreateUserDto.cc
 )
 
 # ##############################################################################

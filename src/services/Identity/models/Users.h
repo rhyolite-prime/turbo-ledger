@@ -54,6 +54,8 @@ class Users
         static const std::string _first_name;
         static const std::string _last_name;
         static const std::string _is_locked_out;
+        static const std::string _email;
+        static const std::string _phone_number;
     };
 
     static const int primaryKeyNumber;
@@ -191,8 +193,26 @@ class Users
     ///Set the value of the column is_locked_out
     void setIsLockedOut(const bool &pIsLockedOut) noexcept;
 
+    /**  For column email  */
+    ///Get the value of the column email, returns the default value if the column is null
+    const std::string &getValueOfEmail() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<std::string> &getEmail() const noexcept;
+    ///Set the value of the column email
+    void setEmail(const std::string &pEmail) noexcept;
+    void setEmail(std::string &&pEmail) noexcept;
 
-    static size_t getColumnNumber() noexcept {  return 10;  }
+    /**  For column phone_number  */
+    ///Get the value of the column phone_number, returns the default value if the column is null
+    const std::string &getValueOfPhoneNumber() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<std::string> &getPhoneNumber() const noexcept;
+    ///Set the value of the column phone_number
+    void setPhoneNumber(const std::string &pPhoneNumber) noexcept;
+    void setPhoneNumber(std::string &&pPhoneNumber) noexcept;
+
+
+    static size_t getColumnNumber() noexcept {  return 12;  }
     static const std::string &getColumnName(size_t index) noexcept(false);
 
     Json::Value toJson() const;
@@ -224,6 +244,8 @@ class Users
     std::shared_ptr<std::string> firstName_;
     std::shared_ptr<std::string> lastName_;
     std::shared_ptr<bool> isLockedOut_;
+    std::shared_ptr<std::string> email_;
+    std::shared_ptr<std::string> phoneNumber_;
     struct MetaData
     {
         const std::string colName_;
@@ -235,7 +257,7 @@ class Users
         const bool notNull_;
     };
     static const std::vector<MetaData> metaData_;
-    bool dirtyFlag_[10]={ false };
+    bool dirtyFlag_[12]={ false };
   public:
     static const std::string &sqlForFindingByPrimaryKey()
     {
@@ -307,6 +329,18 @@ class Users
         sql += "is_locked_out,";
         ++parametersCount;
         if(!dirtyFlag_[9])
+        {
+            needSelection=true;
+        }
+        sql += "email,";
+        ++parametersCount;
+        if(!dirtyFlag_[10])
+        {
+            needSelection=true;
+        }
+        sql += "phone_number,";
+        ++parametersCount;
+        if(!dirtyFlag_[11])
         {
             needSelection=true;
         }
@@ -391,6 +425,24 @@ class Users
             sql +="default,";
         }
         if(dirtyFlag_[9])
+        {
+            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
+            sql.append(placeholderStr, n);
+        }
+        else
+        {
+            sql +="default,";
+        }
+        if(dirtyFlag_[10])
+        {
+            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
+            sql.append(placeholderStr, n);
+        }
+        else
+        {
+            sql +="default,";
+        }
+        if(dirtyFlag_[11])
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);

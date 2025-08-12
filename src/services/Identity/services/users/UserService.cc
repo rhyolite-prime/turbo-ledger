@@ -57,7 +57,11 @@ namespace turbo_ledger_identity::services
         newUser.setUsername(userData.getUsername());
         newUser.setPasswordHash(hashPassword(userData.getPassword()));
         newUser.setTenantIdentifier(tenantId);
+        newUser.setEmail(userData.getEmail());
+        newUser.setPhoneNumber(userData.getPhoneNumber());
+        newUser.setIsLockedOut(false); // Default to not locked out
         newUser.setIsActive(true); // Default to active
+
 
         mp.insert(newUser, [callback](const drogon_model::TurboLedgerIdentity::Users& user) {
             // 5. Prepare success response
@@ -68,10 +72,6 @@ namespace turbo_ledger_identity::services
 
             callback(successResponse);
 
-            //auto resp = HttpResponse::newHttpJsonResponse(successResponse.toJson());
-            //resp->setStatusCode(k201Created);
-            //callback(resp);
-
         }, [callback](const drogon::orm::DrogonDbException& e) {
             // 6. Handle database errors
             turbo_ledger_identity::dto::BaseApiResponse errorResponse;
@@ -80,9 +80,6 @@ namespace turbo_ledger_identity::services
 
             callback(errorResponse);
 
-            //auto resp = HttpResponse::newHttpJsonResponse(errorResponse.toJson());
-            //resp->setStatusCode(k500InternalServerError);
-            //callback(resp);
         });
 
     }

@@ -49,6 +49,8 @@ class Tenants
         static const std::string _name;
         static const std::string _created_at;
         static const std::string _updated_at;
+        static const std::string _email;
+        static const std::string _phone_number;
     };
 
     static const int primaryKeyNumber;
@@ -143,8 +145,26 @@ class Tenants
     ///Set the value of the column updated_at
     void setUpdatedAt(const ::trantor::Date &pUpdatedAt) noexcept;
 
+    /**  For column email  */
+    ///Get the value of the column email, returns the default value if the column is null
+    const std::string &getValueOfEmail() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<std::string> &getEmail() const noexcept;
+    ///Set the value of the column email
+    void setEmail(const std::string &pEmail) noexcept;
+    void setEmail(std::string &&pEmail) noexcept;
 
-    static size_t getColumnNumber() noexcept {  return 5;  }
+    /**  For column phone_number  */
+    ///Get the value of the column phone_number, returns the default value if the column is null
+    const std::string &getValueOfPhoneNumber() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<std::string> &getPhoneNumber() const noexcept;
+    ///Set the value of the column phone_number
+    void setPhoneNumber(const std::string &pPhoneNumber) noexcept;
+    void setPhoneNumber(std::string &&pPhoneNumber) noexcept;
+
+
+    static size_t getColumnNumber() noexcept {  return 7;  }
     static const std::string &getColumnName(size_t index) noexcept(false);
 
     Json::Value toJson() const;
@@ -171,6 +191,8 @@ class Tenants
     std::shared_ptr<std::string> name_;
     std::shared_ptr<::trantor::Date> createdAt_;
     std::shared_ptr<::trantor::Date> updatedAt_;
+    std::shared_ptr<std::string> email_;
+    std::shared_ptr<std::string> phoneNumber_;
     struct MetaData
     {
         const std::string colName_;
@@ -182,7 +204,7 @@ class Tenants
         const bool notNull_;
     };
     static const std::vector<MetaData> metaData_;
-    bool dirtyFlag_[5]={ false };
+    bool dirtyFlag_[7]={ false };
   public:
     static const std::string &sqlForFindingByPrimaryKey()
     {
@@ -228,6 +250,18 @@ class Tenants
         {
             needSelection=true;
         }
+        sql += "email,";
+        ++parametersCount;
+        if(!dirtyFlag_[5])
+        {
+            needSelection=true;
+        }
+        sql += "phone_number,";
+        ++parametersCount;
+        if(!dirtyFlag_[6])
+        {
+            needSelection=true;
+        }
         if(parametersCount > 0)
         {
             sql[sql.length()-1]=')';
@@ -268,6 +302,24 @@ class Tenants
             sql +="default,";
         }
         if(dirtyFlag_[4])
+        {
+            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
+            sql.append(placeholderStr, n);
+        }
+        else
+        {
+            sql +="default,";
+        }
+        if(dirtyFlag_[5])
+        {
+            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
+            sql.append(placeholderStr, n);
+        }
+        else
+        {
+            sql +="default,";
+        }
+        if(dirtyFlag_[6])
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);

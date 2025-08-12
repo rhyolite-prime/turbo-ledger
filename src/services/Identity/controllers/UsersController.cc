@@ -37,10 +37,9 @@ void UsersController::createUser(const HttpRequestPtr& req, std::function<void (
     // Convert JSON to DTO
     turbo_ledger_identity::dto::CreateUserDto userData;
     try {
-        userData.setFirstName((*jsonBody)["firstName"].asString());
-        userData.setLastName((*jsonBody)["lastName"].asString());
-        userData.setUsername((*jsonBody)["username"].asString());
-        userData.setPassword((*jsonBody)["password"].asString());
+
+        userData.fromJson(*jsonBody);
+
     } catch (const std::exception& e) {
         turbo_ledger_identity::dto::BaseApiResponse response;
         response.success = false;

@@ -18,6 +18,8 @@ const std::string Tenants::Cols::_identifier = "\"identifier\"";
 const std::string Tenants::Cols::_name = "\"name\"";
 const std::string Tenants::Cols::_created_at = "\"created_at\"";
 const std::string Tenants::Cols::_updated_at = "\"updated_at\"";
+const std::string Tenants::Cols::_email = "\"email\"";
+const std::string Tenants::Cols::_phone_number = "\"phone_number\"";
 const std::string Tenants::primaryKeyName = "id";
 const bool Tenants::hasPrimaryKey = true;
 const std::string Tenants::tableName = "\"tenants\"";
@@ -27,7 +29,9 @@ const std::vector<typename Tenants::MetaData> Tenants::metaData_={
 {"identifier","std::string","character varying",32,0,0,1},
 {"name","std::string","character varying",255,0,0,1},
 {"created_at","::trantor::Date","timestamp with time zone",0,0,0,1},
-{"updated_at","::trantor::Date","timestamp with time zone",0,0,0,1}
+{"updated_at","::trantor::Date","timestamp with time zone",0,0,0,1},
+{"email","std::string","character varying",255,0,0,1},
+{"phone_number","std::string","character varying",20,0,0,1}
 };
 const std::string &Tenants::getColumnName(size_t index) noexcept(false)
 {
@@ -94,11 +98,19 @@ Tenants::Tenants(const Row &r, const ssize_t indexOffset) noexcept
                 updatedAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
         }
+        if(!r["email"].isNull())
+        {
+            email_=std::make_shared<std::string>(r["email"].as<std::string>());
+        }
+        if(!r["phone_number"].isNull())
+        {
+            phoneNumber_=std::make_shared<std::string>(r["phone_number"].as<std::string>());
+        }
     }
     else
     {
         size_t offset = (size_t)indexOffset;
-        if(offset + 5 > r.size())
+        if(offset + 7 > r.size())
         {
             LOG_FATAL << "Invalid SQL result for this model";
             return;
@@ -165,13 +177,23 @@ Tenants::Tenants(const Row &r, const ssize_t indexOffset) noexcept
                 updatedAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
         }
+        index = offset + 5;
+        if(!r[index].isNull())
+        {
+            email_=std::make_shared<std::string>(r[index].as<std::string>());
+        }
+        index = offset + 6;
+        if(!r[index].isNull())
+        {
+            phoneNumber_=std::make_shared<std::string>(r[index].as<std::string>());
+        }
     }
 
 }
 
 Tenants::Tenants(const Json::Value &pJson, const std::vector<std::string> &pMasqueradingVector) noexcept(false)
 {
-    if(pMasqueradingVector.size() != 5)
+    if(pMasqueradingVector.size() != 7)
     {
         LOG_ERROR << "Bad masquerading vector";
         return;
@@ -250,6 +272,22 @@ Tenants::Tenants(const Json::Value &pJson, const std::vector<std::string> &pMasq
                 }
                 updatedAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
+        }
+    }
+    if(!pMasqueradingVector[5].empty() && pJson.isMember(pMasqueradingVector[5]))
+    {
+        dirtyFlag_[5] = true;
+        if(!pJson[pMasqueradingVector[5]].isNull())
+        {
+            email_=std::make_shared<std::string>(pJson[pMasqueradingVector[5]].asString());
+        }
+    }
+    if(!pMasqueradingVector[6].empty() && pJson.isMember(pMasqueradingVector[6]))
+    {
+        dirtyFlag_[6] = true;
+        if(!pJson[pMasqueradingVector[6]].isNull())
+        {
+            phoneNumber_=std::make_shared<std::string>(pJson[pMasqueradingVector[6]].asString());
         }
     }
 }
@@ -332,12 +370,28 @@ Tenants::Tenants(const Json::Value &pJson) noexcept(false)
             }
         }
     }
+    if(pJson.isMember("email"))
+    {
+        dirtyFlag_[5]=true;
+        if(!pJson["email"].isNull())
+        {
+            email_=std::make_shared<std::string>(pJson["email"].asString());
+        }
+    }
+    if(pJson.isMember("phone_number"))
+    {
+        dirtyFlag_[6]=true;
+        if(!pJson["phone_number"].isNull())
+        {
+            phoneNumber_=std::make_shared<std::string>(pJson["phone_number"].asString());
+        }
+    }
 }
 
 void Tenants::updateByMasqueradedJson(const Json::Value &pJson,
                                             const std::vector<std::string> &pMasqueradingVector) noexcept(false)
 {
-    if(pMasqueradingVector.size() != 5)
+    if(pMasqueradingVector.size() != 7)
     {
         LOG_ERROR << "Bad masquerading vector";
         return;
@@ -417,6 +471,22 @@ void Tenants::updateByMasqueradedJson(const Json::Value &pJson,
             }
         }
     }
+    if(!pMasqueradingVector[5].empty() && pJson.isMember(pMasqueradingVector[5]))
+    {
+        dirtyFlag_[5] = true;
+        if(!pJson[pMasqueradingVector[5]].isNull())
+        {
+            email_=std::make_shared<std::string>(pJson[pMasqueradingVector[5]].asString());
+        }
+    }
+    if(!pMasqueradingVector[6].empty() && pJson.isMember(pMasqueradingVector[6]))
+    {
+        dirtyFlag_[6] = true;
+        if(!pJson[pMasqueradingVector[6]].isNull())
+        {
+            phoneNumber_=std::make_shared<std::string>(pJson[pMasqueradingVector[6]].asString());
+        }
+    }
 }
 
 void Tenants::updateByJson(const Json::Value &pJson) noexcept(false)
@@ -494,6 +564,22 @@ void Tenants::updateByJson(const Json::Value &pJson) noexcept(false)
                 }
                 updatedAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
+        }
+    }
+    if(pJson.isMember("email"))
+    {
+        dirtyFlag_[5] = true;
+        if(!pJson["email"].isNull())
+        {
+            email_=std::make_shared<std::string>(pJson["email"].asString());
+        }
+    }
+    if(pJson.isMember("phone_number"))
+    {
+        dirtyFlag_[6] = true;
+        if(!pJson["phone_number"].isNull())
+        {
+            phoneNumber_=std::make_shared<std::string>(pJson["phone_number"].asString());
         }
     }
 }
@@ -603,6 +689,50 @@ void Tenants::setUpdatedAt(const ::trantor::Date &pUpdatedAt) noexcept
     dirtyFlag_[4] = true;
 }
 
+const std::string &Tenants::getValueOfEmail() const noexcept
+{
+    static const std::string defaultValue = std::string();
+    if(email_)
+        return *email_;
+    return defaultValue;
+}
+const std::shared_ptr<std::string> &Tenants::getEmail() const noexcept
+{
+    return email_;
+}
+void Tenants::setEmail(const std::string &pEmail) noexcept
+{
+    email_ = std::make_shared<std::string>(pEmail);
+    dirtyFlag_[5] = true;
+}
+void Tenants::setEmail(std::string &&pEmail) noexcept
+{
+    email_ = std::make_shared<std::string>(std::move(pEmail));
+    dirtyFlag_[5] = true;
+}
+
+const std::string &Tenants::getValueOfPhoneNumber() const noexcept
+{
+    static const std::string defaultValue = std::string();
+    if(phoneNumber_)
+        return *phoneNumber_;
+    return defaultValue;
+}
+const std::shared_ptr<std::string> &Tenants::getPhoneNumber() const noexcept
+{
+    return phoneNumber_;
+}
+void Tenants::setPhoneNumber(const std::string &pPhoneNumber) noexcept
+{
+    phoneNumber_ = std::make_shared<std::string>(pPhoneNumber);
+    dirtyFlag_[6] = true;
+}
+void Tenants::setPhoneNumber(std::string &&pPhoneNumber) noexcept
+{
+    phoneNumber_ = std::make_shared<std::string>(std::move(pPhoneNumber));
+    dirtyFlag_[6] = true;
+}
+
 void Tenants::updateId(const uint64_t id)
 {
 }
@@ -614,7 +744,9 @@ const std::vector<std::string> &Tenants::insertColumns() noexcept
         "identifier",
         "name",
         "created_at",
-        "updated_at"
+        "updated_at",
+        "email",
+        "phone_number"
     };
     return inCols;
 }
@@ -676,6 +808,28 @@ void Tenants::outputArgs(drogon::orm::internal::SqlBinder &binder) const
             binder << nullptr;
         }
     }
+    if(dirtyFlag_[5])
+    {
+        if(getEmail())
+        {
+            binder << getValueOfEmail();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[6])
+    {
+        if(getPhoneNumber())
+        {
+            binder << getValueOfPhoneNumber();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
 }
 
 const std::vector<std::string> Tenants::updateColumns() const
@@ -700,6 +854,14 @@ const std::vector<std::string> Tenants::updateColumns() const
     if(dirtyFlag_[4])
     {
         ret.push_back(getColumnName(4));
+    }
+    if(dirtyFlag_[5])
+    {
+        ret.push_back(getColumnName(5));
+    }
+    if(dirtyFlag_[6])
+    {
+        ret.push_back(getColumnName(6));
     }
     return ret;
 }
@@ -761,6 +923,28 @@ void Tenants::updateArgs(drogon::orm::internal::SqlBinder &binder) const
             binder << nullptr;
         }
     }
+    if(dirtyFlag_[5])
+    {
+        if(getEmail())
+        {
+            binder << getValueOfEmail();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[6])
+    {
+        if(getPhoneNumber())
+        {
+            binder << getValueOfPhoneNumber();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
 }
 Json::Value Tenants::toJson() const
 {
@@ -805,6 +989,22 @@ Json::Value Tenants::toJson() const
     {
         ret["updated_at"]=Json::Value();
     }
+    if(getEmail())
+    {
+        ret["email"]=getValueOfEmail();
+    }
+    else
+    {
+        ret["email"]=Json::Value();
+    }
+    if(getPhoneNumber())
+    {
+        ret["phone_number"]=getValueOfPhoneNumber();
+    }
+    else
+    {
+        ret["phone_number"]=Json::Value();
+    }
     return ret;
 }
 
@@ -817,7 +1017,7 @@ Json::Value Tenants::toMasqueradedJson(
     const std::vector<std::string> &pMasqueradingVector) const
 {
     Json::Value ret;
-    if(pMasqueradingVector.size() == 5)
+    if(pMasqueradingVector.size() == 7)
     {
         if(!pMasqueradingVector[0].empty())
         {
@@ -874,6 +1074,28 @@ Json::Value Tenants::toMasqueradedJson(
                 ret[pMasqueradingVector[4]]=Json::Value();
             }
         }
+        if(!pMasqueradingVector[5].empty())
+        {
+            if(getEmail())
+            {
+                ret[pMasqueradingVector[5]]=getValueOfEmail();
+            }
+            else
+            {
+                ret[pMasqueradingVector[5]]=Json::Value();
+            }
+        }
+        if(!pMasqueradingVector[6].empty())
+        {
+            if(getPhoneNumber())
+            {
+                ret[pMasqueradingVector[6]]=getValueOfPhoneNumber();
+            }
+            else
+            {
+                ret[pMasqueradingVector[6]]=Json::Value();
+            }
+        }
         return ret;
     }
     LOG_ERROR << "Masquerade failed";
@@ -917,6 +1139,22 @@ Json::Value Tenants::toMasqueradedJson(
     {
         ret["updated_at"]=Json::Value();
     }
+    if(getEmail())
+    {
+        ret["email"]=getValueOfEmail();
+    }
+    else
+    {
+        ret["email"]=Json::Value();
+    }
+    if(getPhoneNumber())
+    {
+        ret["phone_number"]=getValueOfPhoneNumber();
+    }
+    else
+    {
+        ret["phone_number"]=Json::Value();
+    }
     return ret;
 }
 
@@ -957,13 +1195,23 @@ bool Tenants::validateJsonForCreation(const Json::Value &pJson, std::string &err
         if(!validJsonOfField(4, "updated_at", pJson["updated_at"], err, true))
             return false;
     }
+    if(pJson.isMember("email"))
+    {
+        if(!validJsonOfField(5, "email", pJson["email"], err, true))
+            return false;
+    }
+    if(pJson.isMember("phone_number"))
+    {
+        if(!validJsonOfField(6, "phone_number", pJson["phone_number"], err, true))
+            return false;
+    }
     return true;
 }
 bool Tenants::validateMasqueradedJsonForCreation(const Json::Value &pJson,
                                                  const std::vector<std::string> &pMasqueradingVector,
                                                  std::string &err)
 {
-    if(pMasqueradingVector.size() != 5)
+    if(pMasqueradingVector.size() != 7)
     {
         err = "Bad masquerading vector";
         return false;
@@ -1019,6 +1267,22 @@ bool Tenants::validateMasqueradedJsonForCreation(const Json::Value &pJson,
                   return false;
           }
       }
+      if(!pMasqueradingVector[5].empty())
+      {
+          if(pJson.isMember(pMasqueradingVector[5]))
+          {
+              if(!validJsonOfField(5, pMasqueradingVector[5], pJson[pMasqueradingVector[5]], err, true))
+                  return false;
+          }
+      }
+      if(!pMasqueradingVector[6].empty())
+      {
+          if(pJson.isMember(pMasqueradingVector[6]))
+          {
+              if(!validJsonOfField(6, pMasqueradingVector[6], pJson[pMasqueradingVector[6]], err, true))
+                  return false;
+          }
+      }
     }
     catch(const Json::LogicError &e)
     {
@@ -1059,13 +1323,23 @@ bool Tenants::validateJsonForUpdate(const Json::Value &pJson, std::string &err)
         if(!validJsonOfField(4, "updated_at", pJson["updated_at"], err, false))
             return false;
     }
+    if(pJson.isMember("email"))
+    {
+        if(!validJsonOfField(5, "email", pJson["email"], err, false))
+            return false;
+    }
+    if(pJson.isMember("phone_number"))
+    {
+        if(!validJsonOfField(6, "phone_number", pJson["phone_number"], err, false))
+            return false;
+    }
     return true;
 }
 bool Tenants::validateMasqueradedJsonForUpdate(const Json::Value &pJson,
                                                const std::vector<std::string> &pMasqueradingVector,
                                                std::string &err)
 {
-    if(pMasqueradingVector.size() != 5)
+    if(pMasqueradingVector.size() != 7)
     {
         err = "Bad masquerading vector";
         return false;
@@ -1099,6 +1373,16 @@ bool Tenants::validateMasqueradedJsonForUpdate(const Json::Value &pJson,
       if(!pMasqueradingVector[4].empty() && pJson.isMember(pMasqueradingVector[4]))
       {
           if(!validJsonOfField(4, pMasqueradingVector[4], pJson[pMasqueradingVector[4]], err, false))
+              return false;
+      }
+      if(!pMasqueradingVector[5].empty() && pJson.isMember(pMasqueradingVector[5]))
+      {
+          if(!validJsonOfField(5, pMasqueradingVector[5], pJson[pMasqueradingVector[5]], err, false))
+              return false;
+      }
+      if(!pMasqueradingVector[6].empty() && pJson.isMember(pMasqueradingVector[6]))
+      {
+          if(!validJsonOfField(6, pMasqueradingVector[6], pJson[pMasqueradingVector[6]], err, false))
               return false;
       }
     }
@@ -1192,6 +1476,46 @@ bool Tenants::validJsonOfField(size_t index,
                 err="Type error in the "+fieldName+" field";
                 return false;
             }
+            break;
+        case 5:
+            if(pJson.isNull())
+            {
+                err="The " + fieldName + " column cannot be null";
+                return false;
+            }
+            if(!pJson.isString())
+            {
+                err="Type error in the "+fieldName+" field";
+                return false;
+            }
+            if(pJson.isString() && std::strlen(pJson.asCString()) > 255)
+            {
+                err="String length exceeds limit for the " +
+                    fieldName +
+                    " field (the maximum value is 255)";
+                return false;
+            }
+
+            break;
+        case 6:
+            if(pJson.isNull())
+            {
+                err="The " + fieldName + " column cannot be null";
+                return false;
+            }
+            if(!pJson.isString())
+            {
+                err="Type error in the "+fieldName+" field";
+                return false;
+            }
+            if(pJson.isString() && std::strlen(pJson.asCString()) > 20)
+            {
+                err="String length exceeds limit for the " +
+                    fieldName +
+                    " field (the maximum value is 20)";
+                return false;
+            }
+
             break;
         default:
             err="Internal error in the server";

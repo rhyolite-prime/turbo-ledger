@@ -23,6 +23,8 @@ const std::string Users::Cols::_updated_at = "\"updated_at\"";
 const std::string Users::Cols::_first_name = "\"first_name\"";
 const std::string Users::Cols::_last_name = "\"last_name\"";
 const std::string Users::Cols::_is_locked_out = "\"is_locked_out\"";
+const std::string Users::Cols::_email = "\"email\"";
+const std::string Users::Cols::_phone_number = "\"phone_number\"";
 const std::string Users::primaryKeyName = "id";
 const bool Users::hasPrimaryKey = true;
 const std::string Users::tableName = "\"users\"";
@@ -37,7 +39,9 @@ const std::vector<typename Users::MetaData> Users::metaData_={
 {"updated_at","::trantor::Date","timestamp with time zone",0,0,0,1},
 {"first_name","std::string","character varying",100,0,0,1},
 {"last_name","std::string","character varying",100,0,0,1},
-{"is_locked_out","bool","boolean",1,0,0,1}
+{"is_locked_out","bool","boolean",1,0,0,1},
+{"email","std::string","character varying",255,0,0,1},
+{"phone_number","std::string","character varying",20,0,0,1}
 };
 const std::string &Users::getColumnName(size_t index) noexcept(false)
 {
@@ -124,11 +128,19 @@ Users::Users(const Row &r, const ssize_t indexOffset) noexcept
         {
             isLockedOut_=std::make_shared<bool>(r["is_locked_out"].as<bool>());
         }
+        if(!r["email"].isNull())
+        {
+            email_=std::make_shared<std::string>(r["email"].as<std::string>());
+        }
+        if(!r["phone_number"].isNull())
+        {
+            phoneNumber_=std::make_shared<std::string>(r["phone_number"].as<std::string>());
+        }
     }
     else
     {
         size_t offset = (size_t)indexOffset;
-        if(offset + 10 > r.size())
+        if(offset + 12 > r.size())
         {
             LOG_FATAL << "Invalid SQL result for this model";
             return;
@@ -220,13 +232,23 @@ Users::Users(const Row &r, const ssize_t indexOffset) noexcept
         {
             isLockedOut_=std::make_shared<bool>(r[index].as<bool>());
         }
+        index = offset + 10;
+        if(!r[index].isNull())
+        {
+            email_=std::make_shared<std::string>(r[index].as<std::string>());
+        }
+        index = offset + 11;
+        if(!r[index].isNull())
+        {
+            phoneNumber_=std::make_shared<std::string>(r[index].as<std::string>());
+        }
     }
 
 }
 
 Users::Users(const Json::Value &pJson, const std::vector<std::string> &pMasqueradingVector) noexcept(false)
 {
-    if(pMasqueradingVector.size() != 10)
+    if(pMasqueradingVector.size() != 12)
     {
         LOG_ERROR << "Bad masquerading vector";
         return;
@@ -345,6 +367,22 @@ Users::Users(const Json::Value &pJson, const std::vector<std::string> &pMasquera
         if(!pJson[pMasqueradingVector[9]].isNull())
         {
             isLockedOut_=std::make_shared<bool>(pJson[pMasqueradingVector[9]].asBool());
+        }
+    }
+    if(!pMasqueradingVector[10].empty() && pJson.isMember(pMasqueradingVector[10]))
+    {
+        dirtyFlag_[10] = true;
+        if(!pJson[pMasqueradingVector[10]].isNull())
+        {
+            email_=std::make_shared<std::string>(pJson[pMasqueradingVector[10]].asString());
+        }
+    }
+    if(!pMasqueradingVector[11].empty() && pJson.isMember(pMasqueradingVector[11]))
+    {
+        dirtyFlag_[11] = true;
+        if(!pJson[pMasqueradingVector[11]].isNull())
+        {
+            phoneNumber_=std::make_shared<std::string>(pJson[pMasqueradingVector[11]].asString());
         }
     }
 }
@@ -467,12 +505,28 @@ Users::Users(const Json::Value &pJson) noexcept(false)
             isLockedOut_=std::make_shared<bool>(pJson["is_locked_out"].asBool());
         }
     }
+    if(pJson.isMember("email"))
+    {
+        dirtyFlag_[10]=true;
+        if(!pJson["email"].isNull())
+        {
+            email_=std::make_shared<std::string>(pJson["email"].asString());
+        }
+    }
+    if(pJson.isMember("phone_number"))
+    {
+        dirtyFlag_[11]=true;
+        if(!pJson["phone_number"].isNull())
+        {
+            phoneNumber_=std::make_shared<std::string>(pJson["phone_number"].asString());
+        }
+    }
 }
 
 void Users::updateByMasqueradedJson(const Json::Value &pJson,
                                             const std::vector<std::string> &pMasqueradingVector) noexcept(false)
 {
-    if(pMasqueradingVector.size() != 10)
+    if(pMasqueradingVector.size() != 12)
     {
         LOG_ERROR << "Bad masquerading vector";
         return;
@@ -592,6 +646,22 @@ void Users::updateByMasqueradedJson(const Json::Value &pJson,
             isLockedOut_=std::make_shared<bool>(pJson[pMasqueradingVector[9]].asBool());
         }
     }
+    if(!pMasqueradingVector[10].empty() && pJson.isMember(pMasqueradingVector[10]))
+    {
+        dirtyFlag_[10] = true;
+        if(!pJson[pMasqueradingVector[10]].isNull())
+        {
+            email_=std::make_shared<std::string>(pJson[pMasqueradingVector[10]].asString());
+        }
+    }
+    if(!pMasqueradingVector[11].empty() && pJson.isMember(pMasqueradingVector[11]))
+    {
+        dirtyFlag_[11] = true;
+        if(!pJson[pMasqueradingVector[11]].isNull())
+        {
+            phoneNumber_=std::make_shared<std::string>(pJson[pMasqueradingVector[11]].asString());
+        }
+    }
 }
 
 void Users::updateByJson(const Json::Value &pJson) noexcept(false)
@@ -709,6 +779,22 @@ void Users::updateByJson(const Json::Value &pJson) noexcept(false)
         if(!pJson["is_locked_out"].isNull())
         {
             isLockedOut_=std::make_shared<bool>(pJson["is_locked_out"].asBool());
+        }
+    }
+    if(pJson.isMember("email"))
+    {
+        dirtyFlag_[10] = true;
+        if(!pJson["email"].isNull())
+        {
+            email_=std::make_shared<std::string>(pJson["email"].asString());
+        }
+    }
+    if(pJson.isMember("phone_number"))
+    {
+        dirtyFlag_[11] = true;
+        if(!pJson["phone_number"].isNull())
+        {
+            phoneNumber_=std::make_shared<std::string>(pJson["phone_number"].asString());
         }
     }
 }
@@ -918,6 +1004,50 @@ void Users::setIsLockedOut(const bool &pIsLockedOut) noexcept
     dirtyFlag_[9] = true;
 }
 
+const std::string &Users::getValueOfEmail() const noexcept
+{
+    static const std::string defaultValue = std::string();
+    if(email_)
+        return *email_;
+    return defaultValue;
+}
+const std::shared_ptr<std::string> &Users::getEmail() const noexcept
+{
+    return email_;
+}
+void Users::setEmail(const std::string &pEmail) noexcept
+{
+    email_ = std::make_shared<std::string>(pEmail);
+    dirtyFlag_[10] = true;
+}
+void Users::setEmail(std::string &&pEmail) noexcept
+{
+    email_ = std::make_shared<std::string>(std::move(pEmail));
+    dirtyFlag_[10] = true;
+}
+
+const std::string &Users::getValueOfPhoneNumber() const noexcept
+{
+    static const std::string defaultValue = std::string();
+    if(phoneNumber_)
+        return *phoneNumber_;
+    return defaultValue;
+}
+const std::shared_ptr<std::string> &Users::getPhoneNumber() const noexcept
+{
+    return phoneNumber_;
+}
+void Users::setPhoneNumber(const std::string &pPhoneNumber) noexcept
+{
+    phoneNumber_ = std::make_shared<std::string>(pPhoneNumber);
+    dirtyFlag_[11] = true;
+}
+void Users::setPhoneNumber(std::string &&pPhoneNumber) noexcept
+{
+    phoneNumber_ = std::make_shared<std::string>(std::move(pPhoneNumber));
+    dirtyFlag_[11] = true;
+}
+
 void Users::updateId(const uint64_t id)
 {
 }
@@ -934,7 +1064,9 @@ const std::vector<std::string> &Users::insertColumns() noexcept
         "updated_at",
         "first_name",
         "last_name",
-        "is_locked_out"
+        "is_locked_out",
+        "email",
+        "phone_number"
     };
     return inCols;
 }
@@ -1051,6 +1183,28 @@ void Users::outputArgs(drogon::orm::internal::SqlBinder &binder) const
             binder << nullptr;
         }
     }
+    if(dirtyFlag_[10])
+    {
+        if(getEmail())
+        {
+            binder << getValueOfEmail();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[11])
+    {
+        if(getPhoneNumber())
+        {
+            binder << getValueOfPhoneNumber();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
 }
 
 const std::vector<std::string> Users::updateColumns() const
@@ -1095,6 +1249,14 @@ const std::vector<std::string> Users::updateColumns() const
     if(dirtyFlag_[9])
     {
         ret.push_back(getColumnName(9));
+    }
+    if(dirtyFlag_[10])
+    {
+        ret.push_back(getColumnName(10));
+    }
+    if(dirtyFlag_[11])
+    {
+        ret.push_back(getColumnName(11));
     }
     return ret;
 }
@@ -1211,6 +1373,28 @@ void Users::updateArgs(drogon::orm::internal::SqlBinder &binder) const
             binder << nullptr;
         }
     }
+    if(dirtyFlag_[10])
+    {
+        if(getEmail())
+        {
+            binder << getValueOfEmail();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[11])
+    {
+        if(getPhoneNumber())
+        {
+            binder << getValueOfPhoneNumber();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
 }
 Json::Value Users::toJson() const
 {
@@ -1295,6 +1479,22 @@ Json::Value Users::toJson() const
     {
         ret["is_locked_out"]=Json::Value();
     }
+    if(getEmail())
+    {
+        ret["email"]=getValueOfEmail();
+    }
+    else
+    {
+        ret["email"]=Json::Value();
+    }
+    if(getPhoneNumber())
+    {
+        ret["phone_number"]=getValueOfPhoneNumber();
+    }
+    else
+    {
+        ret["phone_number"]=Json::Value();
+    }
     return ret;
 }
 
@@ -1307,7 +1507,7 @@ Json::Value Users::toMasqueradedJson(
     const std::vector<std::string> &pMasqueradingVector) const
 {
     Json::Value ret;
-    if(pMasqueradingVector.size() == 10)
+    if(pMasqueradingVector.size() == 12)
     {
         if(!pMasqueradingVector[0].empty())
         {
@@ -1419,6 +1619,28 @@ Json::Value Users::toMasqueradedJson(
                 ret[pMasqueradingVector[9]]=Json::Value();
             }
         }
+        if(!pMasqueradingVector[10].empty())
+        {
+            if(getEmail())
+            {
+                ret[pMasqueradingVector[10]]=getValueOfEmail();
+            }
+            else
+            {
+                ret[pMasqueradingVector[10]]=Json::Value();
+            }
+        }
+        if(!pMasqueradingVector[11].empty())
+        {
+            if(getPhoneNumber())
+            {
+                ret[pMasqueradingVector[11]]=getValueOfPhoneNumber();
+            }
+            else
+            {
+                ret[pMasqueradingVector[11]]=Json::Value();
+            }
+        }
         return ret;
     }
     LOG_ERROR << "Masquerade failed";
@@ -1502,6 +1724,22 @@ Json::Value Users::toMasqueradedJson(
     {
         ret["is_locked_out"]=Json::Value();
     }
+    if(getEmail())
+    {
+        ret["email"]=getValueOfEmail();
+    }
+    else
+    {
+        ret["email"]=Json::Value();
+    }
+    if(getPhoneNumber())
+    {
+        ret["phone_number"]=getValueOfPhoneNumber();
+    }
+    else
+    {
+        ret["phone_number"]=Json::Value();
+    }
     return ret;
 }
 
@@ -1572,13 +1810,23 @@ bool Users::validateJsonForCreation(const Json::Value &pJson, std::string &err)
         if(!validJsonOfField(9, "is_locked_out", pJson["is_locked_out"], err, true))
             return false;
     }
+    if(pJson.isMember("email"))
+    {
+        if(!validJsonOfField(10, "email", pJson["email"], err, true))
+            return false;
+    }
+    if(pJson.isMember("phone_number"))
+    {
+        if(!validJsonOfField(11, "phone_number", pJson["phone_number"], err, true))
+            return false;
+    }
     return true;
 }
 bool Users::validateMasqueradedJsonForCreation(const Json::Value &pJson,
                                                const std::vector<std::string> &pMasqueradingVector,
                                                std::string &err)
 {
-    if(pMasqueradingVector.size() != 10)
+    if(pMasqueradingVector.size() != 12)
     {
         err = "Bad masquerading vector";
         return false;
@@ -1679,6 +1927,22 @@ bool Users::validateMasqueradedJsonForCreation(const Json::Value &pJson,
                   return false;
           }
       }
+      if(!pMasqueradingVector[10].empty())
+      {
+          if(pJson.isMember(pMasqueradingVector[10]))
+          {
+              if(!validJsonOfField(10, pMasqueradingVector[10], pJson[pMasqueradingVector[10]], err, true))
+                  return false;
+          }
+      }
+      if(!pMasqueradingVector[11].empty())
+      {
+          if(pJson.isMember(pMasqueradingVector[11]))
+          {
+              if(!validJsonOfField(11, pMasqueradingVector[11], pJson[pMasqueradingVector[11]], err, true))
+                  return false;
+          }
+      }
     }
     catch(const Json::LogicError &e)
     {
@@ -1744,13 +2008,23 @@ bool Users::validateJsonForUpdate(const Json::Value &pJson, std::string &err)
         if(!validJsonOfField(9, "is_locked_out", pJson["is_locked_out"], err, false))
             return false;
     }
+    if(pJson.isMember("email"))
+    {
+        if(!validJsonOfField(10, "email", pJson["email"], err, false))
+            return false;
+    }
+    if(pJson.isMember("phone_number"))
+    {
+        if(!validJsonOfField(11, "phone_number", pJson["phone_number"], err, false))
+            return false;
+    }
     return true;
 }
 bool Users::validateMasqueradedJsonForUpdate(const Json::Value &pJson,
                                              const std::vector<std::string> &pMasqueradingVector,
                                              std::string &err)
 {
-    if(pMasqueradingVector.size() != 10)
+    if(pMasqueradingVector.size() != 12)
     {
         err = "Bad masquerading vector";
         return false;
@@ -1809,6 +2083,16 @@ bool Users::validateMasqueradedJsonForUpdate(const Json::Value &pJson,
       if(!pMasqueradingVector[9].empty() && pJson.isMember(pMasqueradingVector[9]))
       {
           if(!validJsonOfField(9, pMasqueradingVector[9], pJson[pMasqueradingVector[9]], err, false))
+              return false;
+      }
+      if(!pMasqueradingVector[10].empty() && pJson.isMember(pMasqueradingVector[10]))
+      {
+          if(!validJsonOfField(10, pMasqueradingVector[10], pJson[pMasqueradingVector[10]], err, false))
+              return false;
+      }
+      if(!pMasqueradingVector[11].empty() && pJson.isMember(pMasqueradingVector[11]))
+      {
+          if(!validJsonOfField(11, pMasqueradingVector[11], pJson[pMasqueradingVector[11]], err, false))
               return false;
       }
     }
@@ -1986,6 +2270,46 @@ bool Users::validJsonOfField(size_t index,
                 err="Type error in the "+fieldName+" field";
                 return false;
             }
+            break;
+        case 10:
+            if(pJson.isNull())
+            {
+                err="The " + fieldName + " column cannot be null";
+                return false;
+            }
+            if(!pJson.isString())
+            {
+                err="Type error in the "+fieldName+" field";
+                return false;
+            }
+            if(pJson.isString() && std::strlen(pJson.asCString()) > 255)
+            {
+                err="String length exceeds limit for the " +
+                    fieldName +
+                    " field (the maximum value is 255)";
+                return false;
+            }
+
+            break;
+        case 11:
+            if(pJson.isNull())
+            {
+                err="The " + fieldName + " column cannot be null";
+                return false;
+            }
+            if(!pJson.isString())
+            {
+                err="Type error in the "+fieldName+" field";
+                return false;
+            }
+            if(pJson.isString() && std::strlen(pJson.asCString()) > 20)
+            {
+                err="String length exceeds limit for the " +
+                    fieldName +
+                    " field (the maximum value is 20)";
+                return false;
+            }
+
             break;
         default:
             err="Internal error in the server";
