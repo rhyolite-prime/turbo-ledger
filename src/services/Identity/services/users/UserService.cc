@@ -7,10 +7,10 @@
 #include "Users.h"
 #include "dto/BaseApiResponse.h"
 
-// --- IMPORTANT --- 
+// --- IMPORTANT ---
 // This is a placeholder for a real password hashing library.
-// #include <bcrypt.h> 
-// --- IMPORTANT --- 
+// #include <bcrypt.h>
+// --- IMPORTANT ---
 
 using namespace drogon::orm;
 using namespace drogon_model::TurboLedgerIdentity;
@@ -18,6 +18,89 @@ using namespace drogon_model::TurboLedgerIdentity;
 
 namespace turbo_ledger_identity::services
 {
+
+
+    void UserService::getUsers(
+    int pageNo,
+    int pageSize,
+    const std::string& query,
+    const std::string& tenantId,
+    const std::function<void(const turbo_ledger_identity::dto::BaseApiResponse&)>& callback)
+    {
+        auto dbClient = drogon::app().getDbClient();
+        auto mp = std::make_shared<Mapper<Users>>(dbClient);
+
+        // 1. Build the search criteria
+        Criteria criteria(Users::Cols::_tenant_identifier, CompareOperator::EQ, tenantId);
+        if (!query.empty())
+        {
+            std::string likeQuery = "%" + query + "%";
+
+            Criteria searchCriteria =
+                Criteria(Users::Cols::_username, CompareOperator::Like, likeQuery) ||
+                Criteria(Users::Cols::_first_name, CompareOperator::Like, likeQuery) ||
+                Criteria(Users::Cols::_last_name, CompareOperator::Like, likeQuery) ||
+                Criteria(Users::Cols::_email, CompareOperator::Like, likeQuery);
+
+            criteria = criteria && searchCriteria;
+        }
+
+        // 2. Asynchronously get the total count matching the criteria
+        mp->count(criteria, 
+            [=](const size_t totalCount) {
+                if (totalCount == 0)
+                {
+                    dto::BaseApiResponse response;
+                    response.success = true;
+                    response.result["data"] = Json::arrayValue;
+                    response.result["totalCount"] = 0;
+                    callback(response);
+                    return;
+                }
+
+                // 3. Asynchronously find the paginated data
+                int offset = (pageNo - 1) * pageSize;
+                mp->limit(pageSize).offset(offset).findBy(criteria,
+                    [=](const std::vector<Users>& users) {
+                        // 4. Build the final response inside the callback
+                        dto::BaseApiResponse response;
+                        response.success = true;
+                        response.result["totalCount"] = (Json::UInt64)totalCount;
+                        response.result["pageNo"] = pageNo;
+                        response.result["pageSize"] = pageSize;
+                        response.result["totalPages"] = (int)((totalCount + pageSize - 1) / pageSize);
+
+                        Json::Value data = Json::arrayValue;
+                        for (const auto& user : users)
+                        {
+                            data.append(user.toJson()); // Assuming your model has a toJson() method
+                        }
+                        response.result["data"] = data;
+                        callback(response);
+                    },
+                    [callback](const DrogonDbException& e) {
+                        // Handle find error
+                        dto::BaseApiResponse errorResponse;
+                        errorResponse.success = false;
+                        errorResponse.error["message"] = "Database error while fetching users.";
+                        errorResponse.error["detail"] = e.base().what();
+                        callback(errorResponse);
+                    }
+                );
+            },
+            [callback](const DrogonDbException& e) {
+                // Handle count error
+                dto::BaseApiResponse errorResponse;
+                errorResponse.success = false;
+                errorResponse.error["message"] = "Database error while counting users.";
+                errorResponse.error["detail"] = e.base().what();
+                callback(errorResponse);
+            }
+        );
+    }
+
+
+
 
 
     // Placeholder password hashing - REPLACE WITH A REAL LIBRARY

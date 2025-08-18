@@ -1,8 +1,6 @@
 #pragma once
 
-#include <drogon/HttpController.h>
-
-#include "services/users/UserService.h"
+#include "BaseController.h"
 
 using namespace drogon;
 
@@ -11,7 +9,7 @@ namespace
     const std::string PREFIX = "/api/v1/users";
 }
 
-class UsersController : public drogon::HttpController<UsersController>
+class UsersController : public BaseController<UsersController>
 {
     public:
       METHOD_LIST_BEGIN
@@ -23,9 +21,6 @@ class UsersController : public drogon::HttpController<UsersController>
           ADD_METHOD_TO(UsersController::updateUser, PREFIX + "/update", Post);
           ADD_METHOD_TO(UsersController::deleteUser, PREFIX + "/delete", Delete);
       METHOD_LIST_END
-
-    // Constructor for dependency injection
-    UsersController();
 
     //handler methods
     void getUsers(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback);

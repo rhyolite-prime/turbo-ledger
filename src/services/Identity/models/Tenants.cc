@@ -20,6 +20,8 @@ const std::string Tenants::Cols::_created_at = "\"created_at\"";
 const std::string Tenants::Cols::_updated_at = "\"updated_at\"";
 const std::string Tenants::Cols::_email = "\"email\"";
 const std::string Tenants::Cols::_phone_number = "\"phone_number\"";
+const std::string Tenants::Cols::_is_active = "\"is_active\"";
+const std::string Tenants::Cols::_connection_string = "\"connection_string\"";
 const std::string Tenants::primaryKeyName = "id";
 const bool Tenants::hasPrimaryKey = true;
 const std::string Tenants::tableName = "\"tenants\"";
@@ -31,7 +33,9 @@ const std::vector<typename Tenants::MetaData> Tenants::metaData_={
 {"created_at","::trantor::Date","timestamp with time zone",0,0,0,1},
 {"updated_at","::trantor::Date","timestamp with time zone",0,0,0,1},
 {"email","std::string","character varying",255,0,0,1},
-{"phone_number","std::string","character varying",20,0,0,1}
+{"phone_number","std::string","character varying",20,0,0,1},
+{"is_active","bool","boolean",1,0,0,1},
+{"connection_string","std::string","character varying",1024,0,0,1}
 };
 const std::string &Tenants::getColumnName(size_t index) noexcept(false)
 {
@@ -106,11 +110,19 @@ Tenants::Tenants(const Row &r, const ssize_t indexOffset) noexcept
         {
             phoneNumber_=std::make_shared<std::string>(r["phone_number"].as<std::string>());
         }
+        if(!r["is_active"].isNull())
+        {
+            isActive_=std::make_shared<bool>(r["is_active"].as<bool>());
+        }
+        if(!r["connection_string"].isNull())
+        {
+            connectionString_=std::make_shared<std::string>(r["connection_string"].as<std::string>());
+        }
     }
     else
     {
         size_t offset = (size_t)indexOffset;
-        if(offset + 7 > r.size())
+        if(offset + 9 > r.size())
         {
             LOG_FATAL << "Invalid SQL result for this model";
             return;
@@ -187,13 +199,23 @@ Tenants::Tenants(const Row &r, const ssize_t indexOffset) noexcept
         {
             phoneNumber_=std::make_shared<std::string>(r[index].as<std::string>());
         }
+        index = offset + 7;
+        if(!r[index].isNull())
+        {
+            isActive_=std::make_shared<bool>(r[index].as<bool>());
+        }
+        index = offset + 8;
+        if(!r[index].isNull())
+        {
+            connectionString_=std::make_shared<std::string>(r[index].as<std::string>());
+        }
     }
 
 }
 
 Tenants::Tenants(const Json::Value &pJson, const std::vector<std::string> &pMasqueradingVector) noexcept(false)
 {
-    if(pMasqueradingVector.size() != 7)
+    if(pMasqueradingVector.size() != 9)
     {
         LOG_ERROR << "Bad masquerading vector";
         return;
@@ -288,6 +310,22 @@ Tenants::Tenants(const Json::Value &pJson, const std::vector<std::string> &pMasq
         if(!pJson[pMasqueradingVector[6]].isNull())
         {
             phoneNumber_=std::make_shared<std::string>(pJson[pMasqueradingVector[6]].asString());
+        }
+    }
+    if(!pMasqueradingVector[7].empty() && pJson.isMember(pMasqueradingVector[7]))
+    {
+        dirtyFlag_[7] = true;
+        if(!pJson[pMasqueradingVector[7]].isNull())
+        {
+            isActive_=std::make_shared<bool>(pJson[pMasqueradingVector[7]].asBool());
+        }
+    }
+    if(!pMasqueradingVector[8].empty() && pJson.isMember(pMasqueradingVector[8]))
+    {
+        dirtyFlag_[8] = true;
+        if(!pJson[pMasqueradingVector[8]].isNull())
+        {
+            connectionString_=std::make_shared<std::string>(pJson[pMasqueradingVector[8]].asString());
         }
     }
 }
@@ -386,12 +424,28 @@ Tenants::Tenants(const Json::Value &pJson) noexcept(false)
             phoneNumber_=std::make_shared<std::string>(pJson["phone_number"].asString());
         }
     }
+    if(pJson.isMember("is_active"))
+    {
+        dirtyFlag_[7]=true;
+        if(!pJson["is_active"].isNull())
+        {
+            isActive_=std::make_shared<bool>(pJson["is_active"].asBool());
+        }
+    }
+    if(pJson.isMember("connection_string"))
+    {
+        dirtyFlag_[8]=true;
+        if(!pJson["connection_string"].isNull())
+        {
+            connectionString_=std::make_shared<std::string>(pJson["connection_string"].asString());
+        }
+    }
 }
 
 void Tenants::updateByMasqueradedJson(const Json::Value &pJson,
                                             const std::vector<std::string> &pMasqueradingVector) noexcept(false)
 {
-    if(pMasqueradingVector.size() != 7)
+    if(pMasqueradingVector.size() != 9)
     {
         LOG_ERROR << "Bad masquerading vector";
         return;
@@ -487,6 +541,22 @@ void Tenants::updateByMasqueradedJson(const Json::Value &pJson,
             phoneNumber_=std::make_shared<std::string>(pJson[pMasqueradingVector[6]].asString());
         }
     }
+    if(!pMasqueradingVector[7].empty() && pJson.isMember(pMasqueradingVector[7]))
+    {
+        dirtyFlag_[7] = true;
+        if(!pJson[pMasqueradingVector[7]].isNull())
+        {
+            isActive_=std::make_shared<bool>(pJson[pMasqueradingVector[7]].asBool());
+        }
+    }
+    if(!pMasqueradingVector[8].empty() && pJson.isMember(pMasqueradingVector[8]))
+    {
+        dirtyFlag_[8] = true;
+        if(!pJson[pMasqueradingVector[8]].isNull())
+        {
+            connectionString_=std::make_shared<std::string>(pJson[pMasqueradingVector[8]].asString());
+        }
+    }
 }
 
 void Tenants::updateByJson(const Json::Value &pJson) noexcept(false)
@@ -580,6 +650,22 @@ void Tenants::updateByJson(const Json::Value &pJson) noexcept(false)
         if(!pJson["phone_number"].isNull())
         {
             phoneNumber_=std::make_shared<std::string>(pJson["phone_number"].asString());
+        }
+    }
+    if(pJson.isMember("is_active"))
+    {
+        dirtyFlag_[7] = true;
+        if(!pJson["is_active"].isNull())
+        {
+            isActive_=std::make_shared<bool>(pJson["is_active"].asBool());
+        }
+    }
+    if(pJson.isMember("connection_string"))
+    {
+        dirtyFlag_[8] = true;
+        if(!pJson["connection_string"].isNull())
+        {
+            connectionString_=std::make_shared<std::string>(pJson["connection_string"].asString());
         }
     }
 }
@@ -733,6 +819,45 @@ void Tenants::setPhoneNumber(std::string &&pPhoneNumber) noexcept
     dirtyFlag_[6] = true;
 }
 
+const bool &Tenants::getValueOfIsActive() const noexcept
+{
+    static const bool defaultValue = bool();
+    if(isActive_)
+        return *isActive_;
+    return defaultValue;
+}
+const std::shared_ptr<bool> &Tenants::getIsActive() const noexcept
+{
+    return isActive_;
+}
+void Tenants::setIsActive(const bool &pIsActive) noexcept
+{
+    isActive_ = std::make_shared<bool>(pIsActive);
+    dirtyFlag_[7] = true;
+}
+
+const std::string &Tenants::getValueOfConnectionString() const noexcept
+{
+    static const std::string defaultValue = std::string();
+    if(connectionString_)
+        return *connectionString_;
+    return defaultValue;
+}
+const std::shared_ptr<std::string> &Tenants::getConnectionString() const noexcept
+{
+    return connectionString_;
+}
+void Tenants::setConnectionString(const std::string &pConnectionString) noexcept
+{
+    connectionString_ = std::make_shared<std::string>(pConnectionString);
+    dirtyFlag_[8] = true;
+}
+void Tenants::setConnectionString(std::string &&pConnectionString) noexcept
+{
+    connectionString_ = std::make_shared<std::string>(std::move(pConnectionString));
+    dirtyFlag_[8] = true;
+}
+
 void Tenants::updateId(const uint64_t id)
 {
 }
@@ -746,7 +871,9 @@ const std::vector<std::string> &Tenants::insertColumns() noexcept
         "created_at",
         "updated_at",
         "email",
-        "phone_number"
+        "phone_number",
+        "is_active",
+        "connection_string"
     };
     return inCols;
 }
@@ -830,6 +957,28 @@ void Tenants::outputArgs(drogon::orm::internal::SqlBinder &binder) const
             binder << nullptr;
         }
     }
+    if(dirtyFlag_[7])
+    {
+        if(getIsActive())
+        {
+            binder << getValueOfIsActive();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[8])
+    {
+        if(getConnectionString())
+        {
+            binder << getValueOfConnectionString();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
 }
 
 const std::vector<std::string> Tenants::updateColumns() const
@@ -862,6 +1011,14 @@ const std::vector<std::string> Tenants::updateColumns() const
     if(dirtyFlag_[6])
     {
         ret.push_back(getColumnName(6));
+    }
+    if(dirtyFlag_[7])
+    {
+        ret.push_back(getColumnName(7));
+    }
+    if(dirtyFlag_[8])
+    {
+        ret.push_back(getColumnName(8));
     }
     return ret;
 }
@@ -945,6 +1102,28 @@ void Tenants::updateArgs(drogon::orm::internal::SqlBinder &binder) const
             binder << nullptr;
         }
     }
+    if(dirtyFlag_[7])
+    {
+        if(getIsActive())
+        {
+            binder << getValueOfIsActive();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[8])
+    {
+        if(getConnectionString())
+        {
+            binder << getValueOfConnectionString();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
 }
 Json::Value Tenants::toJson() const
 {
@@ -1005,6 +1184,22 @@ Json::Value Tenants::toJson() const
     {
         ret["phone_number"]=Json::Value();
     }
+    if(getIsActive())
+    {
+        ret["is_active"]=getValueOfIsActive();
+    }
+    else
+    {
+        ret["is_active"]=Json::Value();
+    }
+    if(getConnectionString())
+    {
+        ret["connection_string"]=getValueOfConnectionString();
+    }
+    else
+    {
+        ret["connection_string"]=Json::Value();
+    }
     return ret;
 }
 
@@ -1017,7 +1212,7 @@ Json::Value Tenants::toMasqueradedJson(
     const std::vector<std::string> &pMasqueradingVector) const
 {
     Json::Value ret;
-    if(pMasqueradingVector.size() == 7)
+    if(pMasqueradingVector.size() == 9)
     {
         if(!pMasqueradingVector[0].empty())
         {
@@ -1096,6 +1291,28 @@ Json::Value Tenants::toMasqueradedJson(
                 ret[pMasqueradingVector[6]]=Json::Value();
             }
         }
+        if(!pMasqueradingVector[7].empty())
+        {
+            if(getIsActive())
+            {
+                ret[pMasqueradingVector[7]]=getValueOfIsActive();
+            }
+            else
+            {
+                ret[pMasqueradingVector[7]]=Json::Value();
+            }
+        }
+        if(!pMasqueradingVector[8].empty())
+        {
+            if(getConnectionString())
+            {
+                ret[pMasqueradingVector[8]]=getValueOfConnectionString();
+            }
+            else
+            {
+                ret[pMasqueradingVector[8]]=Json::Value();
+            }
+        }
         return ret;
     }
     LOG_ERROR << "Masquerade failed";
@@ -1155,6 +1372,22 @@ Json::Value Tenants::toMasqueradedJson(
     {
         ret["phone_number"]=Json::Value();
     }
+    if(getIsActive())
+    {
+        ret["is_active"]=getValueOfIsActive();
+    }
+    else
+    {
+        ret["is_active"]=Json::Value();
+    }
+    if(getConnectionString())
+    {
+        ret["connection_string"]=getValueOfConnectionString();
+    }
+    else
+    {
+        ret["connection_string"]=Json::Value();
+    }
     return ret;
 }
 
@@ -1205,13 +1438,23 @@ bool Tenants::validateJsonForCreation(const Json::Value &pJson, std::string &err
         if(!validJsonOfField(6, "phone_number", pJson["phone_number"], err, true))
             return false;
     }
+    if(pJson.isMember("is_active"))
+    {
+        if(!validJsonOfField(7, "is_active", pJson["is_active"], err, true))
+            return false;
+    }
+    if(pJson.isMember("connection_string"))
+    {
+        if(!validJsonOfField(8, "connection_string", pJson["connection_string"], err, true))
+            return false;
+    }
     return true;
 }
 bool Tenants::validateMasqueradedJsonForCreation(const Json::Value &pJson,
                                                  const std::vector<std::string> &pMasqueradingVector,
                                                  std::string &err)
 {
-    if(pMasqueradingVector.size() != 7)
+    if(pMasqueradingVector.size() != 9)
     {
         err = "Bad masquerading vector";
         return false;
@@ -1283,6 +1526,22 @@ bool Tenants::validateMasqueradedJsonForCreation(const Json::Value &pJson,
                   return false;
           }
       }
+      if(!pMasqueradingVector[7].empty())
+      {
+          if(pJson.isMember(pMasqueradingVector[7]))
+          {
+              if(!validJsonOfField(7, pMasqueradingVector[7], pJson[pMasqueradingVector[7]], err, true))
+                  return false;
+          }
+      }
+      if(!pMasqueradingVector[8].empty())
+      {
+          if(pJson.isMember(pMasqueradingVector[8]))
+          {
+              if(!validJsonOfField(8, pMasqueradingVector[8], pJson[pMasqueradingVector[8]], err, true))
+                  return false;
+          }
+      }
     }
     catch(const Json::LogicError &e)
     {
@@ -1333,13 +1592,23 @@ bool Tenants::validateJsonForUpdate(const Json::Value &pJson, std::string &err)
         if(!validJsonOfField(6, "phone_number", pJson["phone_number"], err, false))
             return false;
     }
+    if(pJson.isMember("is_active"))
+    {
+        if(!validJsonOfField(7, "is_active", pJson["is_active"], err, false))
+            return false;
+    }
+    if(pJson.isMember("connection_string"))
+    {
+        if(!validJsonOfField(8, "connection_string", pJson["connection_string"], err, false))
+            return false;
+    }
     return true;
 }
 bool Tenants::validateMasqueradedJsonForUpdate(const Json::Value &pJson,
                                                const std::vector<std::string> &pMasqueradingVector,
                                                std::string &err)
 {
-    if(pMasqueradingVector.size() != 7)
+    if(pMasqueradingVector.size() != 9)
     {
         err = "Bad masquerading vector";
         return false;
@@ -1383,6 +1652,16 @@ bool Tenants::validateMasqueradedJsonForUpdate(const Json::Value &pJson,
       if(!pMasqueradingVector[6].empty() && pJson.isMember(pMasqueradingVector[6]))
       {
           if(!validJsonOfField(6, pMasqueradingVector[6], pJson[pMasqueradingVector[6]], err, false))
+              return false;
+      }
+      if(!pMasqueradingVector[7].empty() && pJson.isMember(pMasqueradingVector[7]))
+      {
+          if(!validJsonOfField(7, pMasqueradingVector[7], pJson[pMasqueradingVector[7]], err, false))
+              return false;
+      }
+      if(!pMasqueradingVector[8].empty() && pJson.isMember(pMasqueradingVector[8]))
+      {
+          if(!validJsonOfField(8, pMasqueradingVector[8], pJson[pMasqueradingVector[8]], err, false))
               return false;
       }
     }
@@ -1513,6 +1792,38 @@ bool Tenants::validJsonOfField(size_t index,
                 err="String length exceeds limit for the " +
                     fieldName +
                     " field (the maximum value is 20)";
+                return false;
+            }
+
+            break;
+        case 7:
+            if(pJson.isNull())
+            {
+                err="The " + fieldName + " column cannot be null";
+                return false;
+            }
+            if(!pJson.isBool())
+            {
+                err="Type error in the "+fieldName+" field";
+                return false;
+            }
+            break;
+        case 8:
+            if(pJson.isNull())
+            {
+                err="The " + fieldName + " column cannot be null";
+                return false;
+            }
+            if(!pJson.isString())
+            {
+                err="Type error in the "+fieldName+" field";
+                return false;
+            }
+            if(pJson.isString() && std::strlen(pJson.asCString()) > 1024)
+            {
+                err="String length exceeds limit for the " +
+                    fieldName +
+                    " field (the maximum value is 1024)";
                 return false;
             }
 

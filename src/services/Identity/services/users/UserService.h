@@ -12,6 +12,21 @@ namespace turbo_ledger_identity::services
     {
     public:
 
+        /**
+         * @brief Retrieve a paginated list of users with optional filtering.
+         * @param pageNo The page number (0-based).
+         * @param pageSize The number of users per page.
+         * @param query Optional search query to filter users.
+         * @param tenantId The identifier for the tenant.
+         * @param callback The callback function to handle the response.
+         */
+        void getUsers(
+            int pageNo,
+            int pageSize,
+            const std::string& query,
+            const std::string& tenantId,
+            const std::function<void(const turbo_ledger_identity::dto::BaseApiResponse&)>& callback
+        );
 
 
         /**

@@ -51,6 +51,8 @@ class Tenants
         static const std::string _updated_at;
         static const std::string _email;
         static const std::string _phone_number;
+        static const std::string _is_active;
+        static const std::string _connection_string;
     };
 
     static const int primaryKeyNumber;
@@ -163,8 +165,25 @@ class Tenants
     void setPhoneNumber(const std::string &pPhoneNumber) noexcept;
     void setPhoneNumber(std::string &&pPhoneNumber) noexcept;
 
+    /**  For column is_active  */
+    ///Get the value of the column is_active, returns the default value if the column is null
+    const bool &getValueOfIsActive() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<bool> &getIsActive() const noexcept;
+    ///Set the value of the column is_active
+    void setIsActive(const bool &pIsActive) noexcept;
 
-    static size_t getColumnNumber() noexcept {  return 7;  }
+    /**  For column connection_string  */
+    ///Get the value of the column connection_string, returns the default value if the column is null
+    const std::string &getValueOfConnectionString() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<std::string> &getConnectionString() const noexcept;
+    ///Set the value of the column connection_string
+    void setConnectionString(const std::string &pConnectionString) noexcept;
+    void setConnectionString(std::string &&pConnectionString) noexcept;
+
+
+    static size_t getColumnNumber() noexcept {  return 9;  }
     static const std::string &getColumnName(size_t index) noexcept(false);
 
     Json::Value toJson() const;
@@ -193,6 +212,8 @@ class Tenants
     std::shared_ptr<::trantor::Date> updatedAt_;
     std::shared_ptr<std::string> email_;
     std::shared_ptr<std::string> phoneNumber_;
+    std::shared_ptr<bool> isActive_;
+    std::shared_ptr<std::string> connectionString_;
     struct MetaData
     {
         const std::string colName_;
@@ -204,7 +225,7 @@ class Tenants
         const bool notNull_;
     };
     static const std::vector<MetaData> metaData_;
-    bool dirtyFlag_[7]={ false };
+    bool dirtyFlag_[9]={ false };
   public:
     static const std::string &sqlForFindingByPrimaryKey()
     {
@@ -259,6 +280,18 @@ class Tenants
         sql += "phone_number,";
         ++parametersCount;
         if(!dirtyFlag_[6])
+        {
+            needSelection=true;
+        }
+        sql += "is_active,";
+        ++parametersCount;
+        if(!dirtyFlag_[7])
+        {
+            needSelection=true;
+        }
+        sql += "connection_string,";
+        ++parametersCount;
+        if(!dirtyFlag_[8])
         {
             needSelection=true;
         }
@@ -320,6 +353,24 @@ class Tenants
             sql +="default,";
         }
         if(dirtyFlag_[6])
+        {
+            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
+            sql.append(placeholderStr, n);
+        }
+        else
+        {
+            sql +="default,";
+        }
+        if(dirtyFlag_[7])
+        {
+            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
+            sql.append(placeholderStr, n);
+        }
+        else
+        {
+            sql +="default,";
+        }
+        if(dirtyFlag_[8])
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
