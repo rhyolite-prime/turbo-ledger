@@ -1,4 +1,3 @@
-
 #include "UserService.h"
 #include <drogon/orm/Mapper.h>
 #include <drogon/orm/Criteria.h>
@@ -9,6 +8,7 @@
 #include "bcrypt.h"
 #include "dto/ErrorCodes.h"
 #include "dto/SigninDto.h"
+#include "dto/UpdateUserDto.h"
 // --- IMPORTANT ---
 // This is a placeholder for a real password hashing library.
 
@@ -81,7 +81,22 @@ namespace turbo_ledger_identity::services
                         {
                             Json::Value userJson = user.toJson();
                             userJson.removeMember("password_hash");
-                            data.append(userJson); // Assuming your model has a toJson() method
+
+                            // Convert snake_case to camelCase
+                            Json::Value camelCaseUser;
+                            camelCaseUser["id"] = userJson["id"];
+                            camelCaseUser["username"] = userJson["username"];
+                            camelCaseUser["firstName"] = userJson["first_name"];
+                            camelCaseUser["lastName"] = userJson["last_name"];
+                            camelCaseUser["email"] = userJson["email"];
+                            camelCaseUser["phoneNumber"] = userJson["phone_number"];
+                            camelCaseUser["isActive"] = userJson["is_active"];
+                            camelCaseUser["isLockedOut"] = userJson["is_locked_out"];
+                            camelCaseUser["tenantIdentifier"] = userJson["tenant_identifier"];
+                            camelCaseUser["createdAt"] = userJson["created_at"];
+                            camelCaseUser["updatedAt"] = userJson["updated_at"];
+
+                            data.append(camelCaseUser);
                         }
                         response.result["data"] = data;
                         callback(response);
@@ -151,6 +166,121 @@ namespace turbo_ledger_identity::services
         });
 
     }
+
+
+    void UserService::updateUser(
+        const dto::UpdateUserDto& userData,
+        const std::string& tenantId,
+        const std::function<void(const turbo_ledger_identity::dto::BaseApiResponse&)>& callback)
+    {
+        auto dbClient = drogon::app().getDbClient();
+        Mapper<Users> mp(dbClient);
+
+        Criteria criteria = Criteria(Users::Cols::_id, CompareOperator::EQ, userData.getId()) &&
+                            Criteria(Users::Cols::_tenant_identifier, CompareOperator::EQ, tenantId);
+
+        mp.findOne(criteria,
+            [=](Users user) {
+                if (!userData.getFirstName().empty()) user.setFirstName(userData.getFirstName());
+                if (!userData.getLastName().empty()) user.setLastName(userData.getLastName());
+                if (!userData.getEmail().empty()) user.setEmail(userData.getEmail());
+                if (!userData.getPhoneNumber().empty()) user.setPhoneNumber(userData.getPhoneNumber());
+                if (!userData.getPassword().empty()) user.setPasswordHash(bcrypt::generateHash(userData.getPassword()));
+                user.setIsActive(userData.getIsActive());
+                user.setIsLockedOut(userData.getIsLockedOut());
+
+
+                Mapper<Users> updateMp(dbClient);
+                // Save the changes to the database
+                updateMp.update(user, [callback](const size_t count) {
+
+                    // Successfully updated
+                    turbo_ledger_identity::dto::BaseApiResponse response;
+                    response.success = true;
+                    response.message = "User updated successfully";
+                    callback(response);
+                },
+                [=](const DrogonDbException& e) {
+                    // Error during update
+                    turbo_ledger_identity::dto::BaseApiResponse errorResponse;
+                    errorResponse.success = false;
+                    errorResponse.message = "Failed to update user";
+                    errorResponse.error["code"] = ERR_DB_QUERY;
+                    errorResponse.error["detail"] = e.base().what();
+                    callback(errorResponse);
+                }
+            );
+
+            },
+            [callback](const DrogonDbException& e) {
+                turbo_ledger_identity::dto::BaseApiResponse errorResponse;
+                errorResponse.success = false;
+                errorResponse.message = "User not found";
+                errorResponse.error["code"] = ERR_RESOURCE_NOT_FOUND;
+                errorResponse.error["detail"] = e.base().what();
+                callback(errorResponse);
+            }
+        );
+    }
+
+    void UserService::deleteUser(
+        const std::string& userId,
+        const std::string& tenantId,
+        const std::function<void(const turbo_ledger_identity::dto::BaseApiResponse&)>& callback)
+    {
+        auto dbClient = drogon::app().getDbClient();
+        Mapper<Users> mp(dbClient);
+
+        // Create criteria to find the user with specified ID in the tenant
+        Criteria criteria = Criteria(Users::Cols::_id, CompareOperator::EQ, userId) &&
+                            Criteria(Users::Cols::_tenant_identifier, CompareOperator::EQ, tenantId);
+
+        // First verify the user exists
+        mp.findOne(criteria,
+            [=](const Users& user) {
+                // User found, proceed with deletion
+                Mapper<Users> deleteMp(dbClient);
+                deleteMp.deleteBy(criteria,
+                    [=](const size_t count) {
+                        if (count > 0) {
+                            // Successfully deleted
+                            turbo_ledger_identity::dto::BaseApiResponse response;
+                            response.success = true;
+                            response.message = "User deleted successfully";
+                            callback(response);
+                        } else {
+                            // No rows were deleted (shouldn't happen if we found the user)
+                            turbo_ledger_identity::dto::BaseApiResponse errorResponse;
+                            errorResponse.success = false;
+                            errorResponse.message = "Failed to delete user";
+                            errorResponse.error["code"] = ERR_DB_QUERY;
+                            callback(errorResponse);
+                        }
+                    },
+                    [=](const DrogonDbException& e) {
+                        // Error during deletion
+                        turbo_ledger_identity::dto::BaseApiResponse errorResponse;
+                        errorResponse.success = false;
+                        errorResponse.message = "Failed to delete user";
+                        errorResponse.error["code"] = ERR_DB_QUERY;
+                        errorResponse.error["detail"] = e.base().what();
+                        callback(errorResponse);
+                    }
+                );
+            },
+            [=](const DrogonDbException& e) {
+                // User not found
+                turbo_ledger_identity::dto::BaseApiResponse errorResponse;
+                errorResponse.success = false;
+                errorResponse.message = "User not found";
+                errorResponse.error["code"] = ERR_RESOURCE_NOT_FOUND;
+                errorResponse.error["detail"] = e.base().what();
+                callback(errorResponse);
+            }
+        );
+    }
+
+
 
     void UserService::validateUserCredentials(
         const dto::SigninDto& signin_dto,

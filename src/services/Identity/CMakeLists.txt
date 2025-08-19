@@ -27,6 +27,8 @@ add_executable(${PROJECT_NAME} main.cc
         dto/SigninDto.h
         dto/SigninDto.cc
         dto/ErrorCodes.h
+        dto/UpdateUserDto.h
+        dto/UpdateUserDto.cc
 )
 
 # ##############################################################################

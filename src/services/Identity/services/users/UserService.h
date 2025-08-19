@@ -7,6 +7,7 @@
 
 
 namespace turbo_ledger_identity::dto {
+    class UpdateUserDto;
     class SigninDto;
 }
 
@@ -45,11 +46,22 @@ namespace turbo_ledger_identity::services
             const std::function<void(const turbo_ledger_identity::dto::BaseApiResponse&)>& callback
         );
 
+        void updateUser(
+            const dto::UpdateUserDto& userData,
+            const std::string& tenantId,
+            const std::function<void(const turbo_ledger_identity::dto::BaseApiResponse&)>& callback
+        );
+
+        void deleteUser(
+            const std::string& userId,
+            const std::string& tenantId,
+            const std::function<void(const turbo_ledger_identity::dto::BaseApiResponse&)>& callback
+        );
+
         /**
          * @brief Validate a user's credentials.
          *
-         * @param usernameOrEmail The user's username or email.
-         * @param password The user's plaintext password.
+         * @param signin_dto The user's plaintext password.
          * @param tenantId The identifier for the tenant.
          * @param callback The callback function to handle the response.
          */

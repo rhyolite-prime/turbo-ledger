@@ -1,7 +1,9 @@
 #include "UsersController.h"
 #include "dto/CreateUserDto.h"
 #include "dto/BaseApiResponse.h"
+#include "dto/ErrorCodes.h"
 #include "dto/SigninDto.h"
+#include "dto/UpdateUserDto.h"
 #include "plugins/IdentityServicePlugin.h"
 
 
@@ -162,7 +164,43 @@ void UsersController::createUser(const HttpRequestPtr& req, std::function<void (
 
 void UsersController::updateUser(const HttpRequestPtr& req, std::function<void (const HttpResponsePtr &)> &&callback)
 {
-    // write your application logic here
+    auto jsonBody = req->getJsonObject();
+    if (!jsonBody) {
+        turbo_ledger_identity::dto::BaseApiResponse response;
+        response.success = false;
+        response.error["message"] = "Invalid JSON body";
+        auto resp = HttpResponse::newHttpJsonResponse(response.toJson());
+        resp->setStatusCode(k400BadRequest);
+        callback(resp);
+        return;
+    }
+
+    std::string tenantId = getTenantFromRequest(req);
+
+    turbo_ledger_identity::dto::UpdateUserDto userData;
+
+    try {
+
+        userData.fromJson(*jsonBody);
+
+    } catch (const std::exception& e) {
+        turbo_ledger_identity::dto::BaseApiResponse response;
+        response.success = false;
+        response.error["message"] = "Missing or invalid required fields";
+        auto resp = HttpResponse::newHttpJsonResponse(response.toJson());
+        resp->setStatusCode(k400BadRequest);
+        callback(resp);
+        return;
+    }
+
+    auto plugin = drogon::app().getPlugin<turbo_ledger_identity::plugins::IdentityServicePlugin>();
+    auto& userService = plugin->getUserService();
+
+    userService.updateUser(userData, tenantId, [callback](const turbo_ledger_identity::dto::BaseApiResponse& result) {
+        auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
+        resp->setStatusCode(result.success ? k200OK : k500InternalServerError);
+        callback(resp);
+    });
 }
 
 void UsersController::lockUserAccount(const HttpRequestPtr& req, std::function<void (const HttpResponsePtr &)> &&callback)
@@ -177,5 +215,32 @@ void UsersController::unLockUserAccount(const HttpRequestPtr& req, std::function
 
 void UsersController::deleteUser(const HttpRequestPtr& req, std::function<void (const HttpResponsePtr &)> &&callback)
 {
-    // write your application logic here
+    // Extract user ID from the path parameters
+    auto userId = req->getParameter("id");
+
+    if (userId.empty()) {
+        turbo_ledger_identity::dto::BaseApiResponse response;
+        response.success = false;
+        response.error["message"] = "User ID is required";
+        auto resp = HttpResponse::newHttpJsonResponse(response.toJson());
+        resp->setStatusCode(k400BadRequest);
+        callback(resp);
+        return;
+    }
+
+    // Get tenant ID from the request
+    std::string tenantId = getTenantFromRequest(req);
+
+    // Get the user service from the plugin
+    auto plugin = drogon::app().getPlugin<turbo_ledger_identity::plugins::IdentityServicePlugin>();
+    auto& userService = plugin->getUserService();
+
+    // Call the service to delete the user
+    userService.deleteUser(userId, tenantId, [callback](const turbo_ledger_identity::dto::BaseApiResponse& result) {
+        auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
+        resp->setStatusCode(result.success ? k200OK : (result.error.isMember("code") &&
+                                                     result.error["code"].asInt() == turbo_ledger_identity::ERR_RESOURCE_NOT_FOUND ?
+                                                     k404NotFound : k500InternalServerError));
+        callback(resp);
+    });
 }
