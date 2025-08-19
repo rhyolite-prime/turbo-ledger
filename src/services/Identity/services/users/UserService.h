@@ -52,11 +52,27 @@ namespace turbo_ledger_identity::services
             const std::function<void(const turbo_ledger_identity::dto::BaseApiResponse&)>& callback
         );
 
+        void UserService::lockUserAccount(
+            const std::string& userId,
+            const std::string& tenantId,
+            const std::function<void(const turbo_ledger_identity::dto::BaseApiResponse&)>& callback
+        );
+
+
+        void UserService::unlockUserAccount(
+            const std::string& userId,
+            const std::string& tenantId,
+            const std::function<void(const turbo_ledger_identity::dto::BaseApiResponse&)>& callback
+        );
+
+
         void deleteUser(
             const std::string& userId,
             const std::string& tenantId,
             const std::function<void(const turbo_ledger_identity::dto::BaseApiResponse&)>& callback
         );
+
+
 
         /**
          * @brief Validate a user's credentials.

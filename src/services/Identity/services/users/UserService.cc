@@ -281,7 +281,6 @@ namespace turbo_ledger_identity::services
     }
 
 
-
     void UserService::validateUserCredentials(
         const dto::SigninDto& signin_dto,
         const std::string& tenantId,
@@ -351,4 +350,111 @@ namespace turbo_ledger_identity::services
 
 
     }
+
+
+    void UserService::lockUserAccount(
+        const std::string& userId,
+        const std::string& tenantId,
+        const std::function<void(const turbo_ledger_identity::dto::BaseApiResponse&)>& callback)
+    {
+        auto dbClient = drogon::app().getDbClient();
+        Mapper<Users> mp(dbClient);
+
+        // Create criteria to find the user with specified ID in the tenant
+        Criteria criteria = Criteria(Users::Cols::_id, CompareOperator::EQ, userId) &&
+                            Criteria(Users::Cols::_tenant_identifier, CompareOperator::EQ, tenantId);
+
+        // Find the user first
+        mp.findOne(criteria,
+            [=](Users user) {
+                // Set the user as locked out
+                user.setIsLockedOut(true);
+
+                // Update the user in the database
+                Mapper<Users> updateMp(dbClient);
+                updateMp.update(user,
+                    [callback](const size_t count) {
+                        // Successfully updated
+                        turbo_ledger_identity::dto::BaseApiResponse response;
+                        response.success = true;
+                        response.message = "User account locked successfully";
+                        callback(response);
+                    },
+                    [=](const DrogonDbException& e) {
+                        // Error during update
+                        turbo_ledger_identity::dto::BaseApiResponse errorResponse;
+                        errorResponse.success = false;
+                        errorResponse.message = "Failed to lock user account";
+                        errorResponse.error["code"] = ERR_DB_QUERY;
+                        errorResponse.error["detail"] = e.base().what();
+                        callback(errorResponse);
+                    }
+                );
+            },
+            [callback](const DrogonDbException& e) {
+                // User not found
+                turbo_ledger_identity::dto::BaseApiResponse errorResponse;
+                errorResponse.success = false;
+                errorResponse.message = "User not found";
+                errorResponse.error["code"] = ERR_RESOURCE_NOT_FOUND;
+                errorResponse.error["detail"] = e.base().what();
+                callback(errorResponse);
+            }
+        );
+    }
+
+
+
+    void UserService::unlockUserAccount(
+        const std::string& userId,
+        const std::string& tenantId,
+        const std::function<void(const turbo_ledger_identity::dto::BaseApiResponse&)>& callback)
+    {
+        auto dbClient = drogon::app().getDbClient();
+        Mapper<Users> mp(dbClient);
+
+        // Create criteria to find the user with specified ID in the tenant
+        Criteria criteria = Criteria(Users::Cols::_id, CompareOperator::EQ, userId) &&
+                            Criteria(Users::Cols::_tenant_identifier, CompareOperator::EQ, tenantId);
+
+        // Find the user first
+        mp.findOne(criteria,
+            [=](Users user) {
+                // Set the user as not locked out
+                user.setIsLockedOut(false);
+
+                // Update the user in the database
+                Mapper<Users> updateMp(dbClient);
+                updateMp.update(user,
+                    [callback](const size_t count) {
+                        // Successfully updated
+                        turbo_ledger_identity::dto::BaseApiResponse response;
+                        response.success = true;
+                        response.message = "User account unlocked successfully";
+                        callback(response);
+                    },
+                    [=](const DrogonDbException& e) {
+                        // Error during update
+                        turbo_ledger_identity::dto::BaseApiResponse errorResponse;
+                        errorResponse.success = false;
+                        errorResponse.message = "Failed to unlock user account";
+                        errorResponse.error["code"] = ERR_DB_QUERY;
+                        errorResponse.error["detail"] = e.base().what();
+                        callback(errorResponse);
+                    }
+                );
+            },
+            [callback](const DrogonDbException& e) {
+                // User not found
+                turbo_ledger_identity::dto::BaseApiResponse errorResponse;
+                errorResponse.success = false;
+                errorResponse.message = "User not found";
+                errorResponse.error["code"] = ERR_RESOURCE_NOT_FOUND;
+                errorResponse.error["detail"] = e.base().what();
+                callback(errorResponse);
+            }
+        );
+    }
+
+
 }
