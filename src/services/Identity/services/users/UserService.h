@@ -35,7 +35,6 @@ namespace turbo_ledger_identity::services
 
 
         /**
-         * @brief Create a new user in the database.
          * @param userData The DTO containing new user information.
          * @param tenantId The identifier for the tenant.
          * @param callback The callback function to handle the response.
@@ -52,19 +51,31 @@ namespace turbo_ledger_identity::services
             const std::function<void(const turbo_ledger_identity::dto::BaseApiResponse&)>& callback
         );
 
-        void UserService::lockUserAccount(
+        void lockUserAccount(
             const std::string& userId,
             const std::string& tenantId,
             const std::function<void(const turbo_ledger_identity::dto::BaseApiResponse&)>& callback
         );
 
 
-        void UserService::unlockUserAccount(
+        void unlockUserAccount(
             const std::string& userId,
             const std::string& tenantId,
             const std::function<void(const turbo_ledger_identity::dto::BaseApiResponse&)>& callback
         );
 
+
+        void activateUserAccount(
+            const std::string& userId,
+            const std::string& tenantId,
+            const std::function<void(const turbo_ledger_identity::dto::BaseApiResponse&)>& callback
+        );
+
+        void deactivateUserAccount(
+            const std::string& userId,
+            const std::string& tenantId,
+            const std::function<void(const turbo_ledger_identity::dto::BaseApiResponse&)>& callback
+        );
 
         void deleteUser(
             const std::string& userId,

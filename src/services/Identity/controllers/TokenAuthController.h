@@ -1,15 +1,22 @@
 #pragma once
 
-#include <drogon/HttpSimpleController.h>
+
+#include "BaseController.h"
+
 
 using namespace drogon;
 
-class TokenAuthController : public drogon::HttpSimpleController<TokenAuthController>
+namespace
+{
+  const std::string PREFIX = "/api/v1/token-auth";
+}
+
+class TokenAuthController : public BaseController<TokenAuthController>
 {
   public:
-    void asyncHandleHttpRequest(const HttpRequestPtr& req, std::function<void (const HttpResponsePtr &)> &&callback) override;
-    PATH_LIST_BEGIN
-    // list path definitions here;
-    // PATH_ADD("/path", "filter1", "filter2", HttpMethod1, HttpMethod2...);
-    PATH_LIST_END
+  METHOD_LIST_BEGIN
+    ADD_METHOD_TO(TokenAuthController::generateAuthToken, PREFIX + "/user-signin", Post);
+  METHOD_LIST_END
+
+  void generateAuthToken(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback);
 };

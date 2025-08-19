@@ -17,6 +17,8 @@ class UsersController : public BaseController<UsersController>
           ADD_METHOD_TO(UsersController::generateAuthToken, PREFIX + "/generate-jwt-token", Post);
           ADD_METHOD_TO(UsersController::lockUserAccount, PREFIX + "/lock-account", Get);
           ADD_METHOD_TO(UsersController::unLockUserAccount, PREFIX + "/unlock-account", Get);
+          ADD_METHOD_TO(UsersController::activateAccount, PREFIX + "/activate-account", Get);
+          ADD_METHOD_TO(UsersController::deActivateAccount, PREFIX + "/deactivate-account", Get);
           ADD_METHOD_TO(UsersController::createUser, PREFIX + "/create", Post);
           ADD_METHOD_TO(UsersController::updateUser, PREFIX + "/update", Post);
           ADD_METHOD_TO(UsersController::deleteUser, PREFIX + "/delete", Delete);
@@ -29,6 +31,8 @@ class UsersController : public BaseController<UsersController>
     void updateUser(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback);
     void lockUserAccount(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback);
     void unLockUserAccount(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback);
+    void activateAccount(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback);
+    void deActivateAccount(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback);
     void deleteUser(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback);
 
 
