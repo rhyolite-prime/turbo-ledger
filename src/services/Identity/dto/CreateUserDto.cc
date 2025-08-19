@@ -1,5 +1,5 @@
 
-#
+
 #include "CreateUserDto.h"
 
 void turbo_ledger_identity::dto::CreateUserDto::fromJson(const Json::Value& json) {

@@ -3,14 +3,20 @@
 #include <drogon/orm/Mapper.h>
 #include <drogon/orm/Criteria.h>
 #include <iostream> // For placeholder logging
-
+#include <jwt-cpp/jwt.h>
 #include "Users.h"
 #include "dto/BaseApiResponse.h"
-
+#include "bcrypt.h"
+#include "dto/ErrorCodes.h"
+#include "dto/SigninDto.h"
 // --- IMPORTANT ---
 // This is a placeholder for a real password hashing library.
-// #include <bcrypt.h>
+
 // --- IMPORTANT ---
+
+namespace turbo_ledger_identity::dto {
+    class SigninDto;
+}
 
 using namespace drogon::orm;
 using namespace drogon_model::TurboLedgerIdentity;
@@ -73,7 +79,9 @@ namespace turbo_ledger_identity::services
                         Json::Value data = Json::arrayValue;
                         for (const auto& user : users)
                         {
-                            data.append(user.toJson()); // Assuming your model has a toJson() method
+                            Json::Value userJson = user.toJson();
+                            userJson.removeMember("password_hash");
+                            data.append(userJson); // Assuming your model has a toJson() method
                         }
                         response.result["data"] = data;
                         callback(response);
@@ -92,38 +100,14 @@ namespace turbo_ledger_identity::services
                 // Handle count error
                 dto::BaseApiResponse errorResponse;
                 errorResponse.success = false;
-                errorResponse.error["message"] = "Database error while counting users.";
+                errorResponse.error["code"] = ERR_DB_QUERY;
+                errorResponse.error["message"] = "Database error while fetching users.";
                 errorResponse.error["detail"] = e.base().what();
                 callback(errorResponse);
             }
         );
     }
 
-
-
-
-
-    // Placeholder password hashing - REPLACE WITH A REAL LIBRARY
-    std::string UserService::hashPassword(const std::string& password)
-    {
-        // In a real app, you would use something like:
-        // char salt[BCRYPT_HASHSIZE];
-        // char hash[BCRYPT_HASHSIZE];
-        // bcrypt_gensalt(12, salt);
-        // bcrypt_hashpw(password.c_str(), salt, hash);
-        // return std::string(hash);
-        std::cout << "WARNING: Using placeholder password hashing." << std::endl;
-        return "hashed_" + password;
-    }
-
-    // Placeholder password verification - REPLACE WITH A REAL LIBRARY
-    bool UserService::verifyPassword(const std::string& password, const std::string& hash)
-    {
-        // In a real app, you would use:
-        // return bcrypt_checkpw(password.c_str(), hash.c_str()) == 0;
-        std::cout << "WARNING: Using placeholder password verification." << std::endl;
-        return "hashed_" + password == hash;
-    }
 
     void UserService::createUser(
         const dto::CreateUserDto& userData,
@@ -138,7 +122,7 @@ namespace turbo_ledger_identity::services
         newUser.setFirstName(userData.getFirstName());
         newUser.setLastName(userData.getLastName());
         newUser.setUsername(userData.getUsername());
-        newUser.setPasswordHash(hashPassword(userData.getPassword()));
+        newUser.setPasswordHash(bcrypt::generateHash(userData.getPassword()));
         newUser.setTenantIdentifier(tenantId);
         newUser.setEmail(userData.getEmail());
         newUser.setPhoneNumber(userData.getPhoneNumber());
@@ -150,17 +134,18 @@ namespace turbo_ledger_identity::services
             // 5. Prepare success response
             turbo_ledger_identity::dto::BaseApiResponse successResponse;
             successResponse.success = true;
-            successResponse.result["message"] = "User created successfully";
+            successResponse.message = "User created successfully";
             successResponse.result["id"] = user.getValueOfId();
 
             callback(successResponse);
 
         }, [callback](const drogon::orm::DrogonDbException& e) {
             // 6. Handle database errors
+            // C++
             turbo_ledger_identity::dto::BaseApiResponse errorResponse;
             errorResponse.success = false;
-            errorResponse.error = "Database error: " + std::string(e.base().what());
-
+            errorResponse.message = "Database error while creating user";
+            errorResponse.error["code"] = ERR_DB_QUERY;
             callback(errorResponse);
 
         });
@@ -168,25 +153,72 @@ namespace turbo_ledger_identity::services
     }
 
     void UserService::validateUserCredentials(
-        const std::string& username,
-        const std::string& password,
+        const dto::SigninDto& signin_dto,
         const std::string& tenantId,
         const std::function<void(const turbo_ledger_identity::dto::BaseApiResponse&)>& callback)
     {
         auto dbClient = drogon::app().getDbClient();
         Mapper<Users> mapper(dbClient);
 
-        //return BaseApiResponse as default success
-        turbo_ledger_identity::dto::BaseApiResponse response;
-        response.success = true;
-        response.result["message"] = "User credentials validated successfully";
-        response.result["username"] = username;
-        response.result["tenantId"] = tenantId;
-        response.result["status"] = "active";
-        response.result["createdAt"] = trantor::Date::now().toDbString();
-        response.result["updatedAt"] = trantor::Date::now().toDbString();
+        Criteria criteria = (Criteria(Users::Cols::_username, CompareOperator::EQ, signin_dto.getUsernameOrEmail()) ||
+                                 Criteria(Users::Cols::_email, CompareOperator::EQ, signin_dto.getUsernameOrEmail())) &&
+                                Criteria(Users::Cols::_tenant_identifier, CompareOperator::EQ, tenantId);
 
-        callback(response);
+
+
+        mapper.findOne(criteria,
+        [=](const Users& user) {
+
+            bool passwordMatches = bcrypt::validatePassword(signin_dto.getPassword(), user.getValueOfPasswordHash());
+
+            if (passwordMatches) {
+                // Password is correct, generate JWT token
+                auto& app = drogon::app();
+                auto customConfig = app.getCustomConfig();
+                std::string jwtSecurityKey = customConfig["JwtBearer"]["JwtSecurityKey"].asString();
+                std::string jwtIssuer = customConfig["JwtBearer"]["JwtIssuer"].asString();
+
+                auto token = jwt::create()
+                    .set_issuer(jwtIssuer)
+                    .set_type("JWT")
+                    .set_issued_at(std::chrono::system_clock::now())
+                    .set_expires_at(std::chrono::system_clock::now() + std::chrono::hours(24))
+                    .set_payload_claim("userId", jwt::claim(user.getValueOfId()))
+                    .set_payload_claim("username", jwt::claim(user.getValueOfUsername()))
+                    .set_payload_claim("email", jwt::claim(user.getValueOfEmail()))
+                    .set_payload_claim("tenantId", jwt::claim(user.getValueOfTenantIdentifier()))
+                    .sign(jwt::algorithm::hs256{jwtSecurityKey});
+
+                turbo_ledger_identity::dto::BaseApiResponse response;
+                response.success = true;
+                response.message = "Authentication successful";
+                response.result["token"] = token;
+                response.result["userId"] = user.getValueOfId();
+                response.result["username"] = user.getValueOfUsername();
+                response.result["fullName"] = user.getValueOfFirstName() + " " + user.getValueOfLastName();
+                response.result["email"] = user.getValueOfEmail();
+
+                callback(response);
+            } else {
+                // Password is incorrect
+                turbo_ledger_identity::dto::BaseApiResponse response;
+                response.success = false;
+                response.message = "Invalid credentials";
+                response.error["code"] = ERR_AUTH_INVALID_CREDENTIALS;
+                callback(response);
+            }
+        },
+        [callback](const DrogonDbException& e) {
+            // Database error or user not found
+            turbo_ledger_identity::dto::BaseApiResponse response;
+            response.success = false;
+            response.message = "User not found";
+            response.error["code"] = ERR_RESOURCE_NOT_FOUND;
+            response.error["message"] = "User not found";
+            callback(response);
+        }
+    );
+
 
     }
 }

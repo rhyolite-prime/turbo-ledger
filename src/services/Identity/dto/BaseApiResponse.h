@@ -14,6 +14,7 @@ namespace turbo_ledger_identity::dto {
     public:
         Json::Value result;
         std::string targetUrl;
+        std::string message;
         bool success;
         Json::Value error;
 
@@ -24,6 +25,7 @@ namespace turbo_ledger_identity::dto {
             Json::Value json;
             json["result"] = result;
             json["targetUrl"] = targetUrl;
+            json["message"] = message;
             json["success"] = success;
             json["error"] = error;
             return json;

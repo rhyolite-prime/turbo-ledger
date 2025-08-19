@@ -14,7 +14,7 @@ class UsersController : public BaseController<UsersController>
     public:
       METHOD_LIST_BEGIN
           ADD_METHOD_TO(UsersController::getUsers, PREFIX + "/get-all", Get);
-          ADD_METHOD_TO(UsersController::generateAuthToken, PREFIX + "/generate-jwt-token", Get);
+          ADD_METHOD_TO(UsersController::generateAuthToken, PREFIX + "/generate-jwt-token", Post);
           ADD_METHOD_TO(UsersController::lockUserAccount, PREFIX + "/lock-account", Get);
           ADD_METHOD_TO(UsersController::unLockUserAccount, PREFIX + "/unlock-account", Get);
           ADD_METHOD_TO(UsersController::createUser, PREFIX + "/create", Post);

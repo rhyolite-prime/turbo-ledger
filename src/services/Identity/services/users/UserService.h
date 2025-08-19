@@ -6,6 +6,10 @@
 #include "dto/CreateUserDto.h"
 
 
+namespace turbo_ledger_identity::dto {
+    class SigninDto;
+}
+
 namespace turbo_ledger_identity::services
 {
     class UserService
@@ -44,17 +48,19 @@ namespace turbo_ledger_identity::services
         /**
          * @brief Validate a user's credentials.
          *
-         * @param username The user's username.
+         * @param usernameOrEmail The user's username or email.
          * @param password The user's plaintext password.
          * @param tenantId The identifier for the tenant.
          * @param callback The callback function to handle the response.
          */
         void validateUserCredentials(
-            const std::string& username,
-            const std::string& password,
+            const dto::SigninDto& signin_dto,
             const std::string& tenantId,
             const std::function<void(const turbo_ledger_identity::dto::BaseApiResponse&)>& callback
         );
+
+
+
 
     private:
         /**
