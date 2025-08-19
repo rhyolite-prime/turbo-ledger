@@ -291,7 +291,9 @@ namespace turbo_ledger_identity::services
 
         Criteria criteria = (Criteria(Users::Cols::_username, CompareOperator::EQ, signin_dto.getUsernameOrEmail()) ||
                                  Criteria(Users::Cols::_email, CompareOperator::EQ, signin_dto.getUsernameOrEmail())) &&
-                                Criteria(Users::Cols::_tenant_identifier, CompareOperator::EQ, tenantId);
+                                     Criteria(Users::Cols::_is_active, CompareOperator::EQ, true) &&
+                                         Criteria(Users::Cols::_is_locked_out, CompareOperator::EQ, false) &&
+                                             Criteria(Users::Cols::_tenant_identifier, CompareOperator::EQ, tenantId);
 
 
 
