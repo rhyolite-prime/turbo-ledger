@@ -145,16 +145,83 @@ void TenantsController::updateTenant(const HttpRequestPtr& req, std::function<vo
 
 void TenantsController::activate(const HttpRequestPtr& req, std::function<void (const HttpResponsePtr &)> &&callback)
 {
-    // write your application logic here
+    // Extract the tenant ID from the request parameters
+    if (req->getParameter("id").empty()) {
+        // Missing tenant ID - return early
+        turbo_ledger_identity::dto::BaseApiResponse response;
+        response.success = false;
+        response.error["message"] = "Missing required parameter: id";
+        auto resp = HttpResponse::newHttpJsonResponse(response.toJson());
+        resp->setStatusCode(k400BadRequest);
+        callback(resp);
+        return;
+    }
+
+    std::string id = req->getParameter("id");
+
+    // Get tenant service from plugin
+    auto plugin = drogon::app().getPlugin<turbo_ledger_identity::plugins::IdentityServicePlugin>();
+    auto& tenantService = plugin->getTenantService();
+
+    // Call service method to activate the tenant account
+    tenantService.activateTenantAccount(id, [callback](const turbo_ledger_identity::dto::BaseApiResponse& result) {
+        auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
+        callback(resp);
+    });
 }
 
 
 void TenantsController::deactivate(const HttpRequestPtr& req, std::function<void (const HttpResponsePtr &)> &&callback)
 {
-    // write your application logic here
+    // Extract the tenant ID from the request parameters
+    if (req->getParameter("id").empty()) {
+        // Missing tenant ID - return early
+        turbo_ledger_identity::dto::BaseApiResponse response;
+        response.success = false;
+        response.error["message"] = "Missing required parameter: id";
+        auto resp = HttpResponse::newHttpJsonResponse(response.toJson());
+        resp->setStatusCode(k400BadRequest);
+        callback(resp);
+        return;
+    }
+
+    std::string id = req->getParameter("id");
+
+    // Get tenant service from plugin
+    auto plugin = drogon::app().getPlugin<turbo_ledger_identity::plugins::IdentityServicePlugin>();
+    auto& tenantService = plugin->getTenantService();
+
+    // Call service method to deactivate the tenant account
+    tenantService.deactivateTenantAccount(id, [callback](const turbo_ledger_identity::dto::BaseApiResponse& result) {
+        auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
+        callback(resp);
+    });
 }
+
 
 void TenantsController::deleteTenant(const HttpRequestPtr& req, std::function<void (const HttpResponsePtr &)> &&callback)
 {
-    // write your application logic here
+    // Extract the tenant ID from the request parameters
+    if (req->getParameter("id").empty()) {
+        // Missing tenant ID - return early
+        turbo_ledger_identity::dto::BaseApiResponse response;
+        response.success = false;
+        response.error["message"] = "Missing required parameter: id";
+        auto resp = HttpResponse::newHttpJsonResponse(response.toJson());
+        resp->setStatusCode(k400BadRequest);
+        callback(resp);
+        return;
+    }
+
+    std::string id = req->getParameter("id");
+
+    // Get tenant service from plugin
+    auto plugin = drogon::app().getPlugin<turbo_ledger_identity::plugins::IdentityServicePlugin>();
+    auto& tenantService = plugin->getTenantService();
+
+    // Call service method to delete the tenant
+    tenantService.deleteTenant(id, [callback](const turbo_ledger_identity::dto::BaseApiResponse& result) {
+        auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
+        callback(resp);
+    });
 }

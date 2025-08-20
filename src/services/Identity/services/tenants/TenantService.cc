@@ -267,7 +267,170 @@ namespace turbo_ledger_identity::services {
         );
     }
 
+    void TenantService::activateTenantAccount(
+        const std::string& id,
+        const std::function<void(const turbo_ledger_identity::dto::BaseApiResponse&)>& callback
+    ) {
+        // Get database client
+        auto dbClient = drogon::app().getDbClient();
+        auto tenantMapper = std::make_shared<Mapper<drogon_model::TurboLedgerIdentity::Tenants>>(dbClient);
 
+        // First, check if the tenant exists
+        tenantMapper->findByPrimaryKey(id,
+            [=](const drogon_model::TurboLedgerIdentity::Tenants& tenant) {
+                // Tenant found, check if it's already active
+                if (tenant.getValueOfIsActive()) {
+                    // Tenant is already active
+                    dto::BaseApiResponse response;
+                    response.success = true;
+                    response.message = "Tenant account is already active.";
+                    callback(response);
+                    return;
+                }
 
+                // Update tenant to set is_active to true
+                auto updatedTenant = tenant;
+                updatedTenant.setIsActive(true);
+
+                // Update the tenant in the database
+                tenantMapper->update(updatedTenant,
+                    [=](const size_t count) {
+                        // Tenant activated successfully
+                        dto::BaseApiResponse response;
+                        response.success = true;
+                        response.message = "Tenant account activated successfully.";
+                        callback(response);
+                    },
+                    [=](const DrogonDbException& e) {
+                        // Error updating tenant
+                        dto::BaseApiResponse response;
+                        response.success = false;
+                        response.error["code"] = ERR_DB_QUERY;
+                        response.error["message"] = "Error activating tenant account.";
+                        response.error["detail"] = e.base().what();
+                        callback(response);
+                    }
+                );
+            },
+            [=](const DrogonDbException& e) {
+                // Error finding tenant
+                dto::BaseApiResponse response;
+                response.success = false;
+                response.error["code"] = ERR_RESOURCE_NOT_FOUND;
+                response.error["message"] = "Tenant not found.";
+                response.error["detail"] = e.base().what();
+                callback(response);
+            }
+        );
+    }
+
+    void TenantService::deactivateTenantAccount(
+        const std::string& id,
+        const std::function<void(const turbo_ledger_identity::dto::BaseApiResponse&)>& callback
+    ) {
+        // Get database client
+        auto dbClient = drogon::app().getDbClient();
+        auto tenantMapper = std::make_shared<Mapper<drogon_model::TurboLedgerIdentity::Tenants>>(dbClient);
+
+        // First, check if the tenant exists
+        tenantMapper->findByPrimaryKey(id,
+            [=](const drogon_model::TurboLedgerIdentity::Tenants& tenant) {
+                // Tenant found, check if it's already inactive
+                if (!tenant.getValueOfIsActive()) {
+                    // Tenant is already inactive
+                    dto::BaseApiResponse response;
+                    response.success = true;
+                    response.message = "Tenant account is already inactive.";
+                    callback(response);
+                    return;
+                }
+
+                // Update tenant to set is_active to false
+                auto updatedTenant = tenant;
+                updatedTenant.setIsActive(false);
+
+                // Update the tenant in the database
+                tenantMapper->update(updatedTenant,
+                    [=](const size_t count) {
+                        // Tenant deactivated successfully
+                        dto::BaseApiResponse response;
+                        response.success = true;
+                        response.message = "Tenant account deactivated successfully.";
+                        callback(response);
+                    },
+                    [=](const DrogonDbException& e) {
+                        // Error updating tenant
+                        dto::BaseApiResponse response;
+                        response.success = false;
+                        response.error["code"] = ERR_DB_QUERY;
+                        response.error["message"] = "Error deactivating tenant account.";
+                        response.error["detail"] = e.base().what();
+                        callback(response);
+                    }
+                );
+            },
+            [=](const DrogonDbException& e) {
+                // Error finding tenant
+                dto::BaseApiResponse response;
+                response.success = false;
+                response.error["code"] = ERR_RESOURCE_NOT_FOUND;
+                response.error["message"] = "Tenant not found.";
+                response.error["detail"] = e.base().what();
+                callback(response);
+            }
+        );
+    }
+
+    void TenantService::deleteTenant(
+        const std::string& id,
+        const std::function<void(const turbo_ledger_identity::dto::BaseApiResponse&)>& callback
+    ) {
+        // Get database client
+        auto dbClient = drogon::app().getDbClient();
+        auto tenantMapper = std::make_shared<Mapper<drogon_model::TurboLedgerIdentity::Tenants>>(dbClient);
+
+        // First, check if the tenant exists
+        tenantMapper->findByPrimaryKey(id,
+            [=](const drogon_model::TurboLedgerIdentity::Tenants& tenant) {
+                // Tenant found, proceed with deletion
+                tenantMapper->deleteByPrimaryKey(id,
+                    [=](const size_t count) {
+                        if (count > 0) {
+                            // Tenant deleted successfully
+                            dto::BaseApiResponse response;
+                            response.success = true;
+                            response.message = "Tenant deleted successfully.";
+                            callback(response);
+                        } else {
+                            // No tenant was deleted (should not happen if tenant was found)
+                            dto::BaseApiResponse response;
+                            response.success = false;
+                            response.error["code"] = ERR_DB_QUERY;
+                            response.error["message"] = "Failed to delete tenant.";
+                            callback(response);
+                        }
+                    },
+                    [=](const DrogonDbException& e) {
+                        // Error deleting tenant
+                        dto::BaseApiResponse response;
+                        response.success = false;
+                        response.error["code"] = ERR_DB_QUERY;
+                        response.error["message"] = "Error deleting tenant.";
+                        response.error["detail"] = e.base().what();
+                        callback(response);
+                    }
+                );
+            },
+            [=](const DrogonDbException& e) {
+                // Error finding tenant or tenant doesn't exist
+                dto::BaseApiResponse response;
+                response.success = false;
+                response.error["code"] = ERR_RESOURCE_NOT_FOUND;
+                response.error["message"] = "Tenant not found.";
+                response.error["detail"] = e.base().what();
+                callback(response);
+            }
+        );
+    }
 
 }
