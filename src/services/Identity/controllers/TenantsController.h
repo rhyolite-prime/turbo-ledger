@@ -6,7 +6,7 @@ using namespace drogon;
 
 namespace
 {
-    const std::string PREFIX = "/api/v1/users";
+    const std::string PREFIX = "/api/v1/tenants";
 }
 
 class TenantsController : public drogon::HttpController<TenantsController>

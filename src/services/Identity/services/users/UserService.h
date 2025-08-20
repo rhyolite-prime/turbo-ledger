@@ -4,12 +4,11 @@
 #include <drogon/drogon.h>
 #include "dto/BaseApiResponse.h"
 #include "dto/CreateUserDto.h"
+#include "dto/UpdateUserDto.h"
+#include "dto/SigninDto.h"
 
 
-namespace turbo_ledger_identity::dto {
-    class UpdateUserDto;
-    class SigninDto;
-}
+
 
 namespace turbo_ledger_identity::services
 {

@@ -1,5 +1,6 @@
 #include <drogon/drogon.h>
 
+
 namespace turbo_ledger_identity::filters {
     class TenantFilter;
 }
@@ -12,9 +13,6 @@ int main() {
 
     //drogon::app().registerFilter(std::make_shared<turbo_ledger_identity::filters::TenantFilter>("/api/*"));
 
-
-    // Register the filter for a path pattern
-    //drogon::app().registerFilter(std::make_shared<turbo_ledger_identity::filters::TenantFilter>(), "/api/v1/*");
 
     //drogon::app().loadConfigFile("../config.yaml");
     //Run HTTP framework,the method will block in the internal event loop

@@ -1,7 +1,6 @@
 #include "UserService.h"
 #include <drogon/orm/Mapper.h>
 #include <drogon/orm/Criteria.h>
-#include <iostream> // For placeholder logging
 #include <jwt-cpp/jwt.h>
 #include "Users.h"
 #include "dto/BaseApiResponse.h"
@@ -9,10 +8,6 @@
 #include "dto/ErrorCodes.h"
 #include "dto/SigninDto.h"
 #include "dto/UpdateUserDto.h"
-// --- IMPORTANT ---
-// This is a placeholder for a real password hashing library.
-
-// --- IMPORTANT ---
 
 namespace turbo_ledger_identity::dto {
     class SigninDto;
@@ -27,11 +22,11 @@ namespace turbo_ledger_identity::services
 
 
     void UserService::getUsers(
-    int pageNo,
-    int pageSize,
-    const std::string& query,
-    const std::string& tenantId,
-    const std::function<void(const turbo_ledger_identity::dto::BaseApiResponse&)>& callback)
+        int pageNo,
+        int pageSize,
+        const std::string& query,
+        const std::string& tenantId,
+        const std::function<void(const turbo_ledger_identity::dto::BaseApiResponse&)>& callback)
     {
         auto dbClient = drogon::app().getDbClient();
         auto mp = std::make_shared<Mapper<Users>>(dbClient);

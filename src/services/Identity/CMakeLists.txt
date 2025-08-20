@@ -26,9 +26,15 @@ add_executable(${PROJECT_NAME} main.cc
         dto/CreateUserDto.cc
         dto/SigninDto.h
         dto/SigninDto.cc
+        dto/CreateTenantDto.h
+        dto/CreateTenantDto.cc
+        dto/UpdateTenantDto.h
+        dto/UpdateTenantDto.cc
         dto/ErrorCodes.h
         dto/UpdateUserDto.h
         dto/UpdateUserDto.cc
+        services/tenants/TenantService.h
+        services/tenants/TenantService.cc
 )
 
 # ##############################################################################

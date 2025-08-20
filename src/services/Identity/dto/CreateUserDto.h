@@ -12,9 +12,6 @@ namespace turbo_ledger_identity::dto {
         // Default constructor
         CreateUserDto() = default;
 
-        // Constructor from JSON object, used in the controller
-        explicit CreateUserDto(const Json::Value& json);
-
         void fromJson(const Json::Value& json);
 
         // Getters
