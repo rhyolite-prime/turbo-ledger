@@ -169,13 +169,13 @@ namespace turbo_ledger_identity::services
         const std::function<void(const turbo_ledger_identity::dto::BaseApiResponse&)>& callback)
     {
         auto dbClient = drogon::app().getDbClient();
-        Mapper<Users> mp(dbClient);
+        auto mp = std::make_shared<Mapper<Users>>(dbClient);
 
         Criteria criteria = Criteria(Users::Cols::_id, CompareOperator::EQ, userData.getId()) &&
                             Criteria(Users::Cols::_tenant_identifier, CompareOperator::EQ, tenantId);
 
-        mp.findOne(criteria,
-            [=](Users user) {
+        mp->findOne(criteria,
+            [mp, userData, callback](Users user) { 
                 if (!userData.getFirstName().empty()) user.setFirstName(userData.getFirstName());
                 if (!userData.getLastName().empty()) user.setLastName(userData.getLastName());
                 if (!userData.getEmail().empty()) user.setEmail(userData.getEmail());
@@ -184,28 +184,20 @@ namespace turbo_ledger_identity::services
                 user.setIsActive(userData.getIsActive());
                 user.setIsLockedOut(userData.getIsLockedOut());
 
-
-                Mapper<Users> updateMp(dbClient);
-                // Save the changes to the database
-                updateMp.update(user, [callback](const size_t count) {
-
-                    // Successfully updated
+                mp->update(user, [callback](const size_t count) {
                     turbo_ledger_identity::dto::BaseApiResponse response;
                     response.success = true;
                     response.message = "User updated successfully";
                     callback(response);
                 },
-                [=](const DrogonDbException& e) {
-                    // Error during update
+                [callback](const DrogonDbException& e) {
                     turbo_ledger_identity::dto::BaseApiResponse errorResponse;
                     errorResponse.success = false;
                     errorResponse.message = "Failed to update user";
                     errorResponse.error["code"] = ERR_DB_QUERY;
                     errorResponse.error["detail"] = e.base().what();
                     callback(errorResponse);
-                }
-            );
-
+                });
             },
             [callback](const DrogonDbException& e) {
                 turbo_ledger_identity::dto::BaseApiResponse errorResponse;
