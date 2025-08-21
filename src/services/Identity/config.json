@@ -1,39 +1,14 @@
-/* This is a JSON format configuration file
- */
+
 {
-    /*
-    //ssl:The global SSL settings. "key" and "cert" are the path to the SSL key and certificate. While
-    //    "conf" is an array of 1 or 2-element tuples that supplies file style options for `SSL_CONF_cmd`.
-    "ssl": {
-        "cert": "../../trantor/trantor/tests/server.crt",
-        "key": "../../trantor/trantor/tests/server.key",
-        "conf": [
-            //["Options", "-SessionTicket"], 
-            //["Options", "Compression"]
-        ]
-    },
+
     "listeners": [
         {
             //address: Ip address,0.0.0.0 by default
             "address": "0.0.0.0",
             //port: Port number
-            "port": 80,
+            "port": 5001,
             //https: If true, use https for security,false by default
             "https": false
-        },
-        {
-            "address": "0.0.0.0",
-            "port": 443,
-            "https": true,
-            //cert,key: Cert file path and key file path, empty by default,
-            //if empty, use the global setting
-            "cert": "",
-            "key": "",
-            //use_old_tls: enable the TLS1.0/1.1, false by default
-            "use_old_tls": false,
-            "ssl_conf": [
-                //["MinProtocol", "TLSv1.3"]
-            ]
         }
     ],
     "db_clients": [
@@ -49,7 +24,7 @@
             //port: Server port, 5432 by default
             "port": 5432,
             //dbname: Database name
-            "dbname": "test",
+            "dbname": "TurboLedgerIdentity",
             //user: 'postgres' by default
             "user": "",
             //passwd: '' by default
@@ -98,7 +73,7 @@
             //zero or negative value means no timeout.
             "timeout": -1.0
         }
-    ],*/
+    ],
     "app": {
         //number_of_threads: The number of IO threads, 1 by default, if the value is set to 0, the number of threads
         //is the number of CPU cores
@@ -346,5 +321,13 @@
         }
     ],
     //custom_config: custom configuration for users. This object can be get by the app().getCustomConfig() method. 
-    "custom_config": {}
+    "custom_config": {
+        "JwtBearer": {
+            "JwtSecurityKey" : "TurboLedgerIdentity_ca01ca76-3866-4d44-9881-d9e365b81472",
+            "JwtIssuer" : "TurboLedgerIdentity",
+            "JwtAudience" : "TurboLedgerIdentity",
+            "JwtExpirationTime" : 3600
+        },
+        "PrivateKey": "ca01ca76-3866-4d44-9881-d9e365b81473"
+    }
 }

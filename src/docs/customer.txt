@@ -1,0 +1,107 @@
+The Customer service is the central "Know Your Customer" (KYC) and CRM hub of your system. It holds all the personal and identifying information about the individuals or entities that use the financial
+  products managed by the Portfolio and Deposit services.
+
+  Its primary role is to be the single source of truth for who a customer is, while other services manage what a customer has. This separation is key to the microservice design.
+
+  As with all other services, every request must be scoped to a specific tenant using the X-Tenant-Identifier header.
+
+  Here are the essential endpoints for the Customer service.
+
+  ---
+
+  1. Customer Profile Management
+
+  These endpoints are for creating and managing the core customer entities.
+
+  POST /customers/v1/
+  Creates a new customer profile. This is the first step before a customer can be assigned any financial product.
+   * Request Body:
+
+    1     {
+    2       "customerIdentifier": "cust_12345", // Can be user-defined or system-generated
+    3       "type": "PERSON", // or BUSINESS
+    4       "firstName": "Jane",
+    5       "lastName": "Doe",
+    6       "dateOfBirth": "1990-10-20",
+    7       "address": {
+    8         "street": "123 Main St",
+    9         "city": "Anytown",
+   10         "postalCode": "12345",
+   11         "country": "USA"
+   12       },
+   13       "contactDetails": {
+   14         "email": "jane.doe@example.com",
+   15         "phone": "+15551234567"
+   16       },
+   17       "state": "PENDING_APPROVAL"
+   18     }
+   * Response: 202 Accepted
+
+  GET /customers/v1/
+  Fetches a list of all customers. This should support pagination.
+   * Response: 200 OK with a paginated list of customer summary objects.
+
+  GET /customers/v1/{customerIdentifier}
+  Retrieves the full, detailed profile for a single customer.
+   * Response: 200 OK with the complete customer object.
+
+  PUT /customers/v1/{customerIdentifier}
+  Updates a customer's profile information (e.g., after a change of address).
+   * Request Body: The full customer object with updated fields.
+   * Response: 202 Accepted
+
+  POST /customers/v1/{customerIdentifier}/actions
+  Changes the state of a customer.
+   * Request Body:
+   1     {
+   2       "action": "ACTIVATE", // or LOCK, CLOSE
+   3       "note": "Customer KYC process completed successfully."
+   4     }
+   * Response: 202 Accepted
+
+  ---
+
+  2. Identification Document Management
+
+  These endpoints manage KYC documents like passports or driver's licenses associated with a customer.
+
+  POST /customers/v1/{customerIdentifier}/identifications
+  Adds an identification document record to a customer's profile.
+   * Request Body:
+
+   1     {
+   2       "type": "PASSPORT",
+   3       "number": "X12345678",
+   4       "issuer": "USA",
+   5       "expirationDate": "2030-10-19"
+   6     }
+   * Response: 202 Accepted
+
+  GET /customers/v1/{customerIdentifier}/identifications
+  Retrieves all identification document records for a customer.
+   * Response: 200 OK with a list of identification objects.
+
+  DELETE /customers/v1/{customerIdentifier}/identifications/{identificationNumber}
+  Removes an identification document record (e.g., if it has expired and been replaced).
+   * Response: 202 Accepted
+
+  ---
+
+  3. Task Management (Internal Workflow)
+
+  This is for managing internal tasks related to a customer, like "Follow up for KYC documents."
+
+  POST /customers/v1/{customerIdentifier}/tasks
+  Creates a new task for a customer profile.
+   * Request Body:
+
+   1     {
+   2       "description": "Verify customer's new address.",
+   3       "assignedTo": "compliance_officer_1",
+   4       "dueDate": "2023-11-10"
+   5     }
+   * Response: 202 Accepted
+
+  GET /customers/v1/{customerIdentifier}/tasks
+  Retrieves all tasks associated with a customer.
+   * Response: 200 OK with a list of task objects.

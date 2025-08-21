@@ -1,0 +1,91 @@
+The Provisioner service has a very focused and minimal API surface. Its primary job is to orchestrate the creation of new tenants. Here are the essential endpoints you would need to build for it, following the
+  Fineract CN design principles.
+
+  1. Provision a New Tenant
+
+  This is the main and most critical endpoint. It's an asynchronous endpoint because provisioning a new tenant can take time (creating multiple database schemas, initializing services, etc.).
+
+  Endpoint: POST /provisioner/v1/tenants
+
+  This endpoint kicks off the workflow to set up a new financial institution.
+
+  ---
+
+  Request Body
+
+  The request body needs to contain all the necessary information to set up the tenant, including the details for the first admin user and the database connection information.
+
+    1 {
+    2   "identifier": "tenant_a",
+    3   "name": "Example Bank Inc.",
+    4   "description": "The first example financial institution.",
+    5   "database": {
+    6     "driver": "postgresql",
+    7     "host": "db.example.com",
+    8     "port": "5432",
+    9     "username": "db_user",
+   10     "password": "db_password"
+   11   },
+   12   "admin": {
+   13     "user": {
+   14       "identifier": "admin_user",
+   15       "password": "complex_initial_password"
+   16     },
+   17     "role": "admin"
+   18   }
+   19 }
+
+   * `identifier`: A unique, URL-safe string for the tenant. This will be used in the X-Tenant-Identifier header for all future API calls.
+   * `name`: The human-readable name of the institution.
+   * `database`: Contains the connection details for the database server where the new schemas for this tenant will be created.
+   * `admin`: Contains the credentials for the first administrative user that will be created for this tenant.
+
+  ---
+
+  Responses
+
+   * `202 Accepted`: This is the success response. It means the provisioning request has been accepted and is being processed in the background. The response body should be empty.
+
+   * `400 Bad Request`: The request body is malformed or missing required fields. The response body should contain details about the error.
+
+   1     {
+   2       "error": "Validation Error",
+   3       "message": "Field 'identifier' is required and cannot be empty."
+   4     }
+
+   * `409 Conflict`: A tenant with the given identifier already exists.
+
+   1     {
+   2       "error": "Conflict",
+   3       "message": "A tenant with the identifier 'tenant_a' already exists."
+   4     }
+
+  2. Fetch Provisioned Tenants
+
+  This endpoint is useful for administrative purposes, allowing a system operator to see which tenants have been successfully provisioned.
+
+  Endpoint: GET /provisioner/v1/tenants
+
+  ---
+
+  Response
+
+   * `200 OK`: Returns a list of all provisioned tenant identifiers.
+
+    1     [
+    2       {
+    3         "identifier": "tenant_a",
+    4         "name": "Example Bank Inc.",
+    5         "provisioned_on": "2023-10-27T10:00:00Z"
+    6       },
+    7       {
+    8         "identifier": "tenant_b",
+    9         "name": "Community Credit Union",
+   10         "provisioned_on": "2023-10-28T14:30:00Z"
+   11       }
+   12     ]
+
+  ---
+
+  These two endpoints provide the core functionality required for the Provisioner service. The POST endpoint is the workhorse that triggers the complex orchestration, while the GET endpoint provides a simple way to audit
+  the results.

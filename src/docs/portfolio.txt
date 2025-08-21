@@ -1,0 +1,131 @@
+The Portfolio service is the lending and credit engine of your Fineract CN system. It is responsible for the entire loan lifecycle, from the initial application to the final repayment.
+
+  This service is a peer to the Deposit Account Management service. It manages the institution's assets (loans) just as the other manages its liabilities (deposits). It makes heavy use of the Accounting service to record
+  every disbursement and repayment.
+
+  As always, every request must include the X-Tenant-Identifier header.
+
+  Here are the essential endpoints for the Portfolio service.
+
+  ---
+
+  1. Loan Product Management
+
+  These endpoints define the templates for the loan products your institution offers.
+
+  POST /portfolio/v1/products
+  Creates a new loan product.
+   * Request Body:
+
+    1     {
+    2       "identifier": "personal_loan_v1",
+    3       "name": "Unsecured Personal Loan",
+    4       "currency": "USD",
+    5       "principalAmount": {
+    6         "minimum": "1000.00",
+    7         "maximum": "25000.00"
+    8       },
+    9       "interestRate": {
+   10         "minimum": "5.00",
+   11         "maximum": "15.00"
+   12       },
+   13       "term": {
+   14         "minimum": "12", // in months
+   15         "maximum": "60"
+   16       },
+   17       "repaymentCycle": "MONTHLY"
+   18     }
+   * Response: 202 Accepted
+
+  GET /portfolio/v1/products
+  Fetches all available loan products.
+   * Response: 200 OK with a list of product objects.
+
+  ---
+
+  2. Loan Application (Case) Management
+
+  This section manages the loan application process before a loan is approved and disbursed. In Fineract CN terminology, an application is a "Case".
+
+  POST /portfolio/v1/cases
+  Creates a new loan application (case) for a customer.
+   * Request Body:
+
+   1     {
+   2       "productIdentifier": "personal_loan_v1",
+   3       "customerIdentifier": "cust_12345",
+   4       "principalAmountRequested": "10000.00",
+   5       "termRequested": "36", // months
+   6       "state": "PENDING_APPROVAL"
+   7     }
+   * Response: 202 Accepted
+
+  GET /portfolio/v1/cases/{caseIdentifier}
+  Retrieves the status and details of a specific loan application.
+   * Response: 200 OK with the case object.
+
+  POST /portfolio/v1/cases/{caseIdentifier}/actions
+  Performs an action on a case, like approving or rejecting it. Approving a case should internally create a loan account.
+   * Request Body:
+
+   1     {
+   2       "action": "APPROVE", // or REJECT
+   3       "note": "Customer credit score is sufficient.",
+   4       "approvedPrincipalAmount": "10000.00"
+   5     }
+   * Response: 202 Accepted
+
+  ---
+
+  3. Loan Account Management
+
+  These endpoints manage the active, approved loans.
+
+  GET /portfolio/v1/loans/{accountIdentifier}
+  Fetches the full details of an active loan, including its balance, repayment schedule, and status.
+   * Response: 200 OK with the loan account object.
+
+  POST /portfolio/v1/loans/{accountIdentifier}/actions
+  Performs actions on an active loan, most importantly, disbursing the funds.
+   * Request Body:
+   1     {
+   2       "action": "DISBURSE",
+   3       "note": "Funds disbursed to customer's primary account."
+   4     }
+   * Workflow: This action triggers a call to the Accounting service:
+       * Debit Loan Portfolio (Asset)
+       * Credit Cash or Bank (Asset)
+   * Response: 202 Accepted
+
+  ---
+
+  4. Transaction Processing
+
+  POST /portfolio/v1/loans/{accountIdentifier}/transactions
+  Records a repayment made by a customer against their loan.
+   * Request Body:
+
+   1     {
+   2       "transactionIdentifier": "unique_repayment_id",
+   3       "amount": "322.50",
+   4       "note": "Monthly repayment."
+   5     }
+   * Workflow: This action triggers a call to the Accounting service:
+       * Debit Cash or Bank (Asset)
+       * Credit Loan Portfolio (Asset)
+       * (And potentially split credits to interest/fee income accounts)
+   * Response: 202 Accepted
+
+  ---
+
+  5. Automation Endpoints (For the Rhythm/Scheduler Service)
+
+  These are internal endpoints for your scheduler to trigger periodic loan processes.
+
+  POST /portfolio/v1/actions/accrue-interest
+  Triggers the process to calculate and accrue interest on all active loans.
+   * Response: 202 Accepted
+
+  POST /portfolio/v1/actions/check-late-payments
+  Identifies loans with overdue payments and updates their state to "IN_ARREARS".
+   * Response: 202 Accepted

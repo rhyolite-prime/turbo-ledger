@@ -1,0 +1,140 @@
+The Accounting service is the immutable, double-entry bookkeeping system for your entire platform. Its API needs to be robust, precise, and secure.
+
+  The endpoints revolve around three core concepts:
+   1. Ledgers: High-level buckets for accounts (e.g., ASSETS, LIABILITIES, EQUITY).
+   2. Accounts: The specific accounts where money is tracked (e.g., "Cash on Hand," "Customer Deposits," "Loan Portfolio").
+   3. Journal Entries: The immutable records of transactions, composed of balanced debits and credits.
+
+  Here are the essential endpoints for the Accounting service.
+
+  ---
+  A Critical Note: Every single request to this service must include the X-Tenant-Identifier header to specify which institution's books are being affected. The service logic should be built around this, ensuring absolute
+  data isolation.
+  ---
+
+  1. Ledger Management
+
+  Ledgers are the top-level components of a Chart of Accounts.
+
+  POST /accounting/v1/ledgers
+  Creates a new top-level ledger or a sub-ledger.
+   * Request Body:
+
+   1     {
+   2       "identifier": "1000",
+   3       "type": "ASSET",
+   4       "name": "Assets",
+   5       "parentLedgerIdentifier": null,
+   6       "showAccountsInChart": true
+   7     }
+   * Response: 202 Accepted
+
+  GET /accounting/v1/ledgers
+  Fetches all ledgers for the tenant.
+   * Response: 200 OK with a list of ledger objects.
+
+  GET /accounting/v1/ledgers/{identifier}
+  Fetches a single ledger and its sub-ledgers.
+   * Response: 200 OK with the ledger object.
+
+  PUT /accounting/v1/ledgers/{identifier}
+  Modifies an existing ledger.
+   * Response: 202 Accepted
+
+  ---
+
+  2. Account Management
+
+  Accounts are the leaves of the Chart of Accounts tree where transactions are actually posted.
+
+  POST /accounting/v1/accounts
+  Creates a new account within a ledger.
+   * Request Body:
+
+   1     {
+   2       "identifier": "1110",
+   3       "type": "ASSET",
+   4       "name": "Cash on Hand",
+   5       "ledgerIdentifier": "1000",
+   6       "state": "OPEN",
+   7       "balance": "0.00"
+   8     }
+   * Response: 202 Accepted
+
+  GET /accounting/v1/accounts
+  Fetches all accounts for the tenant.
+   * Response: 200 OK with a list of account objects.
+
+  GET /accounting/v1/accounts/{identifier}
+  Fetches a single account, including its current balance.
+   * Response: 200 OK with the account object.
+
+  PUT /accounting/v1/accounts/{identifier}
+  Modifies an account (e.g., to change its name or state). You cannot change the balance via this endpoint.
+   * Response: 202 Accepted
+
+  ---
+
+  3. Transaction Management (The Core Endpoint)
+
+  This is the most important and frequently used endpoint. It records a financial event.
+
+  POST /accounting/v1/transactions
+  Posts a new journal entry. The service must validate that the sum of debits equals the sum of credits before accepting the transaction.
+   * Request Body:
+
+    1     {
+    2       "transactionIdentifier": "unique_id_from_caller_for_idempotency",
+    3       "transactionType": "DEPOSIT",
+    4       "transactionDate": "2023-10-27T10:30:00Z",
+    5       "note": "Customer deposit for account #SAV-001",
+    6       "debits": [
+    7         {
+    8           "accountIdentifier": "1110", // Cash on Hand
+    9           "amount": "100.00"
+   10         }
+   11       ],
+   12       "credits": [
+   13         {
+   14           "accountIdentifier": "2110", // Customer Deposits
+   15           "amount": "100.00"
+   16         }
+   17       ]
+   18     }
+   * Responses:
+       * 202 Accepted: The journal entry is valid and has been posted.
+       * 400 Bad Request: The transaction is invalid (e.g., debits do not equal credits, or an account identifier is invalid). The response body must contain a clear error message.
+       * 409 Conflict: A transaction with the same transactionIdentifier has already been posted.
+
+  GET /accounting/v1/transactions/{transactionIdentifier}
+  Retrieves a specific journal entry by its unique identifier.
+   * Response: 200 OK with the full journal entry object.
+
+  ---
+
+  4. Reporting
+
+  GET /accounting/v1/trialbalance
+  Generates a Trial Balance report for the tenant. This is a fundamental accounting report.
+   * Response: 200 OK with a list of all accounts and their final debit or credit balances.
+
+    1     {
+    2       "date": "2023-10-27T23:59:59Z",
+    3       "entries": [
+    4         {
+    5           "accountIdentifier": "1110",
+    6           "accountName": "Cash on Hand",
+    7           "type": "ASSET",
+    8           "balance": "15000.00",
+    9           "side": "DEBIT"
+   10         },
+   11         {
+   12           "accountIdentifier": "2110",
+   13           "accountName": "Customer Deposits",
+   14           "balance": "15000.00",
+   15           "side": "CREDIT"
+   16         }
+   17       ]
+   18     }
+
+  These endpoints provide a solid foundation for a robust, auditable, and reliable Accounting microservice.
