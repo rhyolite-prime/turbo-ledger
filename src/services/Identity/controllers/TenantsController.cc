@@ -199,8 +199,7 @@ void TenantsController::deactivate(const HttpRequestPtr& req, std::function<void
 }
 
 
-void TenantsController::deleteTenant(const HttpRequestPtr& req, std::function<void (const HttpResponsePtr &)> &&callback)
-{
+void TenantsController::deleteTenant(const HttpRequestPtr& req, std::function<void (const HttpResponsePtr &)> &&callback) {
     // Extract the tenant ID from the request parameters
     if (req->getParameter("id").empty()) {
         // Missing tenant ID - return early

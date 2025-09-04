@@ -20,7 +20,6 @@ using namespace drogon_model::TurboLedgerIdentity;
 namespace turbo_ledger_identity::services
 {
 
-
     void UserService::getUsers(
         int pageNo,
         int pageSize,

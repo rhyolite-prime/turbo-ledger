@@ -10,7 +10,6 @@
 using namespace drogon::orm;
 
 namespace turbo_ledger_identity::services {
-
     void TenantService::getTenants(
         int pageNo,
         int pageSize,
@@ -432,5 +431,5 @@ namespace turbo_ledger_identity::services {
             }
         );
     }
-
 }
+

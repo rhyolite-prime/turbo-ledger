@@ -34,6 +34,10 @@ add_executable(${PROJECT_NAME} main.cc
         dto/UpdateUserDto.cc
         services/tenants/TenantService.h
         services/tenants/TenantService.cc
+        services/users/UserService.h
+        services/users/UserService.cc
+        services/roles/RoleService.h
+        services/roles/RoleService.cc
 )
 
 # ##############################################################################

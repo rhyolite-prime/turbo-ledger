@@ -10,7 +10,7 @@ int main() {
     //drogon::app().addListener("0.0.0.0", 5555);
     //Load config file
     //drogon::app().loadConfigFile("../config.json");
-    drogon::app().loadConfigFile("config.json");
+    drogon::app().loadConfigFile("../config.json");
 
     //drogon::app().registerFilter(std::make_shared<turbo_ledger_identity::filters::TenantFilter>("/api/*"));
 
