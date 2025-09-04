@@ -168,7 +168,6 @@ namespace turbo_ledger_identity::services {
             [mp, roleData, callback](drogon_model::TurboLedgerIdentity::Roles role) {
                 if (!roleData.getName().empty()) role.setName(roleData.getName());
                 if (!roleData.getDescription().empty()) role.setDescription(roleData.getDescription());
-                if (!roleData.getTenantIdentifier().empty()) role.setTenantIdentifier(roleData.getTenantIdentifier());
 
                 role.setPermissions(roleData.getPermissions());
 
@@ -198,6 +197,64 @@ namespace turbo_ledger_identity::services {
         );
     }
 
+
+    void RoleService::deleteRole(
+            const std::string& roleId,
+            const std::string& tenantId,
+            const std::function<void(const turbo_ledger_identity::dto::BaseApiResponse&)>& callback
+        ) {
+
+        auto dbClient = drogon::app().getDbClient();
+        Mapper<drogon_model::TurboLedgerIdentity::Roles> mp(dbClient);
+
+        // Create criteria to find the user with specified ID in the tenant
+        Criteria criteria = Criteria(drogon_model::TurboLedgerIdentity::Roles::Cols::_id, CompareOperator::EQ, roleId) &&
+                            Criteria(drogon_model::TurboLedgerIdentity::Roles::Cols::_tenant_identifier, CompareOperator::EQ, tenantId);
+
+        // First verify the user exists
+        mp.findOne(criteria,
+            [=](const drogon_model::TurboLedgerIdentity::Roles& role) {
+                // User found, proceed with deletion
+                Mapper<drogon_model::TurboLedgerIdentity::Roles> deleteMp(dbClient);
+                deleteMp.deleteBy(criteria,
+                    [=](const size_t count) {
+                        if (count > 0) {
+                            // Successfully deleted
+                            turbo_ledger_identity::dto::BaseApiResponse response;
+                            response.success = true;
+                            response.message = "Role deleted successfully";
+                            callback(response);
+                        } else {
+                            // No rows were deleted (shouldn't happen if we found the user)
+                            turbo_ledger_identity::dto::BaseApiResponse errorResponse;
+                            errorResponse.success = false;
+                            errorResponse.message = "Failed to delete role";
+                            errorResponse.error["code"] = ERR_DB_QUERY;
+                            callback(errorResponse);
+                        }
+                    },
+                    [=](const DrogonDbException& e) {
+                        // Error during deletion
+                        turbo_ledger_identity::dto::BaseApiResponse errorResponse;
+                        errorResponse.success = false;
+                        errorResponse.message = "Failed to delete role";
+                        errorResponse.error["code"] = ERR_DB_QUERY;
+                        errorResponse.error["detail"] = e.base().what();
+                        callback(errorResponse);
+                    }
+                );
+            },
+            [=](const DrogonDbException& e) {
+                // User not found
+                turbo_ledger_identity::dto::BaseApiResponse errorResponse;
+                errorResponse.success = false;
+                errorResponse.message = "Role not found";
+                errorResponse.error["code"] = ERR_RESOURCE_NOT_FOUND;
+                errorResponse.error["detail"] = e.base().what();
+                callback(errorResponse);
+            }
+        );
+    }
 
 
 }

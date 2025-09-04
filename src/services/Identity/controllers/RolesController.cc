@@ -1,6 +1,7 @@
 #include "RolesController.h"
 #include "dto/UpdateRoleDto.h"
 #include "dto/BaseApiResponse.h"
+#include "dto/ErrorCodes.h"
 #include "plugins/IdentityServicePlugin.h"
 
 
@@ -155,5 +156,31 @@ void RolesController::updateRole(const HttpRequestPtr& req, std::function<void (
 
 void RolesController::deleteRole(const HttpRequestPtr& req, std::function<void (const HttpResponsePtr &)> &&callback)
 {
-    // write your application logic here
+    auto userId = req->getParameter("id");
+
+    if (userId.empty()) {
+        turbo_ledger_identity::dto::BaseApiResponse response;
+        response.success = false;
+        response.error["message"] = "User ID is required";
+        auto resp = HttpResponse::newHttpJsonResponse(response.toJson());
+        resp->setStatusCode(k400BadRequest);
+        callback(resp);
+        return;
+    }
+
+    // Get tenant ID from the request
+    std::string tenantId = getTenantFromRequest(req);
+
+    // Get the user service from the plugin
+    auto plugin = drogon::app().getPlugin<turbo_ledger_identity::plugins::IdentityServicePlugin>();
+    auto& roleService = plugin->getRoleService();
+
+    // Call the service to delete the user
+    roleService.deleteRole(userId, tenantId, [callback](const turbo_ledger_identity::dto::BaseApiResponse& result) {
+        auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
+        resp->setStatusCode(result.success ? k200OK : (result.error.isMember("code") &&
+                                                     result.error["code"].asInt() == turbo_ledger_identity::ERR_RESOURCE_NOT_FOUND ?
+                                                     k404NotFound : k500InternalServerError));
+        callback(resp);
+    });
 }
