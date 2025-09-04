@@ -1,9 +1,9 @@
 #include "RoleService.h"
-
 #include <drogon/orm/Mapper.h>
 #include <drogon/orm/Criteria.h>
 #include "Roles.h"
 #include "dto/BaseApiResponse.h"
+#include "dto/UpdateRoleDto.h"
 #include "dto/ErrorCodes.h"
 
 using namespace drogon::orm;
@@ -73,7 +73,20 @@ namespace turbo_ledger_identity::services {
                             camelCaseRole["tenantIdentifier"] = roleJson["tenant_identifier"];
                             camelCaseRole["createdAt"] = roleJson["created_at"];
                             camelCaseRole["updatedAt"] = roleJson["updated_at"];
-                            camelCaseRole["permissions"] = roleJson["permissions"];
+                            
+                            // Parse permissions from string to JSON object
+                            std::string permissionsStr = role.getValueOfPermissions();
+                            Json::Value permissionsJson;
+                            Json::Reader reader;
+
+                            if (!permissionsStr.empty() && reader.parse(permissionsStr, permissionsJson))
+                            {
+                                camelCaseRole["permissions"] = permissionsJson;
+                            }
+                            else
+                            {
+                                camelCaseRole["permissions"] = Json::arrayValue;
+                            }
 
                             data.append(camelCaseRole);
                         }
@@ -96,6 +109,89 @@ namespace turbo_ledger_identity::services {
                 errorResponse.success = false;
                 errorResponse.error["code"] = ERR_DB_QUERY;
                 errorResponse.error["message"] = "Database error while fetching users.";
+                errorResponse.error["detail"] = e.base().what();
+                callback(errorResponse);
+            }
+        );
+    }
+
+
+    void RoleService::createRole(
+        const dto::CreateRoleDto& roleData,
+        const std::string& tenantId,
+        const std::function<void(const turbo_ledger_identity::dto::BaseApiResponse&)>& callback)
+    {
+        auto dbClient = drogon::app().getDbClient();
+        Mapper<drogon_model::TurboLedgerIdentity::Roles> mp(dbClient);
+
+        drogon_model::TurboLedgerIdentity::Roles newRole;
+
+        newRole.setName(roleData.getName());
+        newRole.setDescription(roleData.getDescription());
+        newRole.setPermissions(roleData.getPermissions());
+        newRole.setTenantIdentifier(tenantId);
+
+        mp.insert(newRole, [callback](const drogon_model::TurboLedgerIdentity::Roles& role) {
+            // 5. Prepare success response
+            turbo_ledger_identity::dto::BaseApiResponse successResponse;
+            successResponse.success = true;
+            successResponse.message = "Role created successfully";
+            successResponse.result["id"] = role.getValueOfId();
+
+            callback(successResponse);
+
+        }, [callback](const drogon::orm::DrogonDbException& e) {
+            // 6. Handle database errors
+            // C++
+            turbo_ledger_identity::dto::BaseApiResponse errorResponse;
+            errorResponse.success = false;
+            errorResponse.message = "Database error while creating role";
+            errorResponse.error["code"] = ERR_DB_QUERY;
+            callback(errorResponse);
+
+        });
+    }
+
+
+    void RoleService::updateRole(
+        const dto::UpdateRoleDto& roleData,
+        const std::string& tenantId,
+        const std::function<void(const turbo_ledger_identity::dto::BaseApiResponse&)>& callback)
+    {
+        auto dbClient = drogon::app().getDbClient();
+        auto mp = std::make_shared<Mapper<drogon_model::TurboLedgerIdentity::Roles>>(dbClient);
+
+        Criteria criteria = Criteria(drogon_model::TurboLedgerIdentity::Roles::Cols::_id, CompareOperator::EQ, roleData.getId()) &&
+                            Criteria(drogon_model::TurboLedgerIdentity::Roles::Cols::_tenant_identifier, CompareOperator::EQ, tenantId);
+
+        mp->findOne(criteria,
+            [mp, roleData, callback](drogon_model::TurboLedgerIdentity::Roles role) {
+                if (!roleData.getName().empty()) role.setName(roleData.getName());
+                if (!roleData.getDescription().empty()) role.setDescription(roleData.getDescription());
+                if (!roleData.getTenantIdentifier().empty()) role.setTenantIdentifier(roleData.getTenantIdentifier());
+
+                role.setPermissions(roleData.getPermissions());
+
+                mp->update(role, [callback](const size_t count) {
+                    turbo_ledger_identity::dto::BaseApiResponse response;
+                    response.success = true;
+                    response.message = "Role updated successfully";
+                    callback(response);
+                },
+                [callback](const DrogonDbException& e) {
+                    turbo_ledger_identity::dto::BaseApiResponse errorResponse;
+                    errorResponse.success = false;
+                    errorResponse.message = "Failed to update role";
+                    errorResponse.error["code"] = ERR_DB_QUERY;
+                    errorResponse.error["detail"] = e.base().what();
+                    callback(errorResponse);
+                });
+            },
+            [callback](const DrogonDbException& e) {
+                turbo_ledger_identity::dto::BaseApiResponse errorResponse;
+                errorResponse.success = false;
+                errorResponse.message = "Role not found";
+                errorResponse.error["code"] = ERR_RESOURCE_NOT_FOUND;
                 errorResponse.error["detail"] = e.base().what();
                 callback(errorResponse);
             }
