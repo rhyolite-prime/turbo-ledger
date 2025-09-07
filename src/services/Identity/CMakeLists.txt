@@ -29,7 +29,7 @@ add_executable(${PROJECT_NAME} main.cc
         dto/CreateTenantDto.cc
         dto/UpdateTenantDto.h
         dto/UpdateTenantDto.cc
-        dto/ErrorCodes.h
+        constants/ErrorCodes.h
         dto/UpdateUserDto.h
         dto/UpdateUserDto.cc
         services/tenants/TenantService.h
@@ -67,6 +67,7 @@ endif ()
 aux_source_directory(controllers CTL_SRC)
 aux_source_directory(filters FILTER_SRC)
 aux_source_directory(plugins PLUGIN_SRC)
+aux_source_directory(constants PLUGIN_SRC)
 aux_source_directory(services/users SERVICE_SRC)
 aux_source_directory(models MODEL_SRC)
 
@@ -90,6 +91,7 @@ target_sources(${PROJECT_NAME}
                ${FILTER_SRC}
                ${PLUGIN_SRC}
                ${SERVICE_SRC}
+               ${CONSTANTS_SRC}
                ${MODEL_SRC})
 # ##############################################################################
 # uncomment the following line for dynamically loading views 

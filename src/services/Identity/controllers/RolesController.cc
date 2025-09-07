@@ -1,7 +1,7 @@
 #include "RolesController.h"
+#include "constants/ErrorCodes.h"
 #include "dto/UpdateRoleDto.h"
 #include "dto/BaseApiResponse.h"
-#include "dto/ErrorCodes.h"
 #include "plugins/IdentityServicePlugin.h"
 
 
@@ -179,7 +179,7 @@ void RolesController::deleteRole(const HttpRequestPtr& req, std::function<void (
     roleService.deleteRole(userId, tenantId, [callback](const turbo_ledger_identity::dto::BaseApiResponse& result) {
         auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
         resp->setStatusCode(result.success ? k200OK : (result.error.isMember("code") &&
-                                                     result.error["code"].asInt() == turbo_ledger_identity::ERR_RESOURCE_NOT_FOUND ?
+                                                     result.error["code"].asInt() == turbo_ledger_identity::constants::ERR_RESOURCE_NOT_FOUND ?
                                                      k404NotFound : k500InternalServerError));
         callback(resp);
     });

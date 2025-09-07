@@ -11,9 +11,6 @@
 #include "services/tenants/TenantService.h"
 #include "services/roles/RoleService.h"
 
-namespace turbo_ledger_identity::services {
-    class RoleService;
-}
 
 namespace turbo_ledger_identity::plugins {
 

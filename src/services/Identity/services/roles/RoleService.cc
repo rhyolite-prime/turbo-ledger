@@ -4,7 +4,7 @@
 #include "Roles.h"
 #include "dto/BaseApiResponse.h"
 #include "dto/UpdateRoleDto.h"
-#include "dto/ErrorCodes.h"
+#include "constants/ErrorCodes.h"
 
 using namespace drogon::orm;
 
@@ -107,7 +107,7 @@ namespace turbo_ledger_identity::services {
                 // Handle count error
                 dto::BaseApiResponse errorResponse;
                 errorResponse.success = false;
-                errorResponse.error["code"] = ERR_DB_QUERY;
+                errorResponse.error["code"] = constants::ERR_DB_QUERY;
                 errorResponse.error["message"] = "Database error while fetching users.";
                 errorResponse.error["detail"] = e.base().what();
                 callback(errorResponse);
@@ -146,7 +146,7 @@ namespace turbo_ledger_identity::services {
             turbo_ledger_identity::dto::BaseApiResponse errorResponse;
             errorResponse.success = false;
             errorResponse.message = "Database error while creating role";
-            errorResponse.error["code"] = ERR_DB_QUERY;
+            errorResponse.error["code"] = constants::ERR_DB_QUERY;
             callback(errorResponse);
 
         });
@@ -181,7 +181,7 @@ namespace turbo_ledger_identity::services {
                     turbo_ledger_identity::dto::BaseApiResponse errorResponse;
                     errorResponse.success = false;
                     errorResponse.message = "Failed to update role";
-                    errorResponse.error["code"] = ERR_DB_QUERY;
+                    errorResponse.error["code"] = constants::ERR_DB_QUERY;
                     errorResponse.error["detail"] = e.base().what();
                     callback(errorResponse);
                 });
@@ -190,7 +190,7 @@ namespace turbo_ledger_identity::services {
                 turbo_ledger_identity::dto::BaseApiResponse errorResponse;
                 errorResponse.success = false;
                 errorResponse.message = "Role not found";
-                errorResponse.error["code"] = ERR_RESOURCE_NOT_FOUND;
+                errorResponse.error["code"] = constants::ERR_RESOURCE_NOT_FOUND;
                 errorResponse.error["detail"] = e.base().what();
                 callback(errorResponse);
             }
@@ -229,7 +229,7 @@ namespace turbo_ledger_identity::services {
                             turbo_ledger_identity::dto::BaseApiResponse errorResponse;
                             errorResponse.success = false;
                             errorResponse.message = "Failed to delete role";
-                            errorResponse.error["code"] = ERR_DB_QUERY;
+                            errorResponse.error["code"] = constants::ERR_DB_QUERY;
                             callback(errorResponse);
                         }
                     },
@@ -238,7 +238,7 @@ namespace turbo_ledger_identity::services {
                         turbo_ledger_identity::dto::BaseApiResponse errorResponse;
                         errorResponse.success = false;
                         errorResponse.message = "Failed to delete role";
-                        errorResponse.error["code"] = ERR_DB_QUERY;
+                        errorResponse.error["code"] = constants::ERR_DB_QUERY;
                         errorResponse.error["detail"] = e.base().what();
                         callback(errorResponse);
                     }
@@ -249,7 +249,7 @@ namespace turbo_ledger_identity::services {
                 turbo_ledger_identity::dto::BaseApiResponse errorResponse;
                 errorResponse.success = false;
                 errorResponse.message = "Role not found";
-                errorResponse.error["code"] = ERR_RESOURCE_NOT_FOUND;
+                errorResponse.error["code"] = constants::ERR_RESOURCE_NOT_FOUND;
                 errorResponse.error["detail"] = e.base().what();
                 callback(errorResponse);
             }

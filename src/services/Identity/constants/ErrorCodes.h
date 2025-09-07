@@ -1,14 +1,11 @@
 //
 // Created by Emmanuel Addo-Odame on 19/08/2025.
 //
-
+#pragma once
 #ifndef ERRORCODES_H
 #define ERRORCODES_H
 
-
-#pragma once
-
-namespace turbo_ledger_identity {
+namespace turbo_ledger_identity::constants {
     enum ErrorCode {
         ERR_DB_CONNECTION = 1001,         // Database connection error
         ERR_DB_QUERY = 1002,              // Database query error
