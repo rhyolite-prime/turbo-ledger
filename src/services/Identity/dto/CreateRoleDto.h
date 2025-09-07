@@ -1,7 +1,6 @@
 #pragma once
 
 #include <json/json.h>
-#include <json/writer.h>
 #include <string>
 
 namespace turbo_ledger_identity::dto {

@@ -7,27 +7,34 @@
 #pragma once
 
 #include <drogon/plugins/Plugin.h>
+#include "services/accounts/GlAccountService.h"
+#include "services/journal/JournalService.h"
 
 
-class AccountingServicePlugin : public drogon::Plugin<AccountingServicePlugin>
-{
-  public:
-    AccountingServicePlugin() {}
-    /// This method must be called by drogon to initialize and start the plugin.
-    /// It must be implemented by the user.
-    void initAndStart(const Json::Value &config) override;
+namespace turbo_ledger_accounting::plugins {
 
-    /// This method must be called by drogon to shutdown the plugin.
-    /// It must be implemented by the user.
-    void shutdown() override;
+    class AccountingServicePlugin : public drogon::Plugin<AccountingServicePlugin>
+    {
+    public:
+        AccountingServicePlugin() {}
+        /// This method must be called by drogon to initialize and start the plugin.
+        /// It must be implemented by the user.
+        void initAndStart(const Json::Value &config) override;
 
-    // Provide access to the service
-    //services::AccountService& getAccountService() { return accountService_; }
-    //services::JournalService& getJournalService() { return journalService_; }
+        /// This method must be called by drogon to shutdown the plugin.
+        /// It must be implemented by the user.
+        void shutdown() override;
 
-private:
-    //services::AccountService accountService_;
-    //services::JournalService journalService_;
+        // Provide access to the service
+        services::GlAccountService& getGlAccountService() { return glAccountService_; }
+        services::JournalService& getJournalService() { return journalService_; }
 
-};
+    private:
+        services::GlAccountService glAccountService_;
+        services::JournalService journalService_;
+
+    };
+
+}
+
 
