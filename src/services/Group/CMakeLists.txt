@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(Identity CXX)
+project(Group CXX)
 
 include(CheckIncludeFileCXX)
 
@@ -19,40 +19,17 @@ endif ()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-add_executable(${PROJECT_NAME} main.cc
-        dto/BaseApiResponse.h
-        dto/CreateUserDto.cc
-        dto/SigninDto.h
-        dto/SigninDto.cc
-        dto/CreateTenantDto.h
-        dto/CreateTenantDto.cc
-        dto/UpdateTenantDto.h
-        dto/UpdateTenantDto.cc
-        constants/ErrorCodes.h
-        dto/UpdateUserDto.h
-        dto/UpdateUserDto.cc
-        services/tenants/TenantService.h
-        services/tenants/TenantService.cc
-        services/users/UserService.h
-        services/users/UserService.cc
-        services/roles/RoleService.h
-        services/roles/RoleService.cc
-        controllers/SelfController.h
-)
+add_executable(${PROJECT_NAME} main.cc)
 
 # ##############################################################################
 # If you include the drogon source code locally in your project, use this method
-# to add drogon
-# add_subdirectory(drogon)
+# to add drogon 
+# add_subdirectory(drogon) 
 # target_link_libraries(${PROJECT_NAME} PRIVATE drogon)
 #
 # and comment out the following lines
 find_package(Drogon CONFIG REQUIRED)
-find_package(bcrypt CONFIG REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE Drogon::Drogon)
-target_link_libraries(${PROJECT_NAME} PRIVATE bcrypt::bcrypt)
-
-
 
 # ##############################################################################
 
@@ -67,8 +44,6 @@ endif ()
 aux_source_directory(controllers CTL_SRC)
 aux_source_directory(filters FILTER_SRC)
 aux_source_directory(plugins PLUGIN_SRC)
-aux_source_directory(constants PLUGIN_SRC)
-aux_source_directory(services/users SERVICE_SRC)
 aux_source_directory(models MODEL_SRC)
 
 drogon_create_views(${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/views
@@ -90,8 +65,6 @@ target_sources(${PROJECT_NAME}
                ${CTL_SRC}
                ${FILTER_SRC}
                ${PLUGIN_SRC}
-               ${SERVICE_SRC}
-               ${CONSTANTS_SRC}
                ${MODEL_SRC})
 # ##############################################################################
 # uncomment the following line for dynamically loading views 

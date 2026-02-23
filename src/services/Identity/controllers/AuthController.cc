@@ -1,4 +1,4 @@
-#include "TokenAuthController.h"
+#include "AuthController.h"
 
 #include "dto/BaseApiResponse.h"
 #include "dto/SigninDto.h"
@@ -6,7 +6,7 @@
 
 
 
-void TokenAuthController::generateAuthToken(const HttpRequestPtr& req, std::function<void (const HttpResponsePtr &)> &&callback)
+void AuthController::generateAuthToken(const HttpRequestPtr& req, std::function<void (const HttpResponsePtr &)> &&callback)
 {
 
     auto jsonBody = req->getJsonObject();

@@ -10,7 +10,6 @@
 #include "dto/UpdateUserDto.h"
 
 
-
 using namespace drogon::orm;
 using namespace drogon_model::TurboLedgerIdentity;
 
@@ -168,8 +167,7 @@ namespace turbo_ledger_identity::services
         auto dbClient = drogon::app().getDbClient();
         auto mp = std::make_shared<Mapper<Users>>(dbClient);
 
-        Criteria criteria = Criteria(Users::Cols::_id, CompareOperator::EQ, userData.getId()) &&
-                            Criteria(Users::Cols::_tenant_identifier, CompareOperator::EQ, tenantId);
+        Criteria criteria = Criteria(Users::Cols::_id, CompareOperator::EQ, userData.getId()) && Criteria(Users::Cols::_tenant_identifier, CompareOperator::EQ, tenantId);
 
         mp->findOne(criteria,
             [mp, userData, callback](Users user) { 
@@ -493,7 +491,6 @@ namespace turbo_ledger_identity::services
             }
         );
     }
-
 
 
     void UserService::unlockUserAccount(

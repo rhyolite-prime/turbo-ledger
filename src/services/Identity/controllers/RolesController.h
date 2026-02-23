@@ -6,19 +6,17 @@
 
 using namespace drogon;
 
-namespace
-{
-    const std::string PREFIX = "/api/v1/roles";
-}
+
 
 class RolesController : public BaseController<RolesController>
 {
 public:
+    static constexpr const char *PREFIX = "/api/v1/tenants";
     METHOD_LIST_BEGIN
-        ADD_METHOD_TO(RolesController::getRoles, PREFIX + "/get-all", Get);
-        ADD_METHOD_TO(RolesController::createRole, PREFIX + "/create", Post);
-        ADD_METHOD_TO(RolesController::updateRole, PREFIX + "/update", Post);
-        ADD_METHOD_TO(RolesController::deleteRole, PREFIX + "/delete", Delete);
+        ADD_METHOD_TO(RolesController::getRoles, std::string(PREFIX) + "/get-all", Get);
+        ADD_METHOD_TO(RolesController::createRole, std::string(PREFIX) + "/create", Post);
+        ADD_METHOD_TO(RolesController::updateRole, std::string(PREFIX) + "/update", Post);
+        ADD_METHOD_TO(RolesController::deleteRole, std::string(PREFIX) + "/delete", Delete);
     METHOD_LIST_END
 
 
