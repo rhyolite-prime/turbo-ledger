@@ -5,7 +5,7 @@
 #include "Tenants.h"
 #include "dto/BaseApiResponse.h"
 #include "dto/CreateTenantDto.h"
-#include "../../constants/ErrorCodes.h"
+#include "constants/ErrorCodes.h"
 
 using namespace drogon::orm;
 
