@@ -9,6 +9,8 @@
 #include <drogon/plugins/Plugin.h>
 #include "services/users/UserService.h"
 #include "services/tenants/TenantService.h"
+#include "services/roles/RoleService.h"
+
 
 namespace turbo_ledger_identity::plugins {
 
@@ -25,12 +27,15 @@ namespace turbo_ledger_identity::plugins {
         void shutdown() override;
 
         // Provide access to the service
-        turbo_ledger_identity::services::UserService& getUserService() { return userService_; }
-        turbo_ledger_identity::services::TenantService& getTenantService() { return tenantService_; }
+        services::UserService& getUserService() { return userService_; }
+        services::TenantService& getTenantService() { return tenantService_; }
+        services::RoleService& getRoleService() { return roleService_; }
+
 
     private:
-        turbo_ledger_identity::services::UserService userService_;
-        turbo_ledger_identity::services::TenantService tenantService_;
+        services::UserService userService_;
+        services::TenantService tenantService_;
+        services::RoleService roleService_;
     };
 
 }

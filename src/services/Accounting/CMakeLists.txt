@@ -19,7 +19,14 @@ endif ()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-add_executable(${PROJECT_NAME} main.cc)
+add_executable(${PROJECT_NAME} main.cc
+        services/accounts/GlAccountService.h
+        services/accounts/GlAccountService.cc
+        services/journal/JournalService.h
+        services/journal/JournalService.cc
+        dto/BaseApiResponse.h
+        dto/CreateGlAccountDto.h
+        dto/UpdateGlAccountDto.h)
 
 # ##############################################################################
 # If you include the drogon source code locally in your project, use this method

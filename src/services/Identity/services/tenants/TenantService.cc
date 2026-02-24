@@ -5,12 +5,11 @@
 #include "Tenants.h"
 #include "dto/BaseApiResponse.h"
 #include "dto/CreateTenantDto.h"
-#include "dto/ErrorCodes.h"
+#include "constants/ErrorCodes.h"
 
 using namespace drogon::orm;
 
 namespace turbo_ledger_identity::services {
-
     void TenantService::getTenants(
         int pageNo,
         int pageSize,
@@ -93,7 +92,7 @@ namespace turbo_ledger_identity::services {
                 // Handle count error
                 dto::BaseApiResponse errorResponse;
                 errorResponse.success = false;
-                errorResponse.error["code"] = ERR_DB_QUERY;
+                errorResponse.error["code"] = constants::ERR_DB_QUERY;
                 errorResponse.error["message"] = "Database error while fetching tenants.";
                 errorResponse.error["detail"] = e.base().what();
                 callback(errorResponse);
@@ -119,7 +118,7 @@ namespace turbo_ledger_identity::services {
                     // Tenant with this identifier already exists
                     dto::BaseApiResponse response;
                     response.success = false;
-                    response.error["code"] = ERR_DUPLICATE_RESOURCE;
+                    response.error["code"] = constants::ERR_DUPLICATE_RESOURCE;
                     response.error["message"] = "A tenant with this identifier already exists.";
                     callback(response);
                     return;
@@ -148,7 +147,7 @@ namespace turbo_ledger_identity::services {
                         // Error inserting tenant
                         dto::BaseApiResponse response;
                         response.success = false;
-                        response.error["code"] = ERR_DB_QUERY;
+                        response.error["code"] = constants::ERR_DB_QUERY;
                         response.error["message"] = "Error creating tenant.";
                         response.error["detail"] = e.base().what();
                         callback(response);
@@ -159,7 +158,7 @@ namespace turbo_ledger_identity::services {
                 // Error checking for existing tenant
                 dto::BaseApiResponse response;
                 response.success = false;
-                response.error["code"] = ERR_DB_QUERY;
+                response.error["code"] = constants::ERR_DB_QUERY;
                 response.error["message"] = "Error checking for existing tenant.";
                 response.error["detail"] = e.base().what();
                 callback(response);
@@ -200,7 +199,7 @@ namespace turbo_ledger_identity::services {
                         // Error updating tenant
                         dto::BaseApiResponse response;
                         response.success = false;
-                        response.error["code"] = ERR_DB_QUERY;
+                        response.error["code"] = constants::ERR_DB_QUERY;
                         response.error["message"] = "Error updating tenant.";
                         response.error["detail"] = e.base().what();
                         callback(response);
@@ -211,7 +210,7 @@ namespace turbo_ledger_identity::services {
                 // Error finding tenant
                 dto::BaseApiResponse response;
                 response.success = false;
-                response.error["code"] = ERR_RESOURCE_NOT_FOUND;
+                response.error["code"] = constants::ERR_RESOURCE_NOT_FOUND;
                 response.error["message"] = "Tenant not found.";
                 response.error["detail"] = e.base().what();
                 callback(response);
@@ -248,7 +247,7 @@ namespace turbo_ledger_identity::services {
                         // Error updating tenant
                         dto::BaseApiResponse response;
                         response.success = false;
-                        response.error["code"] = ERR_DB_QUERY;
+                        response.error["code"] = constants::ERR_DB_QUERY;
                         response.error["message"] = "Error updating connection string.";
                         response.error["detail"] = e.base().what();
                         callback(response);
@@ -259,7 +258,7 @@ namespace turbo_ledger_identity::services {
                 // Error finding tenant
                 dto::BaseApiResponse response;
                 response.success = false;
-                response.error["code"] = ERR_RESOURCE_NOT_FOUND;
+                response.error["code"] = constants::ERR_RESOURCE_NOT_FOUND;
                 response.error["message"] = "Tenant not found.";
                 response.error["detail"] = e.base().what();
                 callback(response);
@@ -305,7 +304,7 @@ namespace turbo_ledger_identity::services {
                         // Error updating tenant
                         dto::BaseApiResponse response;
                         response.success = false;
-                        response.error["code"] = ERR_DB_QUERY;
+                        response.error["code"] = constants::ERR_DB_QUERY;
                         response.error["message"] = "Error activating tenant account.";
                         response.error["detail"] = e.base().what();
                         callback(response);
@@ -316,7 +315,7 @@ namespace turbo_ledger_identity::services {
                 // Error finding tenant
                 dto::BaseApiResponse response;
                 response.success = false;
-                response.error["code"] = ERR_RESOURCE_NOT_FOUND;
+                response.error["code"] = constants::ERR_RESOURCE_NOT_FOUND;
                 response.error["message"] = "Tenant not found.";
                 response.error["detail"] = e.base().what();
                 callback(response);
@@ -362,7 +361,7 @@ namespace turbo_ledger_identity::services {
                         // Error updating tenant
                         dto::BaseApiResponse response;
                         response.success = false;
-                        response.error["code"] = ERR_DB_QUERY;
+                        response.error["code"] = constants::ERR_DB_QUERY;
                         response.error["message"] = "Error deactivating tenant account.";
                         response.error["detail"] = e.base().what();
                         callback(response);
@@ -373,7 +372,7 @@ namespace turbo_ledger_identity::services {
                 // Error finding tenant
                 dto::BaseApiResponse response;
                 response.success = false;
-                response.error["code"] = ERR_RESOURCE_NOT_FOUND;
+                response.error["code"] = constants::ERR_RESOURCE_NOT_FOUND;
                 response.error["message"] = "Tenant not found.";
                 response.error["detail"] = e.base().what();
                 callback(response);
@@ -405,7 +404,7 @@ namespace turbo_ledger_identity::services {
                             // No tenant was deleted (should not happen if tenant was found)
                             dto::BaseApiResponse response;
                             response.success = false;
-                            response.error["code"] = ERR_DB_QUERY;
+                            response.error["code"] = constants::ERR_DB_QUERY;
                             response.error["message"] = "Failed to delete tenant.";
                             callback(response);
                         }
@@ -414,7 +413,7 @@ namespace turbo_ledger_identity::services {
                         // Error deleting tenant
                         dto::BaseApiResponse response;
                         response.success = false;
-                        response.error["code"] = ERR_DB_QUERY;
+                        response.error["code"] = constants::ERR_DB_QUERY;
                         response.error["message"] = "Error deleting tenant.";
                         response.error["detail"] = e.base().what();
                         callback(response);
@@ -425,12 +424,12 @@ namespace turbo_ledger_identity::services {
                 // Error finding tenant or tenant doesn't exist
                 dto::BaseApiResponse response;
                 response.success = false;
-                response.error["code"] = ERR_RESOURCE_NOT_FOUND;
+                response.error["code"] = constants::ERR_RESOURCE_NOT_FOUND;
                 response.error["message"] = "Tenant not found.";
                 response.error["detail"] = e.base().what();
                 callback(response);
             }
         );
     }
-
 }
+

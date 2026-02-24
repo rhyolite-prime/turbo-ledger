@@ -1,7 +1,7 @@
 #include "UsersController.h"
 #include "dto/CreateUserDto.h"
 #include "dto/BaseApiResponse.h"
-#include "dto/ErrorCodes.h"
+#include "../constants/ErrorCodes.h"
 #include "dto/SigninDto.h"
 #include "dto/UpdateUserDto.h"
 #include "plugins/IdentityServicePlugin.h"
@@ -229,7 +229,7 @@ void UsersController::lockUserAccount(const HttpRequestPtr& req, std::function<v
     userService.lockUserAccount(userId, tenantId, [callback](const turbo_ledger_identity::dto::BaseApiResponse& result) {
         auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
         resp->setStatusCode(result.success ? k200OK : (result.error.isMember("code") &&
-                                                     result.error["code"].asInt() == turbo_ledger_identity::ERR_RESOURCE_NOT_FOUND ?
+                                                     result.error["code"].asInt() == turbo_ledger_identity::constants::ERR_RESOURCE_NOT_FOUND ?
                                                      k404NotFound : k500InternalServerError));
         callback(resp);
     });
@@ -261,7 +261,7 @@ void UsersController::unLockUserAccount(const HttpRequestPtr& req, std::function
     userService.unlockUserAccount(userId, tenantId, [callback](const turbo_ledger_identity::dto::BaseApiResponse& result) {
         auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
         resp->setStatusCode(result.success ? k200OK : (result.error.isMember("code") &&
-                                                     result.error["code"].asInt() == turbo_ledger_identity::ERR_RESOURCE_NOT_FOUND ?
+                                                     result.error["code"].asInt() == turbo_ledger_identity::constants::ERR_RESOURCE_NOT_FOUND ?
                                                      k404NotFound : k500InternalServerError));
         callback(resp);
     });
@@ -293,7 +293,7 @@ void UsersController::activateAccount(const HttpRequestPtr& req, std::function<v
     userService.activateUserAccount(userId, tenantId, [callback](const turbo_ledger_identity::dto::BaseApiResponse& result) {
         auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
         resp->setStatusCode(result.success ? k200OK : (result.error.isMember("code") &&
-                                                     result.error["code"].asInt() == turbo_ledger_identity::ERR_RESOURCE_NOT_FOUND ?
+                                                     result.error["code"].asInt() == turbo_ledger_identity::constants::ERR_RESOURCE_NOT_FOUND ?
                                                      k404NotFound : k500InternalServerError));
         callback(resp);
     });
@@ -325,7 +325,7 @@ void UsersController::deActivateAccount(const HttpRequestPtr& req, std::function
     userService.deactivateUserAccount(userId, tenantId, [callback](const turbo_ledger_identity::dto::BaseApiResponse& result) {
         auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
         resp->setStatusCode(result.success ? k200OK : (result.error.isMember("code") &&
-                                                     result.error["code"].asInt() == turbo_ledger_identity::ERR_RESOURCE_NOT_FOUND ?
+                                                     result.error["code"].asInt() == turbo_ledger_identity::constants::ERR_RESOURCE_NOT_FOUND ?
                                                      k404NotFound : k500InternalServerError));
         callback(resp);
     });
@@ -357,7 +357,7 @@ void UsersController::deleteUser(const HttpRequestPtr& req, std::function<void (
     userService.deleteUser(userId, tenantId, [callback](const turbo_ledger_identity::dto::BaseApiResponse& result) {
         auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
         resp->setStatusCode(result.success ? k200OK : (result.error.isMember("code") &&
-                                                     result.error["code"].asInt() == turbo_ledger_identity::ERR_RESOURCE_NOT_FOUND ?
+                                                     result.error["code"].asInt() == turbo_ledger_identity::constants::ERR_RESOURCE_NOT_FOUND ?
                                                      k404NotFound : k500InternalServerError));
         callback(resp);
     });

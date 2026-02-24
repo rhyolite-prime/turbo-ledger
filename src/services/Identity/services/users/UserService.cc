@@ -5,13 +5,10 @@
 #include "Users.h"
 #include "dto/BaseApiResponse.h"
 #include "bcrypt.h"
-#include "dto/ErrorCodes.h"
+#include "constants/ErrorCodes.h"
 #include "dto/SigninDto.h"
 #include "dto/UpdateUserDto.h"
 
-namespace turbo_ledger_identity::dto {
-    class SigninDto;
-}
 
 using namespace drogon::orm;
 using namespace drogon_model::TurboLedgerIdentity;
@@ -20,13 +17,12 @@ using namespace drogon_model::TurboLedgerIdentity;
 namespace turbo_ledger_identity::services
 {
 
-
     void UserService::getUsers(
         int pageNo,
         int pageSize,
         const std::string& query,
         const std::string& tenantId,
-        const std::function<void(const turbo_ledger_identity::dto::BaseApiResponse&)>& callback)
+        const std::function<void(const dto::BaseApiResponse&)>& callback)
     {
         auto dbClient = drogon::app().getDbClient();
         auto mp = std::make_shared<Mapper<Users>>(dbClient);
@@ -110,7 +106,7 @@ namespace turbo_ledger_identity::services
                 // Handle count error
                 dto::BaseApiResponse errorResponse;
                 errorResponse.success = false;
-                errorResponse.error["code"] = ERR_DB_QUERY;
+                errorResponse.error["code"] = constants::ERR_DB_QUERY;
                 errorResponse.error["message"] = "Database error while fetching users.";
                 errorResponse.error["detail"] = e.base().what();
                 callback(errorResponse);
@@ -155,7 +151,7 @@ namespace turbo_ledger_identity::services
             turbo_ledger_identity::dto::BaseApiResponse errorResponse;
             errorResponse.success = false;
             errorResponse.message = "Database error while creating user";
-            errorResponse.error["code"] = ERR_DB_QUERY;
+            errorResponse.error["code"] = constants::ERR_DB_QUERY;
             callback(errorResponse);
 
         });
@@ -166,13 +162,12 @@ namespace turbo_ledger_identity::services
     void UserService::updateUser(
         const dto::UpdateUserDto& userData,
         const std::string& tenantId,
-        const std::function<void(const turbo_ledger_identity::dto::BaseApiResponse&)>& callback)
+        const std::function<void(const dto::BaseApiResponse&)>& callback)
     {
         auto dbClient = drogon::app().getDbClient();
         auto mp = std::make_shared<Mapper<Users>>(dbClient);
 
-        Criteria criteria = Criteria(Users::Cols::_id, CompareOperator::EQ, userData.getId()) &&
-                            Criteria(Users::Cols::_tenant_identifier, CompareOperator::EQ, tenantId);
+        Criteria criteria = Criteria(Users::Cols::_id, CompareOperator::EQ, userData.getId()) && Criteria(Users::Cols::_tenant_identifier, CompareOperator::EQ, tenantId);
 
         mp->findOne(criteria,
             [mp, userData, callback](Users user) { 
@@ -194,7 +189,7 @@ namespace turbo_ledger_identity::services
                     turbo_ledger_identity::dto::BaseApiResponse errorResponse;
                     errorResponse.success = false;
                     errorResponse.message = "Failed to update user";
-                    errorResponse.error["code"] = ERR_DB_QUERY;
+                    errorResponse.error["code"] = constants::ERR_DB_QUERY;
                     errorResponse.error["detail"] = e.base().what();
                     callback(errorResponse);
                 });
@@ -203,7 +198,7 @@ namespace turbo_ledger_identity::services
                 turbo_ledger_identity::dto::BaseApiResponse errorResponse;
                 errorResponse.success = false;
                 errorResponse.message = "User not found";
-                errorResponse.error["code"] = ERR_RESOURCE_NOT_FOUND;
+                errorResponse.error["code"] = constants::ERR_RESOURCE_NOT_FOUND;
                 errorResponse.error["detail"] = e.base().what();
                 callback(errorResponse);
             }
@@ -244,7 +239,7 @@ namespace turbo_ledger_identity::services
                         turbo_ledger_identity::dto::BaseApiResponse errorResponse;
                         errorResponse.success = false;
                         errorResponse.message = "Failed to activate user account";
-                        errorResponse.error["code"] = ERR_DB_QUERY;
+                        errorResponse.error["code"] = constants::ERR_DB_QUERY;
                         errorResponse.error["detail"] = e.base().what();
                         callback(errorResponse);
                     }
@@ -255,7 +250,7 @@ namespace turbo_ledger_identity::services
                 turbo_ledger_identity::dto::BaseApiResponse errorResponse;
                 errorResponse.success = false;
                 errorResponse.message = "User not found";
-                errorResponse.error["code"] = ERR_RESOURCE_NOT_FOUND;
+                errorResponse.error["code"] = constants::ERR_RESOURCE_NOT_FOUND;
                 errorResponse.error["detail"] = e.base().what();
                 callback(errorResponse);
             }
@@ -295,7 +290,7 @@ namespace turbo_ledger_identity::services
                         turbo_ledger_identity::dto::BaseApiResponse errorResponse;
                         errorResponse.success = false;
                         errorResponse.message = "Failed to deactivate user account";
-                        errorResponse.error["code"] = ERR_DB_QUERY;
+                        errorResponse.error["code"] = constants::ERR_DB_QUERY;
                         errorResponse.error["detail"] = e.base().what();
                         callback(errorResponse);
                     }
@@ -306,7 +301,7 @@ namespace turbo_ledger_identity::services
                 turbo_ledger_identity::dto::BaseApiResponse errorResponse;
                 errorResponse.success = false;
                 errorResponse.message = "User not found";
-                errorResponse.error["code"] = ERR_RESOURCE_NOT_FOUND;
+                errorResponse.error["code"] = constants::ERR_RESOURCE_NOT_FOUND;
                 errorResponse.error["detail"] = e.base().what();
                 callback(errorResponse);
             }
@@ -344,7 +339,7 @@ namespace turbo_ledger_identity::services
                             turbo_ledger_identity::dto::BaseApiResponse errorResponse;
                             errorResponse.success = false;
                             errorResponse.message = "Failed to delete user";
-                            errorResponse.error["code"] = ERR_DB_QUERY;
+                            errorResponse.error["code"] = constants::ERR_DB_QUERY;
                             callback(errorResponse);
                         }
                     },
@@ -353,7 +348,7 @@ namespace turbo_ledger_identity::services
                         turbo_ledger_identity::dto::BaseApiResponse errorResponse;
                         errorResponse.success = false;
                         errorResponse.message = "Failed to delete user";
-                        errorResponse.error["code"] = ERR_DB_QUERY;
+                        errorResponse.error["code"] = constants::ERR_DB_QUERY;
                         errorResponse.error["detail"] = e.base().what();
                         callback(errorResponse);
                     }
@@ -364,7 +359,7 @@ namespace turbo_ledger_identity::services
                 turbo_ledger_identity::dto::BaseApiResponse errorResponse;
                 errorResponse.success = false;
                 errorResponse.message = "User not found";
-                errorResponse.error["code"] = ERR_RESOURCE_NOT_FOUND;
+                errorResponse.error["code"] = constants::ERR_RESOURCE_NOT_FOUND;
                 errorResponse.error["detail"] = e.base().what();
                 callback(errorResponse);
             }
@@ -427,7 +422,7 @@ namespace turbo_ledger_identity::services
                 turbo_ledger_identity::dto::BaseApiResponse response;
                 response.success = false;
                 response.message = "Invalid credentials";
-                response.error["code"] = ERR_AUTH_INVALID_CREDENTIALS;
+                response.error["code"] = constants::ERR_AUTH_INVALID_CREDENTIALS;
                 callback(response);
             }
         },
@@ -436,7 +431,7 @@ namespace turbo_ledger_identity::services
             turbo_ledger_identity::dto::BaseApiResponse response;
             response.success = false;
             response.message = "User not found";
-            response.error["code"] = ERR_RESOURCE_NOT_FOUND;
+            response.error["code"] = constants::ERR_RESOURCE_NOT_FOUND;
             response.error["message"] = "User not found";
             callback(response);
         }
@@ -479,7 +474,7 @@ namespace turbo_ledger_identity::services
                         turbo_ledger_identity::dto::BaseApiResponse errorResponse;
                         errorResponse.success = false;
                         errorResponse.message = "Failed to lock user account";
-                        errorResponse.error["code"] = ERR_DB_QUERY;
+                        errorResponse.error["code"] = constants::ERR_DB_QUERY;
                         errorResponse.error["detail"] = e.base().what();
                         callback(errorResponse);
                     }
@@ -490,13 +485,12 @@ namespace turbo_ledger_identity::services
                 turbo_ledger_identity::dto::BaseApiResponse errorResponse;
                 errorResponse.success = false;
                 errorResponse.message = "User not found";
-                errorResponse.error["code"] = ERR_RESOURCE_NOT_FOUND;
+                errorResponse.error["code"] = constants::ERR_RESOURCE_NOT_FOUND;
                 errorResponse.error["detail"] = e.base().what();
                 callback(errorResponse);
             }
         );
     }
-
 
 
     void UserService::unlockUserAccount(
@@ -532,7 +526,7 @@ namespace turbo_ledger_identity::services
                         turbo_ledger_identity::dto::BaseApiResponse errorResponse;
                         errorResponse.success = false;
                         errorResponse.message = "Failed to unlock user account";
-                        errorResponse.error["code"] = ERR_DB_QUERY;
+                        errorResponse.error["code"] = constants::ERR_DB_QUERY;
                         errorResponse.error["detail"] = e.base().what();
                         callback(errorResponse);
                     }
@@ -543,7 +537,7 @@ namespace turbo_ledger_identity::services
                 turbo_ledger_identity::dto::BaseApiResponse errorResponse;
                 errorResponse.success = false;
                 errorResponse.message = "User not found";
-                errorResponse.error["code"] = ERR_RESOURCE_NOT_FOUND;
+                errorResponse.error["code"] = constants::ERR_RESOURCE_NOT_FOUND;
                 errorResponse.error["detail"] = e.base().what();
                 callback(errorResponse);
             }

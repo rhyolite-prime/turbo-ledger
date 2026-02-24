@@ -4,23 +4,20 @@
 
 using namespace drogon;
 
-namespace
-{
-    const std::string PREFIX = "/api/v1/tenants";
-}
 
 class TenantsController : public drogon::HttpController<TenantsController>
 {
 
     public:
+        static constexpr const char *PREFIX = "/api/v1/tenants";
         METHOD_LIST_BEGIN
-            ADD_METHOD_TO(TenantsController::getTenants, PREFIX + "/get-all", Get);
-            ADD_METHOD_TO(TenantsController::activate, PREFIX + "/activate", Get);
-            ADD_METHOD_TO(TenantsController::deactivate, PREFIX + "/deactivate", Get);
-            ADD_METHOD_TO(TenantsController::updateConnectionString, PREFIX + "/update-connection-string", Post);
-            ADD_METHOD_TO(TenantsController::createTenant, PREFIX + "/create", Post);
-            ADD_METHOD_TO(TenantsController::updateTenant, PREFIX + "/update", Post);
-            ADD_METHOD_TO(TenantsController::deleteTenant, PREFIX + "/delete", Delete);
+            ADD_METHOD_TO(TenantsController::getTenants, std::string(PREFIX) + "/get-all", Get);
+            ADD_METHOD_TO(TenantsController::activate, std::string(PREFIX) + "/activate", Get);
+            ADD_METHOD_TO(TenantsController::deactivate, std::string(PREFIX) + "/deactivate", Get);
+            ADD_METHOD_TO(TenantsController::updateConnectionString, std::string(PREFIX) + "/update-connection-string", Post);
+            ADD_METHOD_TO(TenantsController::createTenant, std::string(PREFIX) + "/create", Post);
+            ADD_METHOD_TO(TenantsController::updateTenant, std::string(PREFIX) + "/update", Post);
+            ADD_METHOD_TO(TenantsController::deleteTenant, std::string(PREFIX) + "/delete", Delete);
         METHOD_LIST_END
 
 
