@@ -1,12 +1,10 @@
-
 {
-
     "listeners": [
         {
             //address: Ip address,0.0.0.0 by default
             "address": "0.0.0.0",
             //port: Port number
-            "port": 7502,
+            "port": 7503,
             //https: If true, use https for security,false by default
             "https": false
         }
@@ -24,7 +22,7 @@
             //port: Server port, 5432 by default
             "port": 5432,
             //dbname: Database name
-            "dbname": "TurboLedgerPortfolio",
+            "dbname": "TurboLedgerGlobalConfiguration",
             //user: 'postgres' by default
             "user": "postgres",
             //passwd: '' by default

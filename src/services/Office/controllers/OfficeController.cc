@@ -1,9 +1,7 @@
 #include "OfficeController.h"
 #include "dto/BaseApiResponse.h"
 
-void OfficeController::getOffices(
-    const HttpRequestPtr &req,
-    std::function<void(const HttpResponsePtr &)> &&callback) {
+void OfficeController::getOffices(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback) {
 
   turbo_ledger_office::dto::BaseApiResponse response;
   response.success = true;
@@ -28,9 +26,8 @@ void OfficeController::getOffices(
   callback(resp);
 }
 
-void OfficeController::createOffice(
-    const HttpRequestPtr &req,
-    std::function<void(const HttpResponsePtr &)> &&callback) {
+void OfficeController::createOffice(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback) {
+
   turbo_ledger_office::dto::BaseApiResponse response;
   response.success = true;
 

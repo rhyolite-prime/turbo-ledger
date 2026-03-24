@@ -1,13 +1,15 @@
 //
-// Created by Emmanuel Addo-Odame on 24/02/2026.
+// Created by Emmanuel Addo-Odame on 22/03/2026.
 //
 
-#ifndef PORTFOLIO_BASEAPIRESPONSE_H
-#define PORTFOLIO_BASEAPIRESPONSE_H
+#ifndef GLOBALCONFIGURATION_BASEAPIRESPONSE_H
+#define GLOBALCONFIGURATION_BASEAPIRESPONSE_H
+
 #include <json/json.h>
 #include <string>
 
-namespace turbo_ledger_portfolio::dto {
+namespace turbo_ledger_global_configuration::dto {
+
     class BaseApiResponse {
     public:
         Json::Value result;
@@ -33,4 +35,4 @@ namespace turbo_ledger_portfolio::dto {
 }
 
 
-#endif //PORTFOLIO_BASEAPIRESPONSE_H
+#endif //GLOBALCONFIGURATION_BASEAPIRESPONSE_H

@@ -633,6 +633,144 @@ void LoanProductsController::getLoanProductDetails(const HttpRequestPtr& req, st
 }
 
 
+void LoanProductsController::retrieveLoanProductMix(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback, std::string loanProductId) {
+    turbo_ledger_portfolio::dto::BaseApiResponse response;
+    response.success = true;
+
+    Json::Value restrictedProducts(Json::arrayValue);
+    Json::Value allowedProducts(Json::arrayValue);
+
+    Json::Value restrictedProduct;
+    restrictedProduct["id"] = 1;
+    restrictedProduct["name"] = "Personal Loan";
+    restrictedProduct["includeInBorrowerCycle"] = false;
+    restrictedProducts.append(restrictedProduct);
+
+    Json::Value allowedProduct1;
+    allowedProduct1["id"] = 3;
+    allowedProduct1["name"] = "Daily Loan";
+    allowedProduct1["includeInBorrowerCycle"] = false;
+    allowedProducts.append(allowedProduct1);
+
+    Json::Value allowedProduct2;
+    allowedProduct2["id"] = 2;
+    allowedProduct2["name"] = "Joint Loan";
+    allowedProduct2["includeInBorrowerCycle"] = false;
+    allowedProducts.append(allowedProduct2);
+
+    Json::Value allowedProduct3;
+    allowedProduct3["id"] = 6;
+    allowedProduct3["name"] = "Personal Loan -2";
+    allowedProduct3["includeInBorrowerCycle"] = false;
+    allowedProducts.append(allowedProduct3);
+
+    Json::Value allowedProduct4;
+    allowedProduct4["id"] = 5;
+    allowedProduct4["name"] = "Primary Loan";
+    allowedProduct4["includeInBorrowerCycle"] = false;
+    allowedProducts.append(allowedProduct4);
+
+    Json::Value allowedProduct5;
+    allowedProduct5["id"] = 4;
+    allowedProduct5["name"] = "Weekly Loan";
+    allowedProduct5["includeInBorrowerCycle"] = false;
+    allowedProducts.append(allowedProduct5);
+
+    Json::Value result;
+    result["restrictedProducts"] = restrictedProducts;
+    result["allowedProducts"] = allowedProducts;
+
+    response.result = result;
+    response.message = "Loan Product mix retrieved successfully";
+
+    auto resp = HttpResponse::newHttpJsonResponse(response.toJson());
+    callback(resp);
+}
+
+
+void LoanProductsController::getLoanProductMixTemplate(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback) {
+    turbo_ledger_portfolio::dto::BaseApiResponse response;
+    response.success = true;
+
+    Json::Value result;
+    Json::Value productOptions(Json::arrayValue);
+
+    Json::Value product1;
+    product1["id"] = 5;
+    product1["name"] = "Primary Loan";
+    productOptions.append(product1);
+
+    Json::Value product2;
+    product2["id"] = 4;
+    product2["name"] = "Weekly Loan";
+    productOptions.append(product2);
+
+    result["productOptions"] = productOptions;
+
+    response.result = result;
+    response.message = "Loan Product mix retrieved successfully";
+
+    auto resp = HttpResponse::newHttpJsonResponse(response.toJson());
+    callback(resp);
+}
+
+
+void LoanProductsController::getLoanProductMix(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback) {
+    turbo_ledger_portfolio::dto::BaseApiResponse response;
+    response.success = true;
+
+    Json::Value mixes(Json::arrayValue);
+
+    auto buildProductEntry = [](int id, const std::string &name) {
+        Json::Value product;
+        product["id"] = id;
+        product["name"] = name;
+        product["includeInBorrowerCycle"] = false;
+        return product;
+    };
+
+    auto buildMixEntry = [&buildProductEntry](int productId, const std::string &productName,
+                                              const std::vector<std::pair<int, std::string>> &restricted,
+                                              const std::vector<std::pair<int, std::string>> &allowed) {
+        Json::Value mix;
+        mix["productId"] = productId;
+        mix["productName"] = productName;
+
+        Json::Value restrictedProducts(Json::arrayValue);
+        for (const auto &item : restricted) {
+            restrictedProducts.append(buildProductEntry(item.first, item.second));
+        }
+        mix["restrictedProducts"] = restrictedProducts;
+
+        Json::Value allowedProducts(Json::arrayValue);
+        for (const auto &item : allowed) {
+            allowedProducts.append(buildProductEntry(item.first, item.second));
+        }
+        mix["allowedProducts"] = allowedProducts;
+
+        return mix;
+    };
+
+    mixes.append(buildMixEntry(
+        1, "Personal Loan",
+        {{2, "Joint Loan"}, {5, "Primary Loan"}, {3, "Daily Loan"}},
+        {{1, "Personal Loan"}, {6, "Personal Loan -2"}, {4, "Weekly Loan"}}
+    ));
+
+    mixes.append(buildMixEntry(
+        2, "Joint Loan",
+        {{1, "Personal Loan"}, {6, "Personal Loan -2"}},
+        {{3, "Daily Loan"}, {2, "Joint Loan"}, {5, "Primary Loan"}, {4, "Weekly Loan"}}
+    ));
+
+    response.result = mixes;
+    response.message = "Loan Product mix retrieved successfully";
+
+    auto resp = HttpResponse::newHttpJsonResponse(response.toJson());
+    callback(resp);
+}
+
+
 void LoanProductsController::getLoanProductTemplate(const HttpRequestPtr& req, std::function<void (const HttpResponsePtr &)> &&callback)
 {
     turbo_ledger_portfolio::dto::BaseApiResponse response;
@@ -1262,4 +1400,89 @@ void LoanProductsController::updateLoanProduct(const HttpRequestPtr &req, std::f
 
     auto resp = HttpResponse::newHttpJsonResponse(response.toJson());
     callback(resp);
+}
+
+
+void LoanProductsController::createLoanProductMix(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback, std::string loanProductId) {
+
+    auto jsonBody = req->getJsonObject();
+    turbo_ledger_portfolio::dto::BaseApiResponse response;
+    response.success = true;
+
+    Json::Value result;
+    result["productId"] = 5;
+
+    Json::Value changes;
+    Json::Value restrictedProductsForMix(Json::arrayValue);
+    restrictedProductsForMix.append(1);
+
+    Json::Value removedProductsForMix(Json::arrayValue);
+
+    changes["restrictedProductsForMix"] = restrictedProductsForMix;
+    changes["removedProductsForMix"] = removedProductsForMix;
+
+    result["changes"] = changes;
+
+    response.result = result;
+    response.message = "Loan Product mix created successfully";
+
+    auto resp = HttpResponse::newHttpJsonResponse(response.toJson());
+    callback(resp);
+}
+
+
+void LoanProductsController::updateLoanProductMix(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback, std::string loanProductId) {
+
+    auto jsonBody = req->getJsonObject();
+
+    turbo_ledger_portfolio::dto::BaseApiResponse response;
+    response.success = true;
+
+    Json::Value result;
+    result["productId"] = 5;
+
+    Json::Value changes;
+    Json::Value restrictedProductsForMix(Json::arrayValue);
+    restrictedProductsForMix.append(3);
+
+    Json::Value removedProductsForMix(Json::arrayValue);
+    removedProductsForMix.append(1);
+
+    changes["restrictedProductsForMix"] = restrictedProductsForMix;
+    changes["removedProductsForMix"] = removedProductsForMix;
+
+    result["changes"] = changes;
+
+    response.result = result;
+    response.message = "Loan Product mix created successfully";
+
+    auto resp = HttpResponse::newHttpJsonResponse(response.toJson());
+    callback(resp);
+
+
+}
+
+
+void LoanProductsController::deleteLoanProductMix(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback, std::string loanProductId)
+{
+    turbo_ledger_portfolio::dto::BaseApiResponse response;
+    response.success = true;
+
+    Json::Value result;
+    result["productId"] = 5;
+
+    Json::Value changes;
+    Json::Value removedProductsForMix(Json::arrayValue);
+    removedProductsForMix.append(3);
+
+    changes["removedProductsForMix"] = removedProductsForMix;
+
+    result["changes"] = changes;
+
+    response.result = result;
+    response.message = "Loan Product mix created successfully";
+
+    auto resp = HttpResponse::newHttpJsonResponse(response.toJson());
+    callback(resp);
+
 }
