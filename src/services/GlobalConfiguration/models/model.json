@@ -8,7 +8,7 @@
     //port: server port, 5432 by default;
     "port": 5432,
     //dbname: Database name;
-    "dbname": "TurboLedgerPortfolio",
+    "dbname": "TurboLedgerGlobalConfiguration",
     //schema: valid for postgreSQL, "public" by default;
     "schema": "public",
     //user: User name
