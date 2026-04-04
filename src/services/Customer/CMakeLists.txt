@@ -19,7 +19,41 @@ endif ()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-add_executable(${PROJECT_NAME} main.cc)
+add_executable(${PROJECT_NAME} main.cc
+        controllers/AccountNumberFormatsController.h
+        controllers/ClientsController.h
+        controllers/SelfController.h
+        controllers/CentersController.h
+        controllers/CollectionSheetController.h
+        services/dam/DamApi.h
+        services/identity/IdentityApi.h
+        services/office/OfficeApi.h
+        services/portfolio/PortfolioApi.h
+        services/client/ClientService.h
+        services/client/ClientService.cc
+        dto/BaseApiResponse.h
+        dto/ClientDto.h
+        constants/LegalForm.h
+        constants/ErrorCodes.h
+        plugins/CustomerServicePlugin.h
+        constants/ClientStatus.h
+        dto/CloseClientDto.h
+        dto/ActivateClientDto.h
+        dto/RejectClientDto.h
+        constants/ReactivateClientDto.h
+        dto/UndoRejectOrWithdrawalClientDto.h
+        dto/WithdrawClientDto.h
+        dto/AssignStaffToClientDto.h
+        dto/UpdateDefaultSavingsAccountDto.h
+        dto/ProposeClientTransferDto.h
+        dto/WithdrawOrRejectClientTransferDto.h
+        dto/AcceptClientTransferDto.h
+        dto/ProposeAndAcceptClientTransferDto.h
+        dto/ClientAddressDto.h
+        dto/ClientIdentifierDto.h
+        dto/ClientChargeDto.h
+        dto/PayClientChargeDto.h
+)
 
 # ##############################################################################
 # If you include the drogon source code locally in your project, use this method

@@ -1,5 +1,4 @@
 #include "WorkingDaysController.h"
-
 #include "dto/BaseApiResponse.h"
 
 void WorkingDaysController::getWorkingDaysTemplate(const HttpRequestPtr& req, std::function<void (const HttpResponsePtr &)> &&callback)
