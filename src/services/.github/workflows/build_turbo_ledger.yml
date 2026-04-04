@@ -1,0 +1,103 @@
+name: Build Turbo Ledger API's for Ubuntu 22.X
+
+on:
+  push:
+    branches: [dev]
+  pull_request:
+    branches: [main]
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-22.04
+    outputs:
+      services-to-build: ${{ steps.filter.outputs.changes }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Detect service changes
+        id: filter
+        uses: dorny/paths-filter@v2
+        with:
+          filters: |
+            Accounting: Accounting/**/*
+            ApiGateway: ApiGateway/**/*
+            Customer: Customer/**/*
+            DepositAccountManagement: DepositAccountManagement/**/*
+            GlobalConfiguration: GlobalConfiguration/**/*
+            Group: Group/**/*
+            HeartBeat: HeartBeat/**/*
+            Indentity: Indentity/**/*
+            Notification: Notification/**/*
+            Office: Office/**/*
+            Portfolio: Portfolio/**/*
+            Provisioner: Provisioner/**/*
+            Reporting: Reporting/**/*
+            Staff: Staff/**/*
+            Teller: Teller/**/*
+            Template: Template/**/*
+
+  build:
+    runs-on: ubuntu-22.04
+    needs: detect-changes
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJson(needs.detect-changes.outputs.services-to-build) }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y cmake g++ libjsoncpp-dev uuid-dev openssl libssl-dev zlib1g-dev
+          sudo apt install postgresql libhiredis-dev doxygen graphviz dia
+          sudo apt install -y librabbitmq-dev
+
+      - name: Cache Drogon
+        id: cache-drogon
+        uses: actions/cache@v3
+        with:
+          path: /usr/local/lib/libdrogon*
+          key: ${{ runner.os }}-drogon-${{ hashFiles('drogon_version.txt') }}
+      
+      - name: Install Drogon
+        if: steps.cache-drogon.outputs.cache-hit != 'true'
+        run: |
+          git clone https://github.com/drogonframework/drogon.git
+          cd drogon
+          git submodule update --init --recursive
+          echo "DROGON_COMMIT=$(git rev-parse HEAD)" > ../drogon_version.txt
+          mkdir build && cd build
+          cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_POSTGRESQL=ON ..
+          make -j$(nproc)
+          sudo make install
+          cd ../..
+
+      - name: Build ${{ matrix.service }}
+        run: |
+          cd ${{ matrix.service }}
+          
+          # Clean previous build if exists
+          rm -rf build
+          mkdir build
+          cd build
+          
+          cmake ..
+          make -j$(nproc)
+          
+          # Go back to root
+          cd ../..
+
+      - name: Upload ${{ matrix.service }} Binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.service }}-api
+          path: ${{ matrix.service }}/build/${{ matrix.service }}
+          retention-days: 30

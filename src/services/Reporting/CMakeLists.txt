@@ -19,7 +19,8 @@ endif ()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-add_executable(${PROJECT_NAME} main.cc)
+add_executable(${PROJECT_NAME} main.cc
+        controllers/SearchController.h)
 
 # ##############################################################################
 # If you include the drogon source code locally in your project, use this method

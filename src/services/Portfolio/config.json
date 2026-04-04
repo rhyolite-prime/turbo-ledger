@@ -24,7 +24,7 @@
             //port: Server port, 5432 by default
             "port": 5432,
             //dbname: Database name
-            "dbname": "TurboLedgerPortfolio",
+            "dbname": "TlPortfolioDb",
             //user: 'postgres' by default
             "user": "postgres",
             //passwd: '' by default
@@ -328,6 +328,12 @@
             "JwtAudience" : "TurboLedgerIdentity",
             "JwtExpirationTime" : 3600
         },
-        "PrivateKey": "ca01ca76-3866-4d44-9881-d9e365b81473"
+        "PrivateKey": "ca01ca76-3866-4d44-9881-d9e365b81473",
+        "ServiceIdentity": {
+            "Name" : "portfolio",
+            "Alias" : "bastet",
+            "Version" : "0.1",
+            "Description" : "loans, fees, interest calculations, repayment strategies"
+        }
     }
 }

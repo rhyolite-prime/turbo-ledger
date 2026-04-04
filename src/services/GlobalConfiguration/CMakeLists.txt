@@ -22,7 +22,12 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 add_executable(${PROJECT_NAME} main.cc
         controllers/HolidaysController.h
         dto/BaseApiResponse.h
-        controllers/WorkingDaysController.cc)
+        controllers/WorkingDaysController.cc
+        controllers/CurrencyController.h
+        controllers/HooksController.h
+        controllers/CodeController.h
+        controllers/PaymentTypesController.h
+        controllers/TaxController.h)
 
 # ##############################################################################
 # If you include the drogon source code locally in your project, use this method

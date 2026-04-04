@@ -26,7 +26,14 @@ add_executable(${PROJECT_NAME} main.cc
         services/journal/JournalService.cc
         dto/BaseApiResponse.h
         dto/CreateGlAccountDto.h
-        dto/UpdateGlAccountDto.h)
+        dto/UpdateGlAccountDto.h
+        controllers/AccountingRulesController.h
+        controllers/AccountTransfersController.h
+        controllers/GeneralLedgerAccountController.h
+        controllers/AccountingClosureController.h
+        controllers/JournalEntriesController.h
+        controllers/FinancialActivityAccountsController.h
+        controllers/ProvisioningEntriesController.h)
 
 # ##############################################################################
 # If you include the drogon source code locally in your project, use this method
