@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(Office CXX)
+project(Organization CXX)
 
 include(CheckIncludeFileCXX)
 
@@ -21,8 +21,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_executable(${PROJECT_NAME} main.cc
         controllers/OfficeController.h
-        controllers/OfficeTransactionsController.h
-        dto/BaseApiResponse.h)
+        controllers/OfficeTransactionsController.h)
 
 # ##############################################################################
 # If you include the drogon source code locally in your project, use this method
