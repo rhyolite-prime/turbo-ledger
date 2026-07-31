@@ -47,7 +47,7 @@ class Client
         static const std::string _id;
         static const std::string _account_no;
         static const std::string _external_id;
-        static const std::string _status_enum;
+        static const std::string _status;
         static const std::string _sub_status;
         static const std::string _activation_date;
         static const std::string _office_joining_date;
@@ -171,13 +171,13 @@ class Client
     void setExternalId(std::string &&pExternalId) noexcept;
     void setExternalIdToNull() noexcept;
 
-    /**  For column status_enum  */
-    ///Get the value of the column status_enum, returns the default value if the column is null
-    const int32_t &getValueOfStatusEnum() const noexcept;
+    /**  For column status  */
+    ///Get the value of the column status, returns the default value if the column is null
+    const int32_t &getValueOfStatus() const noexcept;
     ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
-    const std::shared_ptr<int32_t> &getStatusEnum() const noexcept;
-    ///Set the value of the column status_enum
-    void setStatusEnum(const int32_t &pStatusEnum) noexcept;
+    const std::shared_ptr<int32_t> &getStatus() const noexcept;
+    ///Set the value of the column status
+    void setStatus(const int32_t &pStatus) noexcept;
 
     /**  For column sub_status  */
     ///Get the value of the column sub_status, returns the default value if the column is null
@@ -214,6 +214,7 @@ class Client
     ///Set the value of the column office_id
     void setOfficeId(const std::string &pOfficeId) noexcept;
     void setOfficeId(std::string &&pOfficeId) noexcept;
+    void setOfficeIdToNull() noexcept;
 
     /**  For column transfer_to_office_id  */
     ///Get the value of the column transfer_to_office_id, returns the default value if the column is null
@@ -223,6 +224,7 @@ class Client
     ///Set the value of the column transfer_to_office_id
     void setTransferToOfficeId(const std::string &pTransferToOfficeId) noexcept;
     void setTransferToOfficeId(std::string &&pTransferToOfficeId) noexcept;
+    void setTransferToOfficeIdToNull() noexcept;
 
     /**  For column staff_id  */
     ///Get the value of the column staff_id, returns the default value if the column is null
@@ -232,6 +234,7 @@ class Client
     ///Set the value of the column staff_id
     void setStaffId(const std::string &pStaffId) noexcept;
     void setStaffId(std::string &&pStaffId) noexcept;
+    void setStaffIdToNull() noexcept;
 
     /**  For column firstname  */
     ///Get the value of the column firstname, returns the default value if the column is null
@@ -309,6 +312,7 @@ class Client
     ///Set the value of the column gender_cv_id
     void setGenderCvId(const std::string &pGenderCvId) noexcept;
     void setGenderCvId(std::string &&pGenderCvId) noexcept;
+    void setGenderCvIdToNull() noexcept;
 
     /**  For column date_of_birth  */
     ///Get the value of the column date_of_birth, returns the default value if the column is null
@@ -327,6 +331,7 @@ class Client
     ///Set the value of the column image_id
     void setImageId(const std::string &pImageId) noexcept;
     void setImageId(std::string &&pImageId) noexcept;
+    void setImageIdToNull() noexcept;
 
     /**  For column closure_reason_cv_id  */
     ///Get the value of the column closure_reason_cv_id, returns the default value if the column is null
@@ -336,6 +341,7 @@ class Client
     ///Set the value of the column closure_reason_cv_id
     void setClosureReasonCvId(const std::string &pClosureReasonCvId) noexcept;
     void setClosureReasonCvId(std::string &&pClosureReasonCvId) noexcept;
+    void setClosureReasonCvIdToNull() noexcept;
 
     /**  For column closedon_date  */
     ///Get the value of the column closedon_date, returns the default value if the column is null
@@ -354,6 +360,7 @@ class Client
     ///Set the value of the column updated_by
     void setUpdatedBy(const std::string &pUpdatedBy) noexcept;
     void setUpdatedBy(std::string &&pUpdatedBy) noexcept;
+    void setUpdatedByToNull() noexcept;
 
     /**  For column updated_on  */
     ///Get the value of the column updated_on, returns the default value if the column is null
@@ -381,6 +388,7 @@ class Client
     ///Set the value of the column activatedon_userid
     void setActivatedonUserid(const std::string &pActivatedonUserid) noexcept;
     void setActivatedonUserid(std::string &&pActivatedonUserid) noexcept;
+    void setActivatedonUseridToNull() noexcept;
 
     /**  For column closedon_userid  */
     ///Get the value of the column closedon_userid, returns the default value if the column is null
@@ -390,6 +398,7 @@ class Client
     ///Set the value of the column closedon_userid
     void setClosedonUserid(const std::string &pClosedonUserid) noexcept;
     void setClosedonUserid(std::string &&pClosedonUserid) noexcept;
+    void setClosedonUseridToNull() noexcept;
 
     /**  For column default_savings_product  */
     ///Get the value of the column default_savings_product, returns the default value if the column is null
@@ -399,6 +408,7 @@ class Client
     ///Set the value of the column default_savings_product
     void setDefaultSavingsProduct(const std::string &pDefaultSavingsProduct) noexcept;
     void setDefaultSavingsProduct(std::string &&pDefaultSavingsProduct) noexcept;
+    void setDefaultSavingsProductToNull() noexcept;
 
     /**  For column default_savings_account  */
     ///Get the value of the column default_savings_account, returns the default value if the column is null
@@ -408,6 +418,7 @@ class Client
     ///Set the value of the column default_savings_account
     void setDefaultSavingsAccount(const std::string &pDefaultSavingsAccount) noexcept;
     void setDefaultSavingsAccount(std::string &&pDefaultSavingsAccount) noexcept;
+    void setDefaultSavingsAccountToNull() noexcept;
 
     /**  For column client_type_cv_id  */
     ///Get the value of the column client_type_cv_id, returns the default value if the column is null
@@ -417,6 +428,7 @@ class Client
     ///Set the value of the column client_type_cv_id
     void setClientTypeCvId(const std::string &pClientTypeCvId) noexcept;
     void setClientTypeCvId(std::string &&pClientTypeCvId) noexcept;
+    void setClientTypeCvIdToNull() noexcept;
 
     /**  For column client_classification_cv_id  */
     ///Get the value of the column client_classification_cv_id, returns the default value if the column is null
@@ -426,6 +438,7 @@ class Client
     ///Set the value of the column client_classification_cv_id
     void setClientClassificationCvId(const std::string &pClientClassificationCvId) noexcept;
     void setClientClassificationCvId(std::string &&pClientClassificationCvId) noexcept;
+    void setClientClassificationCvIdToNull() noexcept;
 
     /**  For column reject_reason_cv_id  */
     ///Get the value of the column reject_reason_cv_id, returns the default value if the column is null
@@ -435,6 +448,7 @@ class Client
     ///Set the value of the column reject_reason_cv_id
     void setRejectReasonCvId(const std::string &pRejectReasonCvId) noexcept;
     void setRejectReasonCvId(std::string &&pRejectReasonCvId) noexcept;
+    void setRejectReasonCvIdToNull() noexcept;
 
     /**  For column rejectedon_date  */
     ///Get the value of the column rejectedon_date, returns the default value if the column is null
@@ -453,6 +467,7 @@ class Client
     ///Set the value of the column rejectedon_userid
     void setRejectedonUserid(const std::string &pRejectedonUserid) noexcept;
     void setRejectedonUserid(std::string &&pRejectedonUserid) noexcept;
+    void setRejectedonUseridToNull() noexcept;
 
     /**  For column withdraw_reason_cv_id  */
     ///Get the value of the column withdraw_reason_cv_id, returns the default value if the column is null
@@ -462,6 +477,7 @@ class Client
     ///Set the value of the column withdraw_reason_cv_id
     void setWithdrawReasonCvId(const std::string &pWithdrawReasonCvId) noexcept;
     void setWithdrawReasonCvId(std::string &&pWithdrawReasonCvId) noexcept;
+    void setWithdrawReasonCvIdToNull() noexcept;
 
     /**  For column withdrawn_on_date  */
     ///Get the value of the column withdrawn_on_date, returns the default value if the column is null
@@ -480,6 +496,7 @@ class Client
     ///Set the value of the column withdraw_on_userid
     void setWithdrawOnUserid(const std::string &pWithdrawOnUserid) noexcept;
     void setWithdrawOnUserid(std::string &&pWithdrawOnUserid) noexcept;
+    void setWithdrawOnUseridToNull() noexcept;
 
     /**  For column reactivated_on_date  */
     ///Get the value of the column reactivated_on_date, returns the default value if the column is null
@@ -498,6 +515,7 @@ class Client
     ///Set the value of the column reactivated_on_userid
     void setReactivatedOnUserid(const std::string &pReactivatedOnUserid) noexcept;
     void setReactivatedOnUserid(std::string &&pReactivatedOnUserid) noexcept;
+    void setReactivatedOnUseridToNull() noexcept;
 
     /**  For column legal_form_enum  */
     ///Get the value of the column legal_form_enum, returns the default value if the column is null
@@ -525,6 +543,7 @@ class Client
     ///Set the value of the column reopened_by_userid
     void setReopenedByUserid(const std::string &pReopenedByUserid) noexcept;
     void setReopenedByUserid(std::string &&pReopenedByUserid) noexcept;
+    void setReopenedByUseridToNull() noexcept;
 
     /**  For column email_address  */
     ///Get the value of the column email_address, returns the default value if the column is null
@@ -562,6 +581,7 @@ class Client
     ///Set the value of the column created_by
     void setCreatedBy(const std::string &pCreatedBy) noexcept;
     void setCreatedBy(std::string &&pCreatedBy) noexcept;
+    void setCreatedByToNull() noexcept;
 
     /**  For column last_modified_by  */
     ///Get the value of the column last_modified_by, returns the default value if the column is null
@@ -571,6 +591,7 @@ class Client
     ///Set the value of the column last_modified_by
     void setLastModifiedBy(const std::string &pLastModifiedBy) noexcept;
     void setLastModifiedBy(std::string &&pLastModifiedBy) noexcept;
+    void setLastModifiedByToNull() noexcept;
 
     /**  For column last_modified_on_utc  */
     ///Get the value of the column last_modified_on_utc, returns the default value if the column is null
@@ -607,7 +628,7 @@ class Client
     std::shared_ptr<std::string> id_;
     std::shared_ptr<std::string> accountNo_;
     std::shared_ptr<std::string> externalId_;
-    std::shared_ptr<int32_t> statusEnum_;
+    std::shared_ptr<int32_t> status_;
     std::shared_ptr<int32_t> subStatus_;
     std::shared_ptr<::trantor::Date> activationDate_;
     std::shared_ptr<::trantor::Date> officeJoiningDate_;
@@ -698,7 +719,7 @@ class Client
         {
             needSelection=true;
         }
-        sql += "status_enum,";
+        sql += "status,";
         ++parametersCount;
         if(!dirtyFlag_[3])
         {
@@ -719,23 +740,20 @@ class Client
             sql += "office_joining_date,";
             ++parametersCount;
         }
-        sql += "office_id,";
-        ++parametersCount;
-        if(!dirtyFlag_[7])
+        if(dirtyFlag_[7])
         {
-            needSelection=true;
+            sql += "office_id,";
+            ++parametersCount;
         }
-        sql += "transfer_to_office_id,";
-        ++parametersCount;
-        if(!dirtyFlag_[8])
+        if(dirtyFlag_[8])
         {
-            needSelection=true;
+            sql += "transfer_to_office_id,";
+            ++parametersCount;
         }
-        sql += "staff_id,";
-        ++parametersCount;
-        if(!dirtyFlag_[9])
+        if(dirtyFlag_[9])
         {
-            needSelection=true;
+            sql += "staff_id,";
+            ++parametersCount;
         }
         sql += "firstname,";
         ++parametersCount;
@@ -779,39 +797,35 @@ class Client
         {
             needSelection=true;
         }
-        sql += "gender_cv_id,";
-        ++parametersCount;
-        if(!dirtyFlag_[17])
+        if(dirtyFlag_[17])
         {
-            needSelection=true;
+            sql += "gender_cv_id,";
+            ++parametersCount;
         }
         if(dirtyFlag_[18])
         {
             sql += "date_of_birth,";
             ++parametersCount;
         }
-        sql += "image_id,";
-        ++parametersCount;
-        if(!dirtyFlag_[19])
+        if(dirtyFlag_[19])
         {
-            needSelection=true;
+            sql += "image_id,";
+            ++parametersCount;
         }
-        sql += "closure_reason_cv_id,";
-        ++parametersCount;
-        if(!dirtyFlag_[20])
+        if(dirtyFlag_[20])
         {
-            needSelection=true;
+            sql += "closure_reason_cv_id,";
+            ++parametersCount;
         }
         if(dirtyFlag_[21])
         {
             sql += "closedon_date,";
             ++parametersCount;
         }
-        sql += "updated_by,";
-        ++parametersCount;
-        if(!dirtyFlag_[22])
+        if(dirtyFlag_[22])
         {
-            needSelection=true;
+            sql += "updated_by,";
+            ++parametersCount;
         }
         if(dirtyFlag_[23])
         {
@@ -823,17 +837,15 @@ class Client
             sql += "submittedon_date,";
             ++parametersCount;
         }
-        sql += "activatedon_userid,";
-        ++parametersCount;
-        if(!dirtyFlag_[25])
+        if(dirtyFlag_[25])
         {
-            needSelection=true;
+            sql += "activatedon_userid,";
+            ++parametersCount;
         }
-        sql += "closedon_userid,";
-        ++parametersCount;
-        if(!dirtyFlag_[26])
+        if(dirtyFlag_[26])
         {
-            needSelection=true;
+            sql += "closedon_userid,";
+            ++parametersCount;
         }
         if(dirtyFlag_[27])
         {
@@ -845,62 +857,55 @@ class Client
             sql += "default_savings_account,";
             ++parametersCount;
         }
-        sql += "client_type_cv_id,";
-        ++parametersCount;
-        if(!dirtyFlag_[29])
+        if(dirtyFlag_[29])
         {
-            needSelection=true;
+            sql += "client_type_cv_id,";
+            ++parametersCount;
         }
-        sql += "client_classification_cv_id,";
-        ++parametersCount;
-        if(!dirtyFlag_[30])
+        if(dirtyFlag_[30])
         {
-            needSelection=true;
+            sql += "client_classification_cv_id,";
+            ++parametersCount;
         }
-        sql += "reject_reason_cv_id,";
-        ++parametersCount;
-        if(!dirtyFlag_[31])
+        if(dirtyFlag_[31])
         {
-            needSelection=true;
+            sql += "reject_reason_cv_id,";
+            ++parametersCount;
         }
         if(dirtyFlag_[32])
         {
             sql += "rejectedon_date,";
             ++parametersCount;
         }
-        sql += "rejectedon_userid,";
-        ++parametersCount;
-        if(!dirtyFlag_[33])
+        if(dirtyFlag_[33])
         {
-            needSelection=true;
+            sql += "rejectedon_userid,";
+            ++parametersCount;
         }
-        sql += "withdraw_reason_cv_id,";
-        ++parametersCount;
-        if(!dirtyFlag_[34])
+        if(dirtyFlag_[34])
         {
-            needSelection=true;
+            sql += "withdraw_reason_cv_id,";
+            ++parametersCount;
         }
         if(dirtyFlag_[35])
         {
             sql += "withdrawn_on_date,";
             ++parametersCount;
         }
-        sql += "withdraw_on_userid,";
-        ++parametersCount;
-        if(!dirtyFlag_[36])
+        if(dirtyFlag_[36])
         {
-            needSelection=true;
+            sql += "withdraw_on_userid,";
+            ++parametersCount;
         }
         if(dirtyFlag_[37])
         {
             sql += "reactivated_on_date,";
             ++parametersCount;
         }
-        sql += "reactivated_on_userid,";
-        ++parametersCount;
-        if(!dirtyFlag_[38])
+        if(dirtyFlag_[38])
         {
-            needSelection=true;
+            sql += "reactivated_on_userid,";
+            ++parametersCount;
         }
         if(dirtyFlag_[39])
         {
@@ -912,11 +917,10 @@ class Client
             sql += "reopened_on_date,";
             ++parametersCount;
         }
-        sql += "reopened_by_userid,";
-        ++parametersCount;
-        if(!dirtyFlag_[41])
+        if(dirtyFlag_[41])
         {
-            needSelection=true;
+            sql += "reopened_by_userid,";
+            ++parametersCount;
         }
         sql += "email_address,";
         ++parametersCount;
@@ -935,17 +939,15 @@ class Client
         {
             needSelection=true;
         }
-        sql += "created_by,";
-        ++parametersCount;
-        if(!dirtyFlag_[45])
+        if(dirtyFlag_[45])
         {
-            needSelection=true;
+            sql += "created_by,";
+            ++parametersCount;
         }
-        sql += "last_modified_by,";
-        ++parametersCount;
-        if(!dirtyFlag_[46])
+        if(dirtyFlag_[46])
         {
-            needSelection=true;
+            sql += "last_modified_by,";
+            ++parametersCount;
         }
         sql += "last_modified_on_utc,";
         ++parametersCount;
@@ -1016,27 +1018,15 @@ class Client
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
         }
-        else
-        {
-            sql +="default,";
-        }
         if(dirtyFlag_[8])
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
         }
-        else
-        {
-            sql +="default,";
-        }
         if(dirtyFlag_[9])
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
-        }
-        else
-        {
-            sql +="default,";
         }
         if(dirtyFlag_[10])
         {
@@ -1106,10 +1096,6 @@ class Client
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
         }
-        else
-        {
-            sql +="default,";
-        }
         if(dirtyFlag_[18])
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
@@ -1120,18 +1106,10 @@ class Client
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
         }
-        else
-        {
-            sql +="default,";
-        }
         if(dirtyFlag_[20])
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
-        }
-        else
-        {
-            sql +="default,";
         }
         if(dirtyFlag_[21])
         {
@@ -1142,10 +1120,6 @@ class Client
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
-        }
-        else
-        {
-            sql +="default,";
         }
         if(dirtyFlag_[23])
         {
@@ -1162,18 +1136,10 @@ class Client
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
         }
-        else
-        {
-            sql +="default,";
-        }
         if(dirtyFlag_[26])
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
-        }
-        else
-        {
-            sql +="default,";
         }
         if(dirtyFlag_[27])
         {
@@ -1190,27 +1156,15 @@ class Client
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
         }
-        else
-        {
-            sql +="default,";
-        }
         if(dirtyFlag_[30])
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
         }
-        else
-        {
-            sql +="default,";
-        }
         if(dirtyFlag_[31])
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
-        }
-        else
-        {
-            sql +="default,";
         }
         if(dirtyFlag_[32])
         {
@@ -1222,18 +1176,10 @@ class Client
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
         }
-        else
-        {
-            sql +="default,";
-        }
         if(dirtyFlag_[34])
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
-        }
-        else
-        {
-            sql +="default,";
         }
         if(dirtyFlag_[35])
         {
@@ -1245,10 +1191,6 @@ class Client
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
         }
-        else
-        {
-            sql +="default,";
-        }
         if(dirtyFlag_[37])
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
@@ -1258,10 +1200,6 @@ class Client
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
-        }
-        else
-        {
-            sql +="default,";
         }
         if(dirtyFlag_[39])
         {
@@ -1277,10 +1215,6 @@ class Client
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
-        }
-        else
-        {
-            sql +="default,";
         }
         if(dirtyFlag_[42])
         {
@@ -1310,18 +1244,10 @@ class Client
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
         }
-        else
-        {
-            sql +="default,";
-        }
         if(dirtyFlag_[46])
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
-        }
-        else
-        {
-            sql +="default,";
         }
         if(dirtyFlag_[47])
         {

@@ -2095,10 +2095,20 @@ bool ClientCharge::validateJsonForCreation(const Json::Value &pJson, std::string
         if(!validJsonOfField(1, "client_id", pJson["client_id"], err, true))
             return false;
     }
+    else
+    {
+        err="The client_id column cannot be null";
+        return false;
+    }
     if(pJson.isMember("charge_id"))
     {
         if(!validJsonOfField(2, "charge_id", pJson["charge_id"], err, true))
             return false;
+    }
+    else
+    {
+        err="The charge_id column cannot be null";
+        return false;
     }
     if(pJson.isMember("is_penalty"))
     {
@@ -2217,6 +2227,11 @@ bool ClientCharge::validateMasqueradedJsonForCreation(const Json::Value &pJson,
               if(!validJsonOfField(1, pMasqueradingVector[1], pJson[pMasqueradingVector[1]], err, true))
                   return false;
           }
+        else
+        {
+            err="The " + pMasqueradingVector[1] + " column cannot be null";
+            return false;
+        }
       }
       if(!pMasqueradingVector[2].empty())
       {
@@ -2225,6 +2240,11 @@ bool ClientCharge::validateMasqueradedJsonForCreation(const Json::Value &pJson,
               if(!validJsonOfField(2, pMasqueradingVector[2], pJson[pMasqueradingVector[2]], err, true))
                   return false;
           }
+        else
+        {
+            err="The " + pMasqueradingVector[2] + " column cannot be null";
+            return false;
+        }
       }
       if(!pMasqueradingVector[3].empty())
       {

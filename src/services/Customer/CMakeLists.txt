@@ -3,28 +3,21 @@ project(Customer CXX)
 
 include(CheckIncludeFileCXX)
 
-check_include_file_cxx(any HAS_ANY)
-check_include_file_cxx(string_view HAS_STRING_VIEW)
-check_include_file_cxx(coroutine HAS_COROUTINE)
-if (NOT "${CMAKE_CXX_STANDARD}" STREQUAL "")
-    # Do nothing
-elseif (HAS_ANY AND HAS_STRING_VIEW AND HAS_COROUTINE)
-    set(CMAKE_CXX_STANDARD 20)
-elseif (HAS_ANY AND HAS_STRING_VIEW)
-    set(CMAKE_CXX_STANDARD 17)
-else ()
-    set(CMAKE_CXX_STANDARD 14)
-endif ()
-
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+add_compile_options("-include" "${CMAKE_CURRENT_SOURCE_DIR}/utils/codecvt_helper.h" "-Wno-deprecated-declarations")
+
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    add_compile_options(-fcoroutines)
+endif()
+
+
+
 add_executable(${PROJECT_NAME} main.cc
-        controllers/AccountNumberFormatsController.h
         controllers/ClientsController.h
         controllers/SelfController.h
-        controllers/CentersController.h
-        controllers/CollectionSheetController.h
         services/dam/DamApi.h
         services/identity/IdentityApi.h
         services/office/OfficeApi.h
@@ -40,7 +33,7 @@ add_executable(${PROJECT_NAME} main.cc
         dto/CloseClientDto.h
         dto/ActivateClientDto.h
         dto/RejectClientDto.h
-        constants/ReactivateClientDto.h
+        dto/ReactivateClientDto.h
         dto/UndoRejectOrWithdrawalClientDto.h
         dto/WithdrawClientDto.h
         dto/AssignStaffToClientDto.h
@@ -53,6 +46,8 @@ add_executable(${PROJECT_NAME} main.cc
         dto/ClientIdentifierDto.h
         dto/ClientChargeDto.h
         dto/PayClientChargeDto.h
+        utils/codecvt_helper.h
+        services/identity/IdentityApi.cc
 )
 
 # ##############################################################################

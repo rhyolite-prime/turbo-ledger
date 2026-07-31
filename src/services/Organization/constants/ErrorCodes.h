@@ -1,0 +1,8 @@
+//
+// Created by Emmanuel Addo-Odame on 06/04/2026.
+//
+
+#ifndef ORGANIZATION_ERRORCODES_H
+#define ORGANIZATION_ERRORCODES_H
+
+#endif //ORGANIZATION_ERRORCODES_H

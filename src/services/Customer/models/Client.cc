@@ -16,7 +16,7 @@ using namespace drogon_model::TlCustomerDb;
 const std::string Client::Cols::_id = "\"id\"";
 const std::string Client::Cols::_account_no = "\"account_no\"";
 const std::string Client::Cols::_external_id = "\"external_id\"";
-const std::string Client::Cols::_status_enum = "\"status_enum\"";
+const std::string Client::Cols::_status = "\"status\"";
 const std::string Client::Cols::_sub_status = "\"sub_status\"";
 const std::string Client::Cols::_activation_date = "\"activation_date\"";
 const std::string Client::Cols::_office_joining_date = "\"office_joining_date\"";
@@ -69,50 +69,50 @@ const std::vector<typename Client::MetaData> Client::metaData_={
 {"id","std::string","uuid",0,0,1,1},
 {"account_no","std::string","character varying",20,0,0,1},
 {"external_id","std::string","character varying",100,0,0,0},
-{"status_enum","int32_t","integer",4,0,0,1},
+{"status","int32_t","integer",4,0,0,1},
 {"sub_status","int32_t","integer",4,0,0,0},
 {"activation_date","::trantor::Date","date",0,0,0,0},
 {"office_joining_date","::trantor::Date","date",0,0,0,0},
-{"office_id","std::string","uuid",0,0,0,1},
-{"transfer_to_office_id","std::string","uuid",0,0,0,1},
-{"staff_id","std::string","uuid",0,0,0,1},
-{"firstname","std::string","character varying",50,0,0,0},
-{"middlename","std::string","character varying",50,0,0,0},
-{"lastname","std::string","character varying",50,0,0,0},
-{"fullname","std::string","character varying",160,0,0,0},
-{"display_name","std::string","character varying",160,0,0,0},
-{"mobile_no","std::string","character varying",50,0,0,0},
+{"office_id","std::string","uuid",0,0,0,0},
+{"transfer_to_office_id","std::string","uuid",0,0,0,0},
+{"staff_id","std::string","uuid",0,0,0,0},
+{"firstname","std::string","character varying",80,0,0,0},
+{"middlename","std::string","character varying",80,0,0,0},
+{"lastname","std::string","character varying",80,0,0,0},
+{"fullname","std::string","character varying",240,0,0,0},
+{"display_name","std::string","character varying",200,0,0,0},
+{"mobile_no","std::string","character varying",20,0,0,0},
 {"is_staff","bool","boolean",1,0,0,1},
-{"gender_cv_id","std::string","uuid",0,0,0,1},
+{"gender_cv_id","std::string","uuid",0,0,0,0},
 {"date_of_birth","::trantor::Date","date",0,0,0,0},
-{"image_id","std::string","uuid",0,0,0,1},
-{"closure_reason_cv_id","std::string","uuid",0,0,0,1},
+{"image_id","std::string","uuid",0,0,0,0},
+{"closure_reason_cv_id","std::string","uuid",0,0,0,0},
 {"closedon_date","::trantor::Date","date",0,0,0,0},
-{"updated_by","std::string","uuid",0,0,0,1},
+{"updated_by","std::string","uuid",0,0,0,0},
 {"updated_on","::trantor::Date","date",0,0,0,0},
 {"submittedon_date","::trantor::Date","date",0,0,0,0},
-{"activatedon_userid","std::string","uuid",0,0,0,1},
-{"closedon_userid","std::string","uuid",0,0,0,1},
-{"default_savings_product","std::string","uuid",0,0,0,1},
-{"default_savings_account","std::string","uuid",0,0,0,1},
-{"client_type_cv_id","std::string","uuid",0,0,0,1},
-{"client_classification_cv_id","std::string","uuid",0,0,0,1},
-{"reject_reason_cv_id","std::string","uuid",0,0,0,1},
+{"activatedon_userid","std::string","uuid",0,0,0,0},
+{"closedon_userid","std::string","uuid",0,0,0,0},
+{"default_savings_product","std::string","uuid",0,0,0,0},
+{"default_savings_account","std::string","uuid",0,0,0,0},
+{"client_type_cv_id","std::string","uuid",0,0,0,0},
+{"client_classification_cv_id","std::string","uuid",0,0,0,0},
+{"reject_reason_cv_id","std::string","uuid",0,0,0,0},
 {"rejectedon_date","::trantor::Date","date",0,0,0,0},
-{"rejectedon_userid","std::string","uuid",0,0,0,1},
-{"withdraw_reason_cv_id","std::string","uuid",0,0,0,1},
+{"rejectedon_userid","std::string","uuid",0,0,0,0},
+{"withdraw_reason_cv_id","std::string","uuid",0,0,0,0},
 {"withdrawn_on_date","::trantor::Date","date",0,0,0,0},
-{"withdraw_on_userid","std::string","uuid",0,0,0,1},
+{"withdraw_on_userid","std::string","uuid",0,0,0,0},
 {"reactivated_on_date","::trantor::Date","date",0,0,0,0},
-{"reactivated_on_userid","std::string","uuid",0,0,0,1},
+{"reactivated_on_userid","std::string","uuid",0,0,0,0},
 {"legal_form_enum","int32_t","integer",4,0,0,0},
 {"reopened_on_date","::trantor::Date","date",0,0,0,0},
-{"reopened_by_userid","std::string","uuid",0,0,0,1},
+{"reopened_by_userid","std::string","uuid",0,0,0,0},
 {"email_address","std::string","character varying",150,0,0,0},
 {"proposed_transfer_date","::trantor::Date","date",0,0,0,0},
 {"created_on_utc","::trantor::Date","timestamp without time zone",0,0,0,0},
-{"created_by","std::string","uuid",0,0,0,1},
-{"last_modified_by","std::string","uuid",0,0,0,1},
+{"created_by","std::string","uuid",0,0,0,0},
+{"last_modified_by","std::string","uuid",0,0,0,0},
 {"last_modified_on_utc","::trantor::Date","timestamp without time zone",0,0,0,0}
 };
 const std::string &Client::getColumnName(size_t index) noexcept(false)
@@ -136,9 +136,9 @@ Client::Client(const Row &r, const ssize_t indexOffset) noexcept
         {
             externalId_=std::make_shared<std::string>(r["external_id"].as<std::string>());
         }
-        if(!r["status_enum"].isNull())
+        if(!r["status"].isNull())
         {
-            statusEnum_=std::make_shared<int32_t>(r["status_enum"].as<int32_t>());
+            status_=std::make_shared<int32_t>(r["status"].as<int32_t>());
         }
         if(!r["sub_status"].isNull())
         {
@@ -435,7 +435,7 @@ Client::Client(const Row &r, const ssize_t indexOffset) noexcept
         index = offset + 3;
         if(!r[index].isNull())
         {
-            statusEnum_=std::make_shared<int32_t>(r[index].as<int32_t>());
+            status_=std::make_shared<int32_t>(r[index].as<int32_t>());
         }
         index = offset + 4;
         if(!r[index].isNull())
@@ -788,7 +788,7 @@ Client::Client(const Json::Value &pJson, const std::vector<std::string> &pMasque
         dirtyFlag_[3] = true;
         if(!pJson[pMasqueradingVector[3]].isNull())
         {
-            statusEnum_=std::make_shared<int32_t>((int32_t)pJson[pMasqueradingVector[3]].asInt64());
+            status_=std::make_shared<int32_t>((int32_t)pJson[pMasqueradingVector[3]].asInt64());
         }
     }
     if(!pMasqueradingVector[4].empty() && pJson.isMember(pMasqueradingVector[4]))
@@ -1262,12 +1262,12 @@ Client::Client(const Json::Value &pJson) noexcept(false)
             externalId_=std::make_shared<std::string>(pJson["external_id"].asString());
         }
     }
-    if(pJson.isMember("status_enum"))
+    if(pJson.isMember("status"))
     {
         dirtyFlag_[3]=true;
-        if(!pJson["status_enum"].isNull())
+        if(!pJson["status"].isNull())
         {
-            statusEnum_=std::make_shared<int32_t>((int32_t)pJson["status_enum"].asInt64());
+            status_=std::make_shared<int32_t>((int32_t)pJson["status"].asInt64());
         }
     }
     if(pJson.isMember("sub_status"))
@@ -1751,7 +1751,7 @@ void Client::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[3] = true;
         if(!pJson[pMasqueradingVector[3]].isNull())
         {
-            statusEnum_=std::make_shared<int32_t>((int32_t)pJson[pMasqueradingVector[3]].asInt64());
+            status_=std::make_shared<int32_t>((int32_t)pJson[pMasqueradingVector[3]].asInt64());
         }
     }
     if(!pMasqueradingVector[4].empty() && pJson.isMember(pMasqueradingVector[4]))
@@ -2224,12 +2224,12 @@ void Client::updateByJson(const Json::Value &pJson) noexcept(false)
             externalId_=std::make_shared<std::string>(pJson["external_id"].asString());
         }
     }
-    if(pJson.isMember("status_enum"))
+    if(pJson.isMember("status"))
     {
         dirtyFlag_[3] = true;
-        if(!pJson["status_enum"].isNull())
+        if(!pJson["status"].isNull())
         {
-            statusEnum_=std::make_shared<int32_t>((int32_t)pJson["status_enum"].asInt64());
+            status_=std::make_shared<int32_t>((int32_t)pJson["status"].asInt64());
         }
     }
     if(pJson.isMember("sub_status"))
@@ -2753,20 +2753,20 @@ void Client::setExternalIdToNull() noexcept
     dirtyFlag_[2] = true;
 }
 
-const int32_t &Client::getValueOfStatusEnum() const noexcept
+const int32_t &Client::getValueOfStatus() const noexcept
 {
     static const int32_t defaultValue = int32_t();
-    if(statusEnum_)
-        return *statusEnum_;
+    if(status_)
+        return *status_;
     return defaultValue;
 }
-const std::shared_ptr<int32_t> &Client::getStatusEnum() const noexcept
+const std::shared_ptr<int32_t> &Client::getStatus() const noexcept
 {
-    return statusEnum_;
+    return status_;
 }
-void Client::setStatusEnum(const int32_t &pStatusEnum) noexcept
+void Client::setStatus(const int32_t &pStatus) noexcept
 {
-    statusEnum_ = std::make_shared<int32_t>(pStatusEnum);
+    status_ = std::make_shared<int32_t>(pStatus);
     dirtyFlag_[3] = true;
 }
 
@@ -2857,6 +2857,11 @@ void Client::setOfficeId(std::string &&pOfficeId) noexcept
     officeId_ = std::make_shared<std::string>(std::move(pOfficeId));
     dirtyFlag_[7] = true;
 }
+void Client::setOfficeIdToNull() noexcept
+{
+    officeId_.reset();
+    dirtyFlag_[7] = true;
+}
 
 const std::string &Client::getValueOfTransferToOfficeId() const noexcept
 {
@@ -2879,6 +2884,11 @@ void Client::setTransferToOfficeId(std::string &&pTransferToOfficeId) noexcept
     transferToOfficeId_ = std::make_shared<std::string>(std::move(pTransferToOfficeId));
     dirtyFlag_[8] = true;
 }
+void Client::setTransferToOfficeIdToNull() noexcept
+{
+    transferToOfficeId_.reset();
+    dirtyFlag_[8] = true;
+}
 
 const std::string &Client::getValueOfStaffId() const noexcept
 {
@@ -2899,6 +2909,11 @@ void Client::setStaffId(const std::string &pStaffId) noexcept
 void Client::setStaffId(std::string &&pStaffId) noexcept
 {
     staffId_ = std::make_shared<std::string>(std::move(pStaffId));
+    dirtyFlag_[9] = true;
+}
+void Client::setStaffIdToNull() noexcept
+{
+    staffId_.reset();
     dirtyFlag_[9] = true;
 }
 
@@ -3102,6 +3117,11 @@ void Client::setGenderCvId(std::string &&pGenderCvId) noexcept
     genderCvId_ = std::make_shared<std::string>(std::move(pGenderCvId));
     dirtyFlag_[17] = true;
 }
+void Client::setGenderCvIdToNull() noexcept
+{
+    genderCvId_.reset();
+    dirtyFlag_[17] = true;
+}
 
 const ::trantor::Date &Client::getValueOfDateOfBirth() const noexcept
 {
@@ -3146,6 +3166,11 @@ void Client::setImageId(std::string &&pImageId) noexcept
     imageId_ = std::make_shared<std::string>(std::move(pImageId));
     dirtyFlag_[19] = true;
 }
+void Client::setImageIdToNull() noexcept
+{
+    imageId_.reset();
+    dirtyFlag_[19] = true;
+}
 
 const std::string &Client::getValueOfClosureReasonCvId() const noexcept
 {
@@ -3166,6 +3191,11 @@ void Client::setClosureReasonCvId(const std::string &pClosureReasonCvId) noexcep
 void Client::setClosureReasonCvId(std::string &&pClosureReasonCvId) noexcept
 {
     closureReasonCvId_ = std::make_shared<std::string>(std::move(pClosureReasonCvId));
+    dirtyFlag_[20] = true;
+}
+void Client::setClosureReasonCvIdToNull() noexcept
+{
+    closureReasonCvId_.reset();
     dirtyFlag_[20] = true;
 }
 
@@ -3210,6 +3240,11 @@ void Client::setUpdatedBy(const std::string &pUpdatedBy) noexcept
 void Client::setUpdatedBy(std::string &&pUpdatedBy) noexcept
 {
     updatedBy_ = std::make_shared<std::string>(std::move(pUpdatedBy));
+    dirtyFlag_[22] = true;
+}
+void Client::setUpdatedByToNull() noexcept
+{
+    updatedBy_.reset();
     dirtyFlag_[22] = true;
 }
 
@@ -3278,6 +3313,11 @@ void Client::setActivatedonUserid(std::string &&pActivatedonUserid) noexcept
     activatedonUserid_ = std::make_shared<std::string>(std::move(pActivatedonUserid));
     dirtyFlag_[25] = true;
 }
+void Client::setActivatedonUseridToNull() noexcept
+{
+    activatedonUserid_.reset();
+    dirtyFlag_[25] = true;
+}
 
 const std::string &Client::getValueOfClosedonUserid() const noexcept
 {
@@ -3298,6 +3338,11 @@ void Client::setClosedonUserid(const std::string &pClosedonUserid) noexcept
 void Client::setClosedonUserid(std::string &&pClosedonUserid) noexcept
 {
     closedonUserid_ = std::make_shared<std::string>(std::move(pClosedonUserid));
+    dirtyFlag_[26] = true;
+}
+void Client::setClosedonUseridToNull() noexcept
+{
+    closedonUserid_.reset();
     dirtyFlag_[26] = true;
 }
 
@@ -3322,6 +3367,11 @@ void Client::setDefaultSavingsProduct(std::string &&pDefaultSavingsProduct) noex
     defaultSavingsProduct_ = std::make_shared<std::string>(std::move(pDefaultSavingsProduct));
     dirtyFlag_[27] = true;
 }
+void Client::setDefaultSavingsProductToNull() noexcept
+{
+    defaultSavingsProduct_.reset();
+    dirtyFlag_[27] = true;
+}
 
 const std::string &Client::getValueOfDefaultSavingsAccount() const noexcept
 {
@@ -3342,6 +3392,11 @@ void Client::setDefaultSavingsAccount(const std::string &pDefaultSavingsAccount)
 void Client::setDefaultSavingsAccount(std::string &&pDefaultSavingsAccount) noexcept
 {
     defaultSavingsAccount_ = std::make_shared<std::string>(std::move(pDefaultSavingsAccount));
+    dirtyFlag_[28] = true;
+}
+void Client::setDefaultSavingsAccountToNull() noexcept
+{
+    defaultSavingsAccount_.reset();
     dirtyFlag_[28] = true;
 }
 
@@ -3366,6 +3421,11 @@ void Client::setClientTypeCvId(std::string &&pClientTypeCvId) noexcept
     clientTypeCvId_ = std::make_shared<std::string>(std::move(pClientTypeCvId));
     dirtyFlag_[29] = true;
 }
+void Client::setClientTypeCvIdToNull() noexcept
+{
+    clientTypeCvId_.reset();
+    dirtyFlag_[29] = true;
+}
 
 const std::string &Client::getValueOfClientClassificationCvId() const noexcept
 {
@@ -3388,6 +3448,11 @@ void Client::setClientClassificationCvId(std::string &&pClientClassificationCvId
     clientClassificationCvId_ = std::make_shared<std::string>(std::move(pClientClassificationCvId));
     dirtyFlag_[30] = true;
 }
+void Client::setClientClassificationCvIdToNull() noexcept
+{
+    clientClassificationCvId_.reset();
+    dirtyFlag_[30] = true;
+}
 
 const std::string &Client::getValueOfRejectReasonCvId() const noexcept
 {
@@ -3408,6 +3473,11 @@ void Client::setRejectReasonCvId(const std::string &pRejectReasonCvId) noexcept
 void Client::setRejectReasonCvId(std::string &&pRejectReasonCvId) noexcept
 {
     rejectReasonCvId_ = std::make_shared<std::string>(std::move(pRejectReasonCvId));
+    dirtyFlag_[31] = true;
+}
+void Client::setRejectReasonCvIdToNull() noexcept
+{
+    rejectReasonCvId_.reset();
     dirtyFlag_[31] = true;
 }
 
@@ -3454,6 +3524,11 @@ void Client::setRejectedonUserid(std::string &&pRejectedonUserid) noexcept
     rejectedonUserid_ = std::make_shared<std::string>(std::move(pRejectedonUserid));
     dirtyFlag_[33] = true;
 }
+void Client::setRejectedonUseridToNull() noexcept
+{
+    rejectedonUserid_.reset();
+    dirtyFlag_[33] = true;
+}
 
 const std::string &Client::getValueOfWithdrawReasonCvId() const noexcept
 {
@@ -3474,6 +3549,11 @@ void Client::setWithdrawReasonCvId(const std::string &pWithdrawReasonCvId) noexc
 void Client::setWithdrawReasonCvId(std::string &&pWithdrawReasonCvId) noexcept
 {
     withdrawReasonCvId_ = std::make_shared<std::string>(std::move(pWithdrawReasonCvId));
+    dirtyFlag_[34] = true;
+}
+void Client::setWithdrawReasonCvIdToNull() noexcept
+{
+    withdrawReasonCvId_.reset();
     dirtyFlag_[34] = true;
 }
 
@@ -3520,6 +3600,11 @@ void Client::setWithdrawOnUserid(std::string &&pWithdrawOnUserid) noexcept
     withdrawOnUserid_ = std::make_shared<std::string>(std::move(pWithdrawOnUserid));
     dirtyFlag_[36] = true;
 }
+void Client::setWithdrawOnUseridToNull() noexcept
+{
+    withdrawOnUserid_.reset();
+    dirtyFlag_[36] = true;
+}
 
 const ::trantor::Date &Client::getValueOfReactivatedOnDate() const noexcept
 {
@@ -3562,6 +3647,11 @@ void Client::setReactivatedOnUserid(const std::string &pReactivatedOnUserid) noe
 void Client::setReactivatedOnUserid(std::string &&pReactivatedOnUserid) noexcept
 {
     reactivatedOnUserid_ = std::make_shared<std::string>(std::move(pReactivatedOnUserid));
+    dirtyFlag_[38] = true;
+}
+void Client::setReactivatedOnUseridToNull() noexcept
+{
+    reactivatedOnUserid_.reset();
     dirtyFlag_[38] = true;
 }
 
@@ -3628,6 +3718,11 @@ void Client::setReopenedByUserid(const std::string &pReopenedByUserid) noexcept
 void Client::setReopenedByUserid(std::string &&pReopenedByUserid) noexcept
 {
     reopenedByUserid_ = std::make_shared<std::string>(std::move(pReopenedByUserid));
+    dirtyFlag_[41] = true;
+}
+void Client::setReopenedByUseridToNull() noexcept
+{
+    reopenedByUserid_.reset();
     dirtyFlag_[41] = true;
 }
 
@@ -3723,6 +3818,11 @@ void Client::setCreatedBy(std::string &&pCreatedBy) noexcept
     createdBy_ = std::make_shared<std::string>(std::move(pCreatedBy));
     dirtyFlag_[45] = true;
 }
+void Client::setCreatedByToNull() noexcept
+{
+    createdBy_.reset();
+    dirtyFlag_[45] = true;
+}
 
 const std::string &Client::getValueOfLastModifiedBy() const noexcept
 {
@@ -3743,6 +3843,11 @@ void Client::setLastModifiedBy(const std::string &pLastModifiedBy) noexcept
 void Client::setLastModifiedBy(std::string &&pLastModifiedBy) noexcept
 {
     lastModifiedBy_ = std::make_shared<std::string>(std::move(pLastModifiedBy));
+    dirtyFlag_[46] = true;
+}
+void Client::setLastModifiedByToNull() noexcept
+{
+    lastModifiedBy_.reset();
     dirtyFlag_[46] = true;
 }
 
@@ -3778,7 +3883,7 @@ const std::vector<std::string> &Client::insertColumns() noexcept
         "id",
         "account_no",
         "external_id",
-        "status_enum",
+        "status",
         "sub_status",
         "activation_date",
         "office_joining_date",
@@ -3864,9 +3969,9 @@ void Client::outputArgs(drogon::orm::internal::SqlBinder &binder) const
     }
     if(dirtyFlag_[3])
     {
-        if(getStatusEnum())
+        if(getStatus())
         {
-            binder << getValueOfStatusEnum();
+            binder << getValueOfStatus();
         }
         else
         {
@@ -4594,9 +4699,9 @@ void Client::updateArgs(drogon::orm::internal::SqlBinder &binder) const
     }
     if(dirtyFlag_[3])
     {
-        if(getStatusEnum())
+        if(getStatus())
         {
-            binder << getValueOfStatusEnum();
+            binder << getValueOfStatus();
         }
         else
         {
@@ -5115,13 +5220,13 @@ Json::Value Client::toJson() const
     {
         ret["external_id"]=Json::Value();
     }
-    if(getStatusEnum())
+    if(getStatus())
     {
-        ret["status_enum"]=getValueOfStatusEnum();
+        ret["status"]=getValueOfStatus();
     }
     else
     {
-        ret["status_enum"]=Json::Value();
+        ret["status"]=Json::Value();
     }
     if(getSubStatus())
     {
@@ -5524,9 +5629,9 @@ Json::Value Client::toMasqueradedJson(
         }
         if(!pMasqueradingVector[3].empty())
         {
-            if(getStatusEnum())
+            if(getStatus())
             {
-                ret[pMasqueradingVector[3]]=getValueOfStatusEnum();
+                ret[pMasqueradingVector[3]]=getValueOfStatus();
             }
             else
             {
@@ -6044,13 +6149,13 @@ Json::Value Client::toMasqueradedJson(
     {
         ret["external_id"]=Json::Value();
     }
-    if(getStatusEnum())
+    if(getStatus())
     {
-        ret["status_enum"]=getValueOfStatusEnum();
+        ret["status"]=getValueOfStatus();
     }
     else
     {
-        ret["status_enum"]=Json::Value();
+        ret["status"]=Json::Value();
     }
     if(getSubStatus())
     {
@@ -6429,9 +6534,9 @@ bool Client::validateJsonForCreation(const Json::Value &pJson, std::string &err)
         if(!validJsonOfField(2, "external_id", pJson["external_id"], err, true))
             return false;
     }
-    if(pJson.isMember("status_enum"))
+    if(pJson.isMember("status"))
     {
-        if(!validJsonOfField(3, "status_enum", pJson["status_enum"], err, true))
+        if(!validJsonOfField(3, "status", pJson["status"], err, true))
             return false;
     }
     if(pJson.isMember("sub_status"))
@@ -6554,20 +6659,10 @@ bool Client::validateJsonForCreation(const Json::Value &pJson, std::string &err)
         if(!validJsonOfField(27, "default_savings_product", pJson["default_savings_product"], err, true))
             return false;
     }
-    else
-    {
-        err="The default_savings_product column cannot be null";
-        return false;
-    }
     if(pJson.isMember("default_savings_account"))
     {
         if(!validJsonOfField(28, "default_savings_account", pJson["default_savings_account"], err, true))
             return false;
-    }
-    else
-    {
-        err="The default_savings_account column cannot be null";
-        return false;
     }
     if(pJson.isMember("client_type_cv_id"))
     {
@@ -6904,11 +6999,6 @@ bool Client::validateMasqueradedJsonForCreation(const Json::Value &pJson,
               if(!validJsonOfField(27, pMasqueradingVector[27], pJson[pMasqueradingVector[27]], err, true))
                   return false;
           }
-        else
-        {
-            err="The " + pMasqueradingVector[27] + " column cannot be null";
-            return false;
-        }
       }
       if(!pMasqueradingVector[28].empty())
       {
@@ -6917,11 +7007,6 @@ bool Client::validateMasqueradedJsonForCreation(const Json::Value &pJson,
               if(!validJsonOfField(28, pMasqueradingVector[28], pJson[pMasqueradingVector[28]], err, true))
                   return false;
           }
-        else
-        {
-            err="The " + pMasqueradingVector[28] + " column cannot be null";
-            return false;
-        }
       }
       if(!pMasqueradingVector[29].empty())
       {
@@ -7105,9 +7190,9 @@ bool Client::validateJsonForUpdate(const Json::Value &pJson, std::string &err)
         if(!validJsonOfField(2, "external_id", pJson["external_id"], err, false))
             return false;
     }
-    if(pJson.isMember("status_enum"))
+    if(pJson.isMember("status"))
     {
-        if(!validJsonOfField(3, "status_enum", pJson["status_enum"], err, false))
+        if(!validJsonOfField(3, "status", pJson["status"], err, false))
             return false;
     }
     if(pJson.isMember("sub_status"))
@@ -7626,14 +7711,14 @@ bool Client::validJsonOfField(size_t index,
                 err="Type error in the "+fieldName+" field";
                 return false;
             }
-            if(pJson.isString() && std::strlen(pJson.asCString()) > 20)
+            if(pJson.isString() && std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>{}
+                .from_bytes(pJson.asCString()).size() > 20)
             {
                 err="String length exceeds limit for the " +
                     fieldName +
                     " field (the maximum value is 20)";
                 return false;
             }
-
             break;
         case 2:
             if(pJson.isNull())
@@ -7645,14 +7730,14 @@ bool Client::validJsonOfField(size_t index,
                 err="Type error in the "+fieldName+" field";
                 return false;
             }
-            if(pJson.isString() && std::strlen(pJson.asCString()) > 100)
+            if(pJson.isString() && std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>{}
+                .from_bytes(pJson.asCString()).size() > 100)
             {
                 err="String length exceeds limit for the " +
                     fieldName +
                     " field (the maximum value is 100)";
                 return false;
             }
-
             break;
         case 3:
             if(pJson.isNull())
@@ -7702,8 +7787,7 @@ bool Client::validJsonOfField(size_t index,
         case 7:
             if(pJson.isNull())
             {
-                err="The " + fieldName + " column cannot be null";
-                return false;
+                return true;
             }
             if(!pJson.isString())
             {
@@ -7714,8 +7798,7 @@ bool Client::validJsonOfField(size_t index,
         case 8:
             if(pJson.isNull())
             {
-                err="The " + fieldName + " column cannot be null";
-                return false;
+                return true;
             }
             if(!pJson.isString())
             {
@@ -7726,8 +7809,7 @@ bool Client::validJsonOfField(size_t index,
         case 9:
             if(pJson.isNull())
             {
-                err="The " + fieldName + " column cannot be null";
-                return false;
+                return true;
             }
             if(!pJson.isString())
             {
@@ -7745,14 +7827,14 @@ bool Client::validJsonOfField(size_t index,
                 err="Type error in the "+fieldName+" field";
                 return false;
             }
-            if(pJson.isString() && std::strlen(pJson.asCString()) > 50)
+            if(pJson.isString() && std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>{}
+                .from_bytes(pJson.asCString()).size() > 80)
             {
                 err="String length exceeds limit for the " +
                     fieldName +
-                    " field (the maximum value is 50)";
+                    " field (the maximum value is 80)";
                 return false;
             }
-
             break;
         case 11:
             if(pJson.isNull())
@@ -7764,14 +7846,14 @@ bool Client::validJsonOfField(size_t index,
                 err="Type error in the "+fieldName+" field";
                 return false;
             }
-            if(pJson.isString() && std::strlen(pJson.asCString()) > 50)
+            if(pJson.isString() && std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>{}
+                .from_bytes(pJson.asCString()).size() > 80)
             {
                 err="String length exceeds limit for the " +
                     fieldName +
-                    " field (the maximum value is 50)";
+                    " field (the maximum value is 80)";
                 return false;
             }
-
             break;
         case 12:
             if(pJson.isNull())
@@ -7783,14 +7865,14 @@ bool Client::validJsonOfField(size_t index,
                 err="Type error in the "+fieldName+" field";
                 return false;
             }
-            if(pJson.isString() && std::strlen(pJson.asCString()) > 50)
+            if(pJson.isString() && std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>{}
+                .from_bytes(pJson.asCString()).size() > 80)
             {
                 err="String length exceeds limit for the " +
                     fieldName +
-                    " field (the maximum value is 50)";
+                    " field (the maximum value is 80)";
                 return false;
             }
-
             break;
         case 13:
             if(pJson.isNull())
@@ -7802,14 +7884,14 @@ bool Client::validJsonOfField(size_t index,
                 err="Type error in the "+fieldName+" field";
                 return false;
             }
-            if(pJson.isString() && std::strlen(pJson.asCString()) > 160)
+            if(pJson.isString() && std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>{}
+                .from_bytes(pJson.asCString()).size() > 240)
             {
                 err="String length exceeds limit for the " +
                     fieldName +
-                    " field (the maximum value is 160)";
+                    " field (the maximum value is 240)";
                 return false;
             }
-
             break;
         case 14:
             if(pJson.isNull())
@@ -7821,14 +7903,14 @@ bool Client::validJsonOfField(size_t index,
                 err="Type error in the "+fieldName+" field";
                 return false;
             }
-            if(pJson.isString() && std::strlen(pJson.asCString()) > 160)
+            if(pJson.isString() && std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>{}
+                .from_bytes(pJson.asCString()).size() > 200)
             {
                 err="String length exceeds limit for the " +
                     fieldName +
-                    " field (the maximum value is 160)";
+                    " field (the maximum value is 200)";
                 return false;
             }
-
             break;
         case 15:
             if(pJson.isNull())
@@ -7840,14 +7922,14 @@ bool Client::validJsonOfField(size_t index,
                 err="Type error in the "+fieldName+" field";
                 return false;
             }
-            if(pJson.isString() && std::strlen(pJson.asCString()) > 50)
+            if(pJson.isString() && std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>{}
+                .from_bytes(pJson.asCString()).size() > 20)
             {
                 err="String length exceeds limit for the " +
                     fieldName +
-                    " field (the maximum value is 50)";
+                    " field (the maximum value is 20)";
                 return false;
             }
-
             break;
         case 16:
             if(pJson.isNull())
@@ -7864,8 +7946,7 @@ bool Client::validJsonOfField(size_t index,
         case 17:
             if(pJson.isNull())
             {
-                err="The " + fieldName + " column cannot be null";
-                return false;
+                return true;
             }
             if(!pJson.isString())
             {
@@ -7887,8 +7968,7 @@ bool Client::validJsonOfField(size_t index,
         case 19:
             if(pJson.isNull())
             {
-                err="The " + fieldName + " column cannot be null";
-                return false;
+                return true;
             }
             if(!pJson.isString())
             {
@@ -7899,8 +7979,7 @@ bool Client::validJsonOfField(size_t index,
         case 20:
             if(pJson.isNull())
             {
-                err="The " + fieldName + " column cannot be null";
-                return false;
+                return true;
             }
             if(!pJson.isString())
             {
@@ -7922,8 +8001,7 @@ bool Client::validJsonOfField(size_t index,
         case 22:
             if(pJson.isNull())
             {
-                err="The " + fieldName + " column cannot be null";
-                return false;
+                return true;
             }
             if(!pJson.isString())
             {
@@ -7956,8 +8034,7 @@ bool Client::validJsonOfField(size_t index,
         case 25:
             if(pJson.isNull())
             {
-                err="The " + fieldName + " column cannot be null";
-                return false;
+                return true;
             }
             if(!pJson.isString())
             {
@@ -7968,8 +8045,7 @@ bool Client::validJsonOfField(size_t index,
         case 26:
             if(pJson.isNull())
             {
-                err="The " + fieldName + " column cannot be null";
-                return false;
+                return true;
             }
             if(!pJson.isString())
             {
@@ -7980,8 +8056,7 @@ bool Client::validJsonOfField(size_t index,
         case 27:
             if(pJson.isNull())
             {
-                err="The " + fieldName + " column cannot be null";
-                return false;
+                return true;
             }
             if(!pJson.isString())
             {
@@ -7992,8 +8067,7 @@ bool Client::validJsonOfField(size_t index,
         case 28:
             if(pJson.isNull())
             {
-                err="The " + fieldName + " column cannot be null";
-                return false;
+                return true;
             }
             if(!pJson.isString())
             {
@@ -8004,8 +8078,7 @@ bool Client::validJsonOfField(size_t index,
         case 29:
             if(pJson.isNull())
             {
-                err="The " + fieldName + " column cannot be null";
-                return false;
+                return true;
             }
             if(!pJson.isString())
             {
@@ -8016,8 +8089,7 @@ bool Client::validJsonOfField(size_t index,
         case 30:
             if(pJson.isNull())
             {
-                err="The " + fieldName + " column cannot be null";
-                return false;
+                return true;
             }
             if(!pJson.isString())
             {
@@ -8028,8 +8100,7 @@ bool Client::validJsonOfField(size_t index,
         case 31:
             if(pJson.isNull())
             {
-                err="The " + fieldName + " column cannot be null";
-                return false;
+                return true;
             }
             if(!pJson.isString())
             {
@@ -8051,8 +8122,7 @@ bool Client::validJsonOfField(size_t index,
         case 33:
             if(pJson.isNull())
             {
-                err="The " + fieldName + " column cannot be null";
-                return false;
+                return true;
             }
             if(!pJson.isString())
             {
@@ -8063,8 +8133,7 @@ bool Client::validJsonOfField(size_t index,
         case 34:
             if(pJson.isNull())
             {
-                err="The " + fieldName + " column cannot be null";
-                return false;
+                return true;
             }
             if(!pJson.isString())
             {
@@ -8086,8 +8155,7 @@ bool Client::validJsonOfField(size_t index,
         case 36:
             if(pJson.isNull())
             {
-                err="The " + fieldName + " column cannot be null";
-                return false;
+                return true;
             }
             if(!pJson.isString())
             {
@@ -8109,8 +8177,7 @@ bool Client::validJsonOfField(size_t index,
         case 38:
             if(pJson.isNull())
             {
-                err="The " + fieldName + " column cannot be null";
-                return false;
+                return true;
             }
             if(!pJson.isString())
             {
@@ -8143,8 +8210,7 @@ bool Client::validJsonOfField(size_t index,
         case 41:
             if(pJson.isNull())
             {
-                err="The " + fieldName + " column cannot be null";
-                return false;
+                return true;
             }
             if(!pJson.isString())
             {
@@ -8162,14 +8228,14 @@ bool Client::validJsonOfField(size_t index,
                 err="Type error in the "+fieldName+" field";
                 return false;
             }
-            if(pJson.isString() && std::strlen(pJson.asCString()) > 150)
+            if(pJson.isString() && std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>{}
+                .from_bytes(pJson.asCString()).size() > 150)
             {
                 err="String length exceeds limit for the " +
                     fieldName +
                     " field (the maximum value is 150)";
                 return false;
             }
-
             break;
         case 43:
             if(pJson.isNull())
@@ -8196,8 +8262,7 @@ bool Client::validJsonOfField(size_t index,
         case 45:
             if(pJson.isNull())
             {
-                err="The " + fieldName + " column cannot be null";
-                return false;
+                return true;
             }
             if(!pJson.isString())
             {
@@ -8208,8 +8273,7 @@ bool Client::validJsonOfField(size_t index,
         case 46:
             if(pJson.isNull())
             {
-                err="The " + fieldName + " column cannot be null";
-                return false;
+                return true;
             }
             if(!pJson.isString())
             {

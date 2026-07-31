@@ -8,8 +8,7 @@
 #include "dto/BaseApiResponse.h"
 #include <drogon/drogon.h>
 #include <drogon/utils/coroutine.h>
-
-#include "constants/ReactivateClientDto.h"
+#include "dto/ReactivateClientDto.h"
 #include "dto/AcceptClientTransferDto.h"
 #include "dto/ActivateClientDto.h"
 #include "dto/AssignStaffToClientDto.h"
@@ -107,9 +106,6 @@ namespace customer::services {
         drogon::Task<dto::BaseApiResponse> waiveClientCharge(const std::string &id, const std::string &chargeId);
 
         drogon::Task<dto::BaseApiResponse> undoClientTransaction(const std::string &id, std::string transactionId);
-
-
-
 
     };
 

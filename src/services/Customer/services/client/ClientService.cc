@@ -12,10 +12,11 @@
 #include "ClientIdentifier.h"
 #include "ClientTransaction.h"
 #include "constants/ClientStatus.h"
-#include "constants/ReactivateClientDto.h"
+#include "dto/ReactivateClientDto.h"
 #include "dto/ActivateClientDto.h"
 
 using namespace drogon::orm;
+
 namespace customer::services {
 
   drogon::Task<dto::BaseApiResponse> ClientService::getAll(int pageNo, int pageSize, const std::string &query) {
@@ -106,7 +107,7 @@ namespace customer::services {
             drogon_model::TlCustomerDb::Client client;
             client.setAccountNo(dto.getAccountNo());
             client.setExternalId(dto.getExternalId());
-            client.setStatusEnum(dto.getStatusEnum());
+            client.setStatus(dto.getStatusEnum());
             client.setSubStatus(dto.getSubStatus());
 
             if (!dto.getActivationDate().empty())
@@ -153,7 +154,7 @@ namespace customer::services {
 
         dto::BaseApiResponse response;
         auto dbClient = drogon::app().getDbClient();
-        drogon::orm::CoroMapper<drogon_model::TlCustomerDb::Client> mapper(dbClient);
+        CoroMapper<drogon_model::TlCustomerDb::Client> mapper(dbClient);
 
         try {
             // Find existing client. Assuming UpdateClientDto has a getId() method or similar.
@@ -162,7 +163,7 @@ namespace customer::services {
 
             client.setAccountNo(dto.getAccountNo());
             client.setExternalId(dto.getExternalId());
-            client.setStatusEnum(dto.getStatusEnum());
+            client.setStatus(dto.getStatusEnum());
             client.setSubStatus(dto.getSubStatus());
 
             if (!dto.getActivationDate().empty())
@@ -213,8 +214,32 @@ namespace customer::services {
 
   drogon::Task<dto::BaseApiResponse> ClientService::getClientDetails(const std::string &id) {
 
+      dto::BaseApiResponse response;
+      auto dbClient = drogon::app().getDbClient();
+      CoroMapper<drogon_model::TlCustomerDb::Client> mapper(dbClient);
 
+      try {
 
+          auto client = co_await mapper.findByPrimaryKey(id);
+          response.success = true;
+          response.result = client.toJson();
+          co_return response;
+      }
+      catch (const DrogonDbException &e) {
+          dto::BaseApiResponse errorResponse;
+          errorResponse.success = false;
+          errorResponse.error["code"] = constants::ERR_DB_QUERY;
+          errorResponse.error["message"] = "Database error while deleting Client.";
+          errorResponse.error["detail"] = e.base().what();
+          co_return errorResponse;
+      } catch (const std::exception &e) {
+          dto::BaseApiResponse errorResponse;
+          errorResponse.success = false;
+          errorResponse.error["code"] = constants::ERR_INTERNAL;
+          errorResponse.error["message"] = "Internal error.";
+          errorResponse.error["detail"] = e.what();
+          co_return errorResponse;
+      }
   }
 
   drogon::Task<dto::BaseApiResponse> ClientService::deleteClient(const std::string &id) {
@@ -282,7 +307,7 @@ namespace customer::services {
 
           auto client = co_await mapper.findByPrimaryKey(id);
 
-          if (client.getValueOfStatusEnum() == constants::ClientStatus::CLOSED) {
+          if (client.getValueOfStatus() == constants::ClientStatus::CLOSED) {
               dto::BaseApiResponse errorResponse;
               errorResponse.success = false;
               errorResponse.error["code"] = constants::ERR_UNSUPPORTED_OPERATION;
@@ -293,7 +318,7 @@ namespace customer::services {
           // Clients can be closed if they do not have any non-closed loans/savingsAccount.
           // check portfolio and other sister services before proceeding
 
-          client.setStatusEnum(constants::ClientStatus::CLOSED);
+          client.setStatus(constants::ClientStatus::CLOSED);
           client.setClosedonDate(dto.getClosureDate().empty() ? trantor::Date::now() : trantor::Date::fromDbString(dto.getClosureDate()));
           client.setClosureReasonCvId(dto.getClosureReasonCvId());
 
@@ -334,7 +359,7 @@ namespace customer::services {
   drogon::Task<dto::BaseApiResponse> ClientService::activateClient(const dto::ActivateClientDto &dto, const std::string &id) {
 
     auto dbClient = drogon::app().getDbClient();
-      CoroMapper<drogon_model::TlCustomerDb::Client> mapper(dbClient);
+    CoroMapper<drogon_model::TlCustomerDb::Client> mapper(dbClient);
 
       try {
           if (id.empty()) {
@@ -347,7 +372,7 @@ namespace customer::services {
 
           auto client = co_await mapper.findByPrimaryKey(id);
 
-          if (client.getValueOfStatusEnum() != constants::ClientStatus::PENDING) {
+          if (client.getValueOfStatus() != constants::ClientStatus::PENDING) {
               dto::BaseApiResponse errorResponse;
               errorResponse.success = false;
               errorResponse.error["code"] = constants::ERR_UNSUPPORTED_OPERATION;
@@ -355,7 +380,7 @@ namespace customer::services {
               co_return errorResponse;
           }
 
-          client.setStatusEnum(constants::ClientStatus::ACTIVE);
+          client.setStatus(constants::ClientStatus::ACTIVE);
           client.setActivationDate(dto.getActivationDate().empty() ? trantor::Date::now() : trantor::Date::fromDbString(dto.getActivationDate()));
 
           auto updatedRows = co_await mapper.update(client);
@@ -409,7 +434,7 @@ namespace customer::services {
 
           auto client = co_await mapper.findByPrimaryKey(id);
 
-          if (client.getValueOfStatusEnum() != constants::ClientStatus::PENDING) {
+          if (client.getValueOfStatus() != constants::ClientStatus::PENDING) {
               dto::BaseApiResponse errorResponse;
               errorResponse.success = false;
               errorResponse.error["code"] = constants::ERR_UNSUPPORTED_OPERATION;
@@ -417,7 +442,7 @@ namespace customer::services {
               co_return errorResponse;
           }
 
-          client.setStatusEnum(constants::ClientStatus::REJECTED);
+          client.setStatus(constants::ClientStatus::REJECTED);
           client.setClosedonDate(dto.getRejectionDate().empty() ? trantor::Date::now() : trantor::Date::fromDbString(dto.getRejectionDate()));
           client.setClosureReasonCvId(dto.getRejectionCvId());
 
@@ -471,7 +496,7 @@ namespace customer::services {
 
           auto client = co_await mapper.findByPrimaryKey(id);
 
-          if (client.getValueOfStatusEnum() != constants::ClientStatus::CLOSED) {
+          if (client.getValueOfStatus() != constants::ClientStatus::CLOSED) {
               dto::BaseApiResponse errorResponse;
               errorResponse.success = false;
               errorResponse.error["code"] = constants::ERR_UNSUPPORTED_OPERATION;
@@ -479,7 +504,7 @@ namespace customer::services {
               co_return errorResponse;
           }
 
-          client.setStatusEnum(constants::ClientStatus::ACTIVE);
+          client.setStatus(constants::ClientStatus::ACTIVE);
 
           const auto reactivationDate = dto.getReactivationDate().empty()
                ? trantor::Date::now()
@@ -538,7 +563,7 @@ namespace customer::services {
 
           auto client = co_await mapper.findByPrimaryKey(id);
 
-          if (client.getValueOfStatusEnum() != constants::ClientStatus::CLOSED) {
+          if (client.getValueOfStatus() != constants::ClientStatus::CLOSED) {
               dto::BaseApiResponse errorResponse;
               errorResponse.success = false;
               errorResponse.error["code"] = constants::ERR_UNSUPPORTED_OPERATION;
@@ -546,7 +571,7 @@ namespace customer::services {
               co_return errorResponse;
           }
 
-          client.setStatusEnum(constants::ClientStatus::ACTIVE);
+          client.setStatus(constants::ClientStatus::ACTIVE);
 
           const auto reopenedDate = dto.getReopenedDate().empty()
                   ? trantor::Date::now()
@@ -606,7 +631,7 @@ namespace customer::services {
 
           auto client = co_await mapper.findByPrimaryKey(id);
 
-          if (client.getValueOfStatusEnum() != constants::ClientStatus::PENDING) {
+          if (client.getValueOfStatus() != constants::ClientStatus::PENDING) {
               dto::BaseApiResponse errorResponse;
               errorResponse.success = false;
               errorResponse.error["code"] = constants::ERR_UNSUPPORTED_OPERATION;
@@ -614,7 +639,7 @@ namespace customer::services {
               co_return errorResponse;
           }
 
-          client.setStatusEnum(constants::ClientStatus::WITHDRAWN);
+          client.setStatus(constants::ClientStatus::WITHDRAWN);
           client.setWithdrawnOnDate(dto.getWithdrawalDate().empty() ? trantor::Date::now() : trantor::Date::fromDbString(dto.getWithdrawalDate()));
           client.setWithdrawReasonCvId(dto.getWithdrawalReasonCvId());
 
@@ -669,7 +694,7 @@ namespace customer::services {
 
           auto client = co_await mapper.findByPrimaryKey(id);
 
-          if (client.getValueOfStatusEnum() != constants::ClientStatus::WITHDRAWN) {
+          if (client.getValueOfStatus() != constants::ClientStatus::WITHDRAWN) {
               dto::BaseApiResponse errorResponse;
               errorResponse.success = false;
               errorResponse.error["code"] = constants::ERR_UNSUPPORTED_OPERATION;
@@ -677,7 +702,7 @@ namespace customer::services {
               co_return errorResponse;
           }
 
-          client.setStatusEnum(constants::ClientStatus::ACTIVE);
+          client.setStatus(constants::ClientStatus::ACTIVE);
 
           const auto reopenedDate = dto.getReopenedDate().empty()
                   ? trantor::Date::now()
@@ -897,7 +922,7 @@ namespace customer::services {
 
           auto client = co_await mapper.findByPrimaryKey(id);
 
-          if (client.getValueOfStatusEnum() != constants::ClientStatus::ACTIVE) {
+          if (client.getValueOfStatus() != constants::ClientStatus::ACTIVE) {
               dto::BaseApiResponse errorResponse;
               errorResponse.success = false;
               errorResponse.error["code"] = constants::ERR_UNSUPPORTED_OPERATION;
@@ -924,7 +949,7 @@ namespace customer::services {
           }
 
           client.setTransferToOfficeId(dto.getDestinationOfficeId());
-          client.setStatusEnum(constants::ClientStatus::TRANSFER_IN_PROGRESS);
+          client.setStatus(constants::ClientStatus::TRANSFER_IN_PROGRESS);
           client.setProposedTransferDate(transferDate);
 
           auto updatedRows = co_await mapper.update(client);
@@ -976,7 +1001,7 @@ namespace customer::services {
 
           auto client = co_await mapper.findByPrimaryKey(id);
 
-          if (client.getValueOfStatusEnum() != constants::ClientStatus::TRANSFER_IN_PROGRESS) {
+          if (client.getValueOfStatus() != constants::ClientStatus::TRANSFER_IN_PROGRESS) {
               dto::BaseApiResponse errorResponse;
               errorResponse.success = false;
               errorResponse.error["code"] = constants::ERR_UNSUPPORTED_OPERATION;
@@ -986,7 +1011,7 @@ namespace customer::services {
 
           client.setTransferToOfficeId("");
           client.setProposedTransferDateToNull();
-          client.setStatusEnum(constants::ClientStatus::ACTIVE);
+          client.setStatus(constants::ClientStatus::ACTIVE);
 
           auto updatedRows = co_await mapper.update(client);
 
@@ -1037,7 +1062,7 @@ namespace customer::services {
 
           auto client = co_await mapper.findByPrimaryKey(id);
 
-          if (client.getValueOfStatusEnum() != constants::ClientStatus::TRANSFER_IN_PROGRESS) {
+          if (client.getValueOfStatus() != constants::ClientStatus::TRANSFER_IN_PROGRESS) {
               dto::BaseApiResponse errorResponse;
               errorResponse.success = false;
               errorResponse.error["code"] = constants::ERR_UNSUPPORTED_OPERATION;
@@ -1047,7 +1072,7 @@ namespace customer::services {
 
           client.setTransferToOfficeId("");
           client.setProposedTransferDateToNull();
-          client.setStatusEnum(constants::ClientStatus::ACTIVE);
+          client.setStatus(constants::ClientStatus::ACTIVE);
 
           auto updatedRows = co_await mapper.update(client);
 
@@ -1097,7 +1122,7 @@ namespace customer::services {
 
           auto client = co_await mapper.findByPrimaryKey(id);
 
-          if (client.getValueOfStatusEnum() != constants::ClientStatus::TRANSFER_IN_PROGRESS) {
+          if (client.getValueOfStatus() != constants::ClientStatus::TRANSFER_IN_PROGRESS) {
               dto::BaseApiResponse errorResponse;
               errorResponse.success = false;
               errorResponse.error["code"] = constants::ERR_UNSUPPORTED_OPERATION;
@@ -1123,7 +1148,7 @@ namespace customer::services {
           // Clear transfer tracking fields and reactivate
           client.setTransferToOfficeId("");
           client.setProposedTransferDateToNull();
-          client.setStatusEnum(constants::ClientStatus::ACTIVE);
+          client.setStatus(constants::ClientStatus::ACTIVE);
 
           auto updatedRows = co_await mapper.update(client);
 
@@ -1183,7 +1208,7 @@ namespace customer::services {
 
           auto client = co_await mapper.findByPrimaryKey(id);
 
-          if (client.getValueOfStatusEnum() != constants::ClientStatus::ACTIVE) {
+          if (client.getValueOfStatus() != constants::ClientStatus::ACTIVE) {
               dto::BaseApiResponse errorResponse;
               errorResponse.success = false;
               errorResponse.error["code"] = constants::ERR_UNSUPPORTED_OPERATION;
@@ -1207,7 +1232,7 @@ namespace customer::services {
           // In case the client had any stale proposed transfer fields, clean them up
           client.setTransferToOfficeId("");
           client.setProposedTransferDateToNull();
-          client.setStatusEnum(constants::ClientStatus::ACTIVE);
+          client.setStatus(constants::ClientStatus::ACTIVE);
 
           auto updatedRows = co_await mapper.update(client);
 
@@ -1243,10 +1268,10 @@ namespace customer::services {
   }
 
   drogon::Task<dto::BaseApiResponse> ClientService::getClientAccountsOverview(const std::string &id) {
-
       // call portfolio and deposit account management services to return account overview from each service
-
-
+      dto::BaseApiResponse response;
+      response.success = true;
+      co_return response;
   }
 
   drogon::Task<dto::BaseApiResponse> ClientService::getClientAddresses(const std::string &id) {
@@ -2291,6 +2316,55 @@ namespace customer::services {
 
   drogon::Task<dto::BaseApiResponse> ClientService::undoClientTransaction(const std::string &id, std::string transactionId) {
 
+      auto dbClient = drogon::app().getDbClient();
+      CoroMapper<drogon_model::TlCustomerDb::ClientTransaction> mapper(dbClient);
+
+        try {
+            if (id.empty()) {
+                dto::BaseApiResponse errorResponse;
+                errorResponse.success = false;
+                errorResponse.error["code"] = constants::ERR_VALIDATION;
+                errorResponse.error["message"] = "Client ID cannot be empty.";
+                co_return errorResponse;
+            }
+
+            Criteria criteria = Criteria(drogon_model::TlCustomerDb::ClientTransaction::Cols::_client_id, drogon::orm::CompareOperator::EQ, id) && Criteria(drogon_model::TlCustomerDb::ClientTransaction::Cols::_id, drogon::orm::CompareOperator::EQ, transactionId);
+
+            auto transaction = co_await mapper.findOne(criteria);
+
+            transaction.setIsReversed(true);
+            //perform the necessary ceremonies in other microservices.
+
+            auto updatedRows = co_await mapper.update(transaction);
+
+            if (updatedRows == 0) {
+                dto::BaseApiResponse errorResponse;
+                errorResponse.success = false;
+                errorResponse.error["code"] = constants::ERR_DB_NOT_FOUND;
+                errorResponse.error["message"] = "Client transaction could not be undone.";
+                co_return errorResponse;
+            }
+
+            dto::BaseApiResponse response;
+            response.success = true;
+            response.message = "Client transaction undone successfully.";
+            co_return response;
+
+        } catch (const DrogonDbException &e) {
+            dto::BaseApiResponse errorResponse;
+            errorResponse.success = false;
+            errorResponse.error["code"] = constants::ERR_DB_QUERY;
+            errorResponse.error["message"] = "Database error while retrieving client transactions.";
+            errorResponse.error["detail"] = e.base().what();
+            co_return errorResponse;
+        } catch (const std::exception &e) {
+            dto::BaseApiResponse errorResponse;
+            errorResponse.success = false;
+            errorResponse.error["code"] = constants::ERR_INTERNAL;
+            errorResponse.error["message"] = "Internal error.";
+            errorResponse.error["detail"] = e.what();
+            co_return errorResponse;
+        }
 
   }
 

@@ -116,6 +116,7 @@ class ClientChargePaidBy
     ///Set the value of the column client_transaction_id
     void setClientTransactionId(const std::string &pClientTransactionId) noexcept;
     void setClientTransactionId(std::string &&pClientTransactionId) noexcept;
+    void setClientTransactionIdToNull() noexcept;
 
     /**  For column client_charge_id  */
     ///Get the value of the column client_charge_id, returns the default value if the column is null
@@ -197,17 +198,15 @@ class ClientChargePaidBy
         {
             needSelection=true;
         }
-        sql += "client_transaction_id,";
-        ++parametersCount;
-        if(!dirtyFlag_[1])
+        if(dirtyFlag_[1])
         {
-            needSelection=true;
+            sql += "client_transaction_id,";
+            ++parametersCount;
         }
-        sql += "client_charge_id,";
-        ++parametersCount;
-        if(!dirtyFlag_[2])
+        if(dirtyFlag_[2])
         {
-            needSelection=true;
+            sql += "client_charge_id,";
+            ++parametersCount;
         }
         if(dirtyFlag_[3])
         {
@@ -239,18 +238,10 @@ class ClientChargePaidBy
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
         }
-        else
-        {
-            sql +="default,";
-        }
         if(dirtyFlag_[2])
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
-        }
-        else
-        {
-            sql +="default,";
         }
         if(dirtyFlag_[3])
         {

@@ -329,17 +329,15 @@ class ClientCharge
         {
             needSelection=true;
         }
-        sql += "client_id,";
-        ++parametersCount;
-        if(!dirtyFlag_[1])
+        if(dirtyFlag_[1])
         {
-            needSelection=true;
+            sql += "client_id,";
+            ++parametersCount;
         }
-        sql += "charge_id,";
-        ++parametersCount;
-        if(!dirtyFlag_[2])
+        if(dirtyFlag_[2])
         {
-            needSelection=true;
+            sql += "charge_id,";
+            ++parametersCount;
         }
         if(dirtyFlag_[3])
         {
@@ -434,18 +432,10 @@ class ClientCharge
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
         }
-        else
-        {
-            sql +="default,";
-        }
         if(dirtyFlag_[2])
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
-        }
-        else
-        {
-            sql +="default,";
         }
         if(dirtyFlag_[3])
         {

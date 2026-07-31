@@ -2974,14 +2974,14 @@ bool ClientTransaction::validJsonOfField(size_t index,
                 err="Type error in the "+fieldName+" field";
                 return false;
             }
-            if(pJson.isString() && std::strlen(pJson.asCString()) > 20)
+            if(pJson.isString() && std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>{}
+                .from_bytes(pJson.asCString()).size() > 20)
             {
                 err="String length exceeds limit for the " +
                     fieldName +
                     " field (the maximum value is 20)";
                 return false;
             }
-
             break;
         case 4:
             if(pJson.isNull())
@@ -3016,14 +3016,14 @@ bool ClientTransaction::validJsonOfField(size_t index,
                 err="Type error in the "+fieldName+" field";
                 return false;
             }
-            if(pJson.isString() && std::strlen(pJson.asCString()) > 50)
+            if(pJson.isString() && std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>{}
+                .from_bytes(pJson.asCString()).size() > 50)
             {
                 err="String length exceeds limit for the " +
                     fieldName +
                     " field (the maximum value is 50)";
                 return false;
             }
-
             break;
         case 7:
             if(pJson.isNull())
