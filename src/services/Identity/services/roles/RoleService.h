@@ -5,11 +5,8 @@
 
 #include <drogon/drogon.h>
 #include "dto/BaseApiResponse.h"
-#include "dto/CreateRoleDto.h"
+#include "dto/RoleDto.h"
 
-namespace turbo_ledger_identity::dto {
-    class UpdateRoleDto;
-}
 
 namespace turbo_ledger_identity::services {
 
@@ -17,38 +14,15 @@ namespace turbo_ledger_identity::services {
 
     public:
 
-        void getRoles(
-            int pageNo,
-            int pageSize,
-            const std::string& query,
-            const std::string& tenantId,
-            const std::function<void(const turbo_ledger_identity::dto::BaseApiResponse&)>& callback
-        );
+        drogon::Task<dto::BaseApiResponse> getAll(const std::string &businessId, int pageNo, int pageSize, const std::string &query);
 
-        void createRole(
-            const dto::CreateRoleDto& roleData,
-            const std::string& tenantId,
-            const std::function<void(const turbo_ledger_identity::dto::BaseApiResponse&)>& callback
-        );
+        drogon::Task<dto::BaseApiResponse> getAllPermissions();
 
-        void updateRole(
-            const dto::UpdateRoleDto& roleData,
-            const std::string& tenantId,
-            const std::function<void(const turbo_ledger_identity::dto::BaseApiResponse&)>& callback
-        );
+        drogon::Task<dto::BaseApiResponse> create(const std::string &businessId, const dto::RoleDto &dto);
 
-        void deleteRole(
-            const std::string& roleId,
-            const std::string& tenantId,
-            const std::function<void(const turbo_ledger_identity::dto::BaseApiResponse&)>& callback
-        );
+        drogon::Task<dto::BaseApiResponse> update(const std::string &businessId, const dto::RoleDto &dto, const std::string &roleId);
 
-        // permissions
-
-        void getAllPermissions(
-            const std::string& tenantId,
-            const std::function<void(const turbo_ledger_identity::dto::BaseApiResponse&)>& callback
-        );
+        drogon::Task<dto::BaseApiResponse> deleteRole(const std::string &businessId, const std::string &roleId);
 
     };
 

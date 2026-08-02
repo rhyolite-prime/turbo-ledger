@@ -36,7 +36,7 @@ using DbClientPtr = std::shared_ptr<DbClient>;
 }
 namespace drogon_model
 {
-namespace TurboLedgerIdentity
+namespace TlIdentity
 {
 
 class Users
@@ -45,17 +45,35 @@ class Users
     struct Cols
     {
         static const std::string _id;
-        static const std::string _tenant_identifier;
-        static const std::string _username;
-        static const std::string _password_hash;
-        static const std::string _is_active;
-        static const std::string _created_at;
-        static const std::string _updated_at;
+        static const std::string _business_id;
         static const std::string _first_name;
         static const std::string _last_name;
-        static const std::string _is_locked_out;
         static const std::string _email;
+        static const std::string _username;
+        static const std::string _email_verified_at;
+        static const std::string _password_hash;
+        static const std::string _last_active_device;
+        static const std::string _profile_image_url;
+        static const std::string _require_two_factor_auth;
         static const std::string _phone_number;
+        static const std::string _country;
+        static const std::string _phone_verified_at;
+        static const std::string _is_locked_out;
+        static const std::string _is_active;
+        static const std::string _credential_id;
+        static const std::string _public_key;
+        static const std::string _public_key_algorithm;
+        static const std::string _sign_count;
+        static const std::string _user_handle;
+        static const std::string _transports;
+        static const std::string _credential_type;
+        static const std::string _last_active;
+        static const std::string _roles;
+        static const std::string _user_groups;
+        static const std::string _created_by;
+        static const std::string _created_at;
+        static const std::string _modified_by;
+        static const std::string _modified_at;
     };
 
     static const int primaryKeyNumber;
@@ -116,56 +134,14 @@ class Users
     void setId(const std::string &pId) noexcept;
     void setId(std::string &&pId) noexcept;
 
-    /**  For column tenant_identifier  */
-    ///Get the value of the column tenant_identifier, returns the default value if the column is null
-    const std::string &getValueOfTenantIdentifier() const noexcept;
+    /**  For column business_id  */
+    ///Get the value of the column business_id, returns the default value if the column is null
+    const std::string &getValueOfBusinessId() const noexcept;
     ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
-    const std::shared_ptr<std::string> &getTenantIdentifier() const noexcept;
-    ///Set the value of the column tenant_identifier
-    void setTenantIdentifier(const std::string &pTenantIdentifier) noexcept;
-    void setTenantIdentifier(std::string &&pTenantIdentifier) noexcept;
-
-    /**  For column username  */
-    ///Get the value of the column username, returns the default value if the column is null
-    const std::string &getValueOfUsername() const noexcept;
-    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
-    const std::shared_ptr<std::string> &getUsername() const noexcept;
-    ///Set the value of the column username
-    void setUsername(const std::string &pUsername) noexcept;
-    void setUsername(std::string &&pUsername) noexcept;
-
-    /**  For column password_hash  */
-    ///Get the value of the column password_hash, returns the default value if the column is null
-    const std::string &getValueOfPasswordHash() const noexcept;
-    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
-    const std::shared_ptr<std::string> &getPasswordHash() const noexcept;
-    ///Set the value of the column password_hash
-    void setPasswordHash(const std::string &pPasswordHash) noexcept;
-    void setPasswordHash(std::string &&pPasswordHash) noexcept;
-
-    /**  For column is_active  */
-    ///Get the value of the column is_active, returns the default value if the column is null
-    const bool &getValueOfIsActive() const noexcept;
-    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
-    const std::shared_ptr<bool> &getIsActive() const noexcept;
-    ///Set the value of the column is_active
-    void setIsActive(const bool &pIsActive) noexcept;
-
-    /**  For column created_at  */
-    ///Get the value of the column created_at, returns the default value if the column is null
-    const ::trantor::Date &getValueOfCreatedAt() const noexcept;
-    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
-    const std::shared_ptr<::trantor::Date> &getCreatedAt() const noexcept;
-    ///Set the value of the column created_at
-    void setCreatedAt(const ::trantor::Date &pCreatedAt) noexcept;
-
-    /**  For column updated_at  */
-    ///Get the value of the column updated_at, returns the default value if the column is null
-    const ::trantor::Date &getValueOfUpdatedAt() const noexcept;
-    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
-    const std::shared_ptr<::trantor::Date> &getUpdatedAt() const noexcept;
-    ///Set the value of the column updated_at
-    void setUpdatedAt(const ::trantor::Date &pUpdatedAt) noexcept;
+    const std::shared_ptr<std::string> &getBusinessId() const noexcept;
+    ///Set the value of the column business_id
+    void setBusinessId(const std::string &pBusinessId) noexcept;
+    void setBusinessId(std::string &&pBusinessId) noexcept;
 
     /**  For column first_name  */
     ///Get the value of the column first_name, returns the default value if the column is null
@@ -175,6 +151,7 @@ class Users
     ///Set the value of the column first_name
     void setFirstName(const std::string &pFirstName) noexcept;
     void setFirstName(std::string &&pFirstName) noexcept;
+    void setFirstNameToNull() noexcept;
 
     /**  For column last_name  */
     ///Get the value of the column last_name, returns the default value if the column is null
@@ -184,14 +161,7 @@ class Users
     ///Set the value of the column last_name
     void setLastName(const std::string &pLastName) noexcept;
     void setLastName(std::string &&pLastName) noexcept;
-
-    /**  For column is_locked_out  */
-    ///Get the value of the column is_locked_out, returns the default value if the column is null
-    const bool &getValueOfIsLockedOut() const noexcept;
-    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
-    const std::shared_ptr<bool> &getIsLockedOut() const noexcept;
-    ///Set the value of the column is_locked_out
-    void setIsLockedOut(const bool &pIsLockedOut) noexcept;
+    void setLastNameToNull() noexcept;
 
     /**  For column email  */
     ///Get the value of the column email, returns the default value if the column is null
@@ -202,6 +172,64 @@ class Users
     void setEmail(const std::string &pEmail) noexcept;
     void setEmail(std::string &&pEmail) noexcept;
 
+    /**  For column username  */
+    ///Get the value of the column username, returns the default value if the column is null
+    const std::string &getValueOfUsername() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<std::string> &getUsername() const noexcept;
+    ///Set the value of the column username
+    void setUsername(const std::string &pUsername) noexcept;
+    void setUsername(std::string &&pUsername) noexcept;
+    void setUsernameToNull() noexcept;
+
+    /**  For column email_verified_at  */
+    ///Get the value of the column email_verified_at, returns the default value if the column is null
+    const ::trantor::Date &getValueOfEmailVerifiedAt() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<::trantor::Date> &getEmailVerifiedAt() const noexcept;
+    ///Set the value of the column email_verified_at
+    void setEmailVerifiedAt(const ::trantor::Date &pEmailVerifiedAt) noexcept;
+    void setEmailVerifiedAtToNull() noexcept;
+
+    /**  For column password_hash  */
+    ///Get the value of the column password_hash, returns the default value if the column is null
+    const std::string &getValueOfPasswordHash() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<std::string> &getPasswordHash() const noexcept;
+    ///Set the value of the column password_hash
+    void setPasswordHash(const std::string &pPasswordHash) noexcept;
+    void setPasswordHash(std::string &&pPasswordHash) noexcept;
+    void setPasswordHashToNull() noexcept;
+
+    /**  For column last_active_device  */
+    ///Get the value of the column last_active_device, returns the default value if the column is null
+    const std::string &getValueOfLastActiveDevice() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<std::string> &getLastActiveDevice() const noexcept;
+    ///Set the value of the column last_active_device
+    void setLastActiveDevice(const std::string &pLastActiveDevice) noexcept;
+    void setLastActiveDevice(std::string &&pLastActiveDevice) noexcept;
+    void setLastActiveDeviceToNull() noexcept;
+
+    /**  For column profile_image_url  */
+    ///Get the value of the column profile_image_url, returns the default value if the column is null
+    const std::string &getValueOfProfileImageUrl() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<std::string> &getProfileImageUrl() const noexcept;
+    ///Set the value of the column profile_image_url
+    void setProfileImageUrl(const std::string &pProfileImageUrl) noexcept;
+    void setProfileImageUrl(std::string &&pProfileImageUrl) noexcept;
+    void setProfileImageUrlToNull() noexcept;
+
+    /**  For column require_two_factor_auth  */
+    ///Get the value of the column require_two_factor_auth, returns the default value if the column is null
+    const bool &getValueOfRequireTwoFactorAuth() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<bool> &getRequireTwoFactorAuth() const noexcept;
+    ///Set the value of the column require_two_factor_auth
+    void setRequireTwoFactorAuth(const bool &pRequireTwoFactorAuth) noexcept;
+    void setRequireTwoFactorAuthToNull() noexcept;
+
     /**  For column phone_number  */
     ///Get the value of the column phone_number, returns the default value if the column is null
     const std::string &getValueOfPhoneNumber() const noexcept;
@@ -210,9 +238,186 @@ class Users
     ///Set the value of the column phone_number
     void setPhoneNumber(const std::string &pPhoneNumber) noexcept;
     void setPhoneNumber(std::string &&pPhoneNumber) noexcept;
+    void setPhoneNumberToNull() noexcept;
+
+    /**  For column country  */
+    ///Get the value of the column country, returns the default value if the column is null
+    const std::string &getValueOfCountry() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<std::string> &getCountry() const noexcept;
+    ///Set the value of the column country
+    void setCountry(const std::string &pCountry) noexcept;
+    void setCountry(std::string &&pCountry) noexcept;
+    void setCountryToNull() noexcept;
+
+    /**  For column phone_verified_at  */
+    ///Get the value of the column phone_verified_at, returns the default value if the column is null
+    const ::trantor::Date &getValueOfPhoneVerifiedAt() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<::trantor::Date> &getPhoneVerifiedAt() const noexcept;
+    ///Set the value of the column phone_verified_at
+    void setPhoneVerifiedAt(const ::trantor::Date &pPhoneVerifiedAt) noexcept;
+    void setPhoneVerifiedAtToNull() noexcept;
+
+    /**  For column is_locked_out  */
+    ///Get the value of the column is_locked_out, returns the default value if the column is null
+    const bool &getValueOfIsLockedOut() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<bool> &getIsLockedOut() const noexcept;
+    ///Set the value of the column is_locked_out
+    void setIsLockedOut(const bool &pIsLockedOut) noexcept;
+
+    /**  For column is_active  */
+    ///Get the value of the column is_active, returns the default value if the column is null
+    const bool &getValueOfIsActive() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<bool> &getIsActive() const noexcept;
+    ///Set the value of the column is_active
+    void setIsActive(const bool &pIsActive) noexcept;
+
+    /**  For column credential_id  */
+    ///Get the value of the column credential_id, returns the default value if the column is null
+    const std::vector<char> &getValueOfCredentialId() const noexcept;
+    ///Return the column value by std::string with binary data
+    std::string getValueOfCredentialIdAsString() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<std::vector<char>> &getCredentialId() const noexcept;
+    ///Set the value of the column credential_id
+    void setCredentialId(const std::vector<char> &pCredentialId) noexcept;
+    void setCredentialId(const std::string &pCredentialId) noexcept;
+    void setCredentialIdToNull() noexcept;
+
+    /**  For column public_key  */
+    ///Get the value of the column public_key, returns the default value if the column is null
+    const std::vector<char> &getValueOfPublicKey() const noexcept;
+    ///Return the column value by std::string with binary data
+    std::string getValueOfPublicKeyAsString() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<std::vector<char>> &getPublicKey() const noexcept;
+    ///Set the value of the column public_key
+    void setPublicKey(const std::vector<char> &pPublicKey) noexcept;
+    void setPublicKey(const std::string &pPublicKey) noexcept;
+    void setPublicKeyToNull() noexcept;
+
+    /**  For column public_key_algorithm  */
+    ///Get the value of the column public_key_algorithm, returns the default value if the column is null
+    const int32_t &getValueOfPublicKeyAlgorithm() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<int32_t> &getPublicKeyAlgorithm() const noexcept;
+    ///Set the value of the column public_key_algorithm
+    void setPublicKeyAlgorithm(const int32_t &pPublicKeyAlgorithm) noexcept;
+    void setPublicKeyAlgorithmToNull() noexcept;
+
+    /**  For column sign_count  */
+    ///Get the value of the column sign_count, returns the default value if the column is null
+    const int64_t &getValueOfSignCount() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<int64_t> &getSignCount() const noexcept;
+    ///Set the value of the column sign_count
+    void setSignCount(const int64_t &pSignCount) noexcept;
+    void setSignCountToNull() noexcept;
+
+    /**  For column user_handle  */
+    ///Get the value of the column user_handle, returns the default value if the column is null
+    const std::vector<char> &getValueOfUserHandle() const noexcept;
+    ///Return the column value by std::string with binary data
+    std::string getValueOfUserHandleAsString() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<std::vector<char>> &getUserHandle() const noexcept;
+    ///Set the value of the column user_handle
+    void setUserHandle(const std::vector<char> &pUserHandle) noexcept;
+    void setUserHandle(const std::string &pUserHandle) noexcept;
+    void setUserHandleToNull() noexcept;
+
+    /**  For column transports  */
+    ///Get the value of the column transports, returns the default value if the column is null
+    const std::string &getValueOfTransports() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<std::string> &getTransports() const noexcept;
+    ///Set the value of the column transports
+    void setTransports(const std::string &pTransports) noexcept;
+    void setTransports(std::string &&pTransports) noexcept;
+    void setTransportsToNull() noexcept;
+
+    /**  For column credential_type  */
+    ///Get the value of the column credential_type, returns the default value if the column is null
+    const std::string &getValueOfCredentialType() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<std::string> &getCredentialType() const noexcept;
+    ///Set the value of the column credential_type
+    void setCredentialType(const std::string &pCredentialType) noexcept;
+    void setCredentialType(std::string &&pCredentialType) noexcept;
+    void setCredentialTypeToNull() noexcept;
+
+    /**  For column last_active  */
+    ///Get the value of the column last_active, returns the default value if the column is null
+    const ::trantor::Date &getValueOfLastActive() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<::trantor::Date> &getLastActive() const noexcept;
+    ///Set the value of the column last_active
+    void setLastActive(const ::trantor::Date &pLastActive) noexcept;
+    void setLastActiveToNull() noexcept;
+
+    /**  For column roles  */
+    ///Get the value of the column roles, returns the default value if the column is null
+    const std::string &getValueOfRoles() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<std::string> &getRoles() const noexcept;
+    ///Set the value of the column roles
+    void setRoles(const std::string &pRoles) noexcept;
+    void setRoles(std::string &&pRoles) noexcept;
+    void setRolesToNull() noexcept;
+
+    /**  For column user_groups  */
+    ///Get the value of the column user_groups, returns the default value if the column is null
+    const std::string &getValueOfUserGroups() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<std::string> &getUserGroups() const noexcept;
+    ///Set the value of the column user_groups
+    void setUserGroups(const std::string &pUserGroups) noexcept;
+    void setUserGroups(std::string &&pUserGroups) noexcept;
+    void setUserGroupsToNull() noexcept;
+
+    /**  For column created_by  */
+    ///Get the value of the column created_by, returns the default value if the column is null
+    const std::string &getValueOfCreatedBy() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<std::string> &getCreatedBy() const noexcept;
+    ///Set the value of the column created_by
+    void setCreatedBy(const std::string &pCreatedBy) noexcept;
+    void setCreatedBy(std::string &&pCreatedBy) noexcept;
+    void setCreatedByToNull() noexcept;
+
+    /**  For column created_at  */
+    ///Get the value of the column created_at, returns the default value if the column is null
+    const ::trantor::Date &getValueOfCreatedAt() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<::trantor::Date> &getCreatedAt() const noexcept;
+    ///Set the value of the column created_at
+    void setCreatedAt(const ::trantor::Date &pCreatedAt) noexcept;
+    void setCreatedAtToNull() noexcept;
+
+    /**  For column modified_by  */
+    ///Get the value of the column modified_by, returns the default value if the column is null
+    const std::string &getValueOfModifiedBy() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<std::string> &getModifiedBy() const noexcept;
+    ///Set the value of the column modified_by
+    void setModifiedBy(const std::string &pModifiedBy) noexcept;
+    void setModifiedBy(std::string &&pModifiedBy) noexcept;
+    void setModifiedByToNull() noexcept;
+
+    /**  For column modified_at  */
+    ///Get the value of the column modified_at, returns the default value if the column is null
+    const ::trantor::Date &getValueOfModifiedAt() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<::trantor::Date> &getModifiedAt() const noexcept;
+    ///Set the value of the column modified_at
+    void setModifiedAt(const ::trantor::Date &pModifiedAt) noexcept;
+    void setModifiedAtToNull() noexcept;
 
 
-    static size_t getColumnNumber() noexcept {  return 12;  }
+    static size_t getColumnNumber() noexcept {  return 30;  }
     static const std::string &getColumnName(size_t index) noexcept(false);
 
     Json::Value toJson() const;
@@ -235,17 +440,35 @@ class Users
     ///For mysql or sqlite3
     void updateId(const uint64_t id);
     std::shared_ptr<std::string> id_;
-    std::shared_ptr<std::string> tenantIdentifier_;
-    std::shared_ptr<std::string> username_;
-    std::shared_ptr<std::string> passwordHash_;
-    std::shared_ptr<bool> isActive_;
-    std::shared_ptr<::trantor::Date> createdAt_;
-    std::shared_ptr<::trantor::Date> updatedAt_;
+    std::shared_ptr<std::string> businessId_;
     std::shared_ptr<std::string> firstName_;
     std::shared_ptr<std::string> lastName_;
-    std::shared_ptr<bool> isLockedOut_;
     std::shared_ptr<std::string> email_;
+    std::shared_ptr<std::string> username_;
+    std::shared_ptr<::trantor::Date> emailVerifiedAt_;
+    std::shared_ptr<std::string> passwordHash_;
+    std::shared_ptr<std::string> lastActiveDevice_;
+    std::shared_ptr<std::string> profileImageUrl_;
+    std::shared_ptr<bool> requireTwoFactorAuth_;
     std::shared_ptr<std::string> phoneNumber_;
+    std::shared_ptr<std::string> country_;
+    std::shared_ptr<::trantor::Date> phoneVerifiedAt_;
+    std::shared_ptr<bool> isLockedOut_;
+    std::shared_ptr<bool> isActive_;
+    std::shared_ptr<std::vector<char>> credentialId_;
+    std::shared_ptr<std::vector<char>> publicKey_;
+    std::shared_ptr<int32_t> publicKeyAlgorithm_;
+    std::shared_ptr<int64_t> signCount_;
+    std::shared_ptr<std::vector<char>> userHandle_;
+    std::shared_ptr<std::string> transports_;
+    std::shared_ptr<std::string> credentialType_;
+    std::shared_ptr<::trantor::Date> lastActive_;
+    std::shared_ptr<std::string> roles_;
+    std::shared_ptr<std::string> userGroups_;
+    std::shared_ptr<std::string> createdBy_;
+    std::shared_ptr<::trantor::Date> createdAt_;
+    std::shared_ptr<std::string> modifiedBy_;
+    std::shared_ptr<::trantor::Date> modifiedAt_;
     struct MetaData
     {
         const std::string colName_;
@@ -257,7 +480,7 @@ class Users
         const bool notNull_;
     };
     static const std::vector<MetaData> metaData_;
-    bool dirtyFlag_[12]={ false };
+    bool dirtyFlag_[30]={ false };
   public:
     static const std::string &sqlForFindingByPrimaryKey()
     {
@@ -283,64 +506,153 @@ class Users
         }
         if(dirtyFlag_[1])
         {
-            sql += "tenant_identifier,";
+            sql += "business_id,";
             ++parametersCount;
         }
         if(dirtyFlag_[2])
         {
-            sql += "username,";
+            sql += "first_name,";
             ++parametersCount;
         }
         if(dirtyFlag_[3])
         {
-            sql += "password_hash,";
+            sql += "last_name,";
             ++parametersCount;
         }
-        sql += "is_active,";
-        ++parametersCount;
-        if(!dirtyFlag_[4])
+        if(dirtyFlag_[4])
         {
-            needSelection=true;
+            sql += "email,";
+            ++parametersCount;
         }
-        sql += "created_at,";
-        ++parametersCount;
-        if(!dirtyFlag_[5])
+        if(dirtyFlag_[5])
         {
-            needSelection=true;
+            sql += "username,";
+            ++parametersCount;
         }
-        sql += "updated_at,";
+        sql += "email_verified_at,";
         ++parametersCount;
         if(!dirtyFlag_[6])
         {
             needSelection=true;
         }
-        sql += "first_name,";
-        ++parametersCount;
-        if(!dirtyFlag_[7])
+        if(dirtyFlag_[7])
         {
-            needSelection=true;
+            sql += "password_hash,";
+            ++parametersCount;
         }
-        sql += "last_name,";
-        ++parametersCount;
-        if(!dirtyFlag_[8])
+        if(dirtyFlag_[8])
         {
-            needSelection=true;
+            sql += "last_active_device,";
+            ++parametersCount;
         }
-        sql += "is_locked_out,";
-        ++parametersCount;
-        if(!dirtyFlag_[9])
+        if(dirtyFlag_[9])
         {
-            needSelection=true;
+            sql += "profile_image_url,";
+            ++parametersCount;
         }
-        sql += "email,";
+        sql += "require_two_factor_auth,";
         ++parametersCount;
         if(!dirtyFlag_[10])
         {
             needSelection=true;
         }
-        sql += "phone_number,";
+        if(dirtyFlag_[11])
+        {
+            sql += "phone_number,";
+            ++parametersCount;
+        }
+        if(dirtyFlag_[12])
+        {
+            sql += "country,";
+            ++parametersCount;
+        }
+        if(dirtyFlag_[13])
+        {
+            sql += "phone_verified_at,";
+            ++parametersCount;
+        }
+        sql += "is_locked_out,";
         ++parametersCount;
-        if(!dirtyFlag_[11])
+        if(!dirtyFlag_[14])
+        {
+            needSelection=true;
+        }
+        sql += "is_active,";
+        ++parametersCount;
+        if(!dirtyFlag_[15])
+        {
+            needSelection=true;
+        }
+        if(dirtyFlag_[16])
+        {
+            sql += "credential_id,";
+            ++parametersCount;
+        }
+        if(dirtyFlag_[17])
+        {
+            sql += "public_key,";
+            ++parametersCount;
+        }
+        if(dirtyFlag_[18])
+        {
+            sql += "public_key_algorithm,";
+            ++parametersCount;
+        }
+        sql += "sign_count,";
+        ++parametersCount;
+        if(!dirtyFlag_[19])
+        {
+            needSelection=true;
+        }
+        if(dirtyFlag_[20])
+        {
+            sql += "user_handle,";
+            ++parametersCount;
+        }
+        if(dirtyFlag_[21])
+        {
+            sql += "transports,";
+            ++parametersCount;
+        }
+        if(dirtyFlag_[22])
+        {
+            sql += "credential_type,";
+            ++parametersCount;
+        }
+        if(dirtyFlag_[23])
+        {
+            sql += "last_active,";
+            ++parametersCount;
+        }
+        if(dirtyFlag_[24])
+        {
+            sql += "roles,";
+            ++parametersCount;
+        }
+        if(dirtyFlag_[25])
+        {
+            sql += "user_groups,";
+            ++parametersCount;
+        }
+        if(dirtyFlag_[26])
+        {
+            sql += "created_by,";
+            ++parametersCount;
+        }
+        sql += "created_at,";
+        ++parametersCount;
+        if(!dirtyFlag_[27])
+        {
+            needSelection=true;
+        }
+        if(dirtyFlag_[28])
+        {
+            sql += "modified_by,";
+            ++parametersCount;
+        }
+        sql += "modified_at,";
+        ++parametersCount;
+        if(!dirtyFlag_[29])
         {
             needSelection=true;
         }
@@ -384,18 +696,10 @@ class Users
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
         }
-        else
-        {
-            sql +="default,";
-        }
         if(dirtyFlag_[5])
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
-        }
-        else
-        {
-            sql +="default,";
         }
         if(dirtyFlag_[6])
         {
@@ -411,27 +715,15 @@ class Users
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
         }
-        else
-        {
-            sql +="default,";
-        }
         if(dirtyFlag_[8])
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
         }
-        else
-        {
-            sql +="default,";
-        }
         if(dirtyFlag_[9])
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
-        }
-        else
-        {
-            sql +="default,";
         }
         if(dirtyFlag_[10])
         {
@@ -443,6 +735,112 @@ class Users
             sql +="default,";
         }
         if(dirtyFlag_[11])
+        {
+            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
+            sql.append(placeholderStr, n);
+        }
+        if(dirtyFlag_[12])
+        {
+            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
+            sql.append(placeholderStr, n);
+        }
+        if(dirtyFlag_[13])
+        {
+            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
+            sql.append(placeholderStr, n);
+        }
+        if(dirtyFlag_[14])
+        {
+            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
+            sql.append(placeholderStr, n);
+        }
+        else
+        {
+            sql +="default,";
+        }
+        if(dirtyFlag_[15])
+        {
+            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
+            sql.append(placeholderStr, n);
+        }
+        else
+        {
+            sql +="default,";
+        }
+        if(dirtyFlag_[16])
+        {
+            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
+            sql.append(placeholderStr, n);
+        }
+        if(dirtyFlag_[17])
+        {
+            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
+            sql.append(placeholderStr, n);
+        }
+        if(dirtyFlag_[18])
+        {
+            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
+            sql.append(placeholderStr, n);
+        }
+        if(dirtyFlag_[19])
+        {
+            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
+            sql.append(placeholderStr, n);
+        }
+        else
+        {
+            sql +="default,";
+        }
+        if(dirtyFlag_[20])
+        {
+            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
+            sql.append(placeholderStr, n);
+        }
+        if(dirtyFlag_[21])
+        {
+            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
+            sql.append(placeholderStr, n);
+        }
+        if(dirtyFlag_[22])
+        {
+            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
+            sql.append(placeholderStr, n);
+        }
+        if(dirtyFlag_[23])
+        {
+            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
+            sql.append(placeholderStr, n);
+        }
+        if(dirtyFlag_[24])
+        {
+            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
+            sql.append(placeholderStr, n);
+        }
+        if(dirtyFlag_[25])
+        {
+            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
+            sql.append(placeholderStr, n);
+        }
+        if(dirtyFlag_[26])
+        {
+            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
+            sql.append(placeholderStr, n);
+        }
+        if(dirtyFlag_[27])
+        {
+            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
+            sql.append(placeholderStr, n);
+        }
+        else
+        {
+            sql +="default,";
+        }
+        if(dirtyFlag_[28])
+        {
+            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
+            sql.append(placeholderStr, n);
+        }
+        if(dirtyFlag_[29])
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
@@ -467,5 +865,5 @@ class Users
         return sql;
     }
 };
-} // namespace TurboLedgerIdentity
+} // namespace TlIdentity
 } // namespace drogon_model

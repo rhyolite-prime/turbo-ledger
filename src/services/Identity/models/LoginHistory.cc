@@ -11,29 +11,33 @@
 
 using namespace drogon;
 using namespace drogon::orm;
-using namespace drogon_model::TurboLedgerIdentity;
+using namespace drogon_model::TlIdentity;
 
 const std::string LoginHistory::Cols::_id = "\"id\"";
-const std::string LoginHistory::Cols::_tenant_identifier = "\"tenant_identifier\"";
-const std::string LoginHistory::Cols::_username = "\"username\"";
+const std::string LoginHistory::Cols::_business_id = "\"business_id\"";
+const std::string LoginHistory::Cols::_user_id = "\"user_id\"";
+const std::string LoginHistory::Cols::_login_time = "\"login_time\"";
 const std::string LoginHistory::Cols::_ip_address = "\"ip_address\"";
 const std::string LoginHistory::Cols::_user_agent = "\"user_agent\"";
-const std::string LoginHistory::Cols::_success = "\"success\"";
+const std::string LoginHistory::Cols::_device_id = "\"device_id\"";
+const std::string LoginHistory::Cols::_status = "\"status\"";
 const std::string LoginHistory::Cols::_failure_reason = "\"failure_reason\"";
-const std::string LoginHistory::Cols::_created_at = "\"created_at\"";
+const std::string LoginHistory::Cols::_location = "\"location\"";
 const std::string LoginHistory::primaryKeyName = "id";
 const bool LoginHistory::hasPrimaryKey = true;
 const std::string LoginHistory::tableName = "\"login_history\"";
 
 const std::vector<typename LoginHistory::MetaData> LoginHistory::metaData_={
 {"id","std::string","uuid",0,0,1,1},
-{"tenant_identifier","std::string","character varying",32,0,0,1},
-{"username","std::string","character varying",100,0,0,1},
+{"business_id","std::string","uuid",0,0,0,1},
+{"user_id","std::string","uuid",0,0,0,1},
+{"login_time","::trantor::Date","timestamp with time zone",0,0,0,0},
 {"ip_address","std::string","inet",0,0,0,0},
-{"user_agent","std::string","text",0,0,0,0},
-{"success","bool","boolean",1,0,0,1},
+{"user_agent","std::string","character varying",512,0,0,0},
+{"device_id","std::string","character varying",128,0,0,0},
+{"status","std::string","character varying",50,0,0,1},
 {"failure_reason","std::string","character varying",255,0,0,0},
-{"created_at","::trantor::Date","timestamp with time zone",0,0,0,1}
+{"location","std::string","character varying",255,0,0,0}
 };
 const std::string &LoginHistory::getColumnName(size_t index) noexcept(false)
 {
@@ -48,33 +52,17 @@ LoginHistory::LoginHistory(const Row &r, const ssize_t indexOffset) noexcept
         {
             id_=std::make_shared<std::string>(r["id"].as<std::string>());
         }
-        if(!r["tenant_identifier"].isNull())
+        if(!r["business_id"].isNull())
         {
-            tenantIdentifier_=std::make_shared<std::string>(r["tenant_identifier"].as<std::string>());
+            businessId_=std::make_shared<std::string>(r["business_id"].as<std::string>());
         }
-        if(!r["username"].isNull())
+        if(!r["user_id"].isNull())
         {
-            username_=std::make_shared<std::string>(r["username"].as<std::string>());
+            userId_=std::make_shared<std::string>(r["user_id"].as<std::string>());
         }
-        if(!r["ip_address"].isNull())
+        if(!r["login_time"].isNull())
         {
-            ipAddress_=std::make_shared<std::string>(r["ip_address"].as<std::string>());
-        }
-        if(!r["user_agent"].isNull())
-        {
-            userAgent_=std::make_shared<std::string>(r["user_agent"].as<std::string>());
-        }
-        if(!r["success"].isNull())
-        {
-            success_=std::make_shared<bool>(r["success"].as<bool>());
-        }
-        if(!r["failure_reason"].isNull())
-        {
-            failureReason_=std::make_shared<std::string>(r["failure_reason"].as<std::string>());
-        }
-        if(!r["created_at"].isNull())
-        {
-            auto timeStr = r["created_at"].as<std::string>();
+            auto timeStr = r["login_time"].as<std::string>();
             struct tm stm;
             memset(&stm,0,sizeof(stm));
             auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
@@ -91,14 +79,38 @@ LoginHistory::LoginHistory(const Row &r, const ssize_t indexOffset) noexcept
                     }
                     decimalNum = (size_t)atol(decimals.c_str());
                 }
-                createdAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+                loginTime_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
+        }
+        if(!r["ip_address"].isNull())
+        {
+            ipAddress_=std::make_shared<std::string>(r["ip_address"].as<std::string>());
+        }
+        if(!r["user_agent"].isNull())
+        {
+            userAgent_=std::make_shared<std::string>(r["user_agent"].as<std::string>());
+        }
+        if(!r["device_id"].isNull())
+        {
+            deviceId_=std::make_shared<std::string>(r["device_id"].as<std::string>());
+        }
+        if(!r["status"].isNull())
+        {
+            status_=std::make_shared<std::string>(r["status"].as<std::string>());
+        }
+        if(!r["failure_reason"].isNull())
+        {
+            failureReason_=std::make_shared<std::string>(r["failure_reason"].as<std::string>());
+        }
+        if(!r["location"].isNull())
+        {
+            location_=std::make_shared<std::string>(r["location"].as<std::string>());
         }
     }
     else
     {
         size_t offset = (size_t)indexOffset;
-        if(offset + 8 > r.size())
+        if(offset + 10 > r.size())
         {
             LOG_FATAL << "Invalid SQL result for this model";
             return;
@@ -112,34 +124,14 @@ LoginHistory::LoginHistory(const Row &r, const ssize_t indexOffset) noexcept
         index = offset + 1;
         if(!r[index].isNull())
         {
-            tenantIdentifier_=std::make_shared<std::string>(r[index].as<std::string>());
+            businessId_=std::make_shared<std::string>(r[index].as<std::string>());
         }
         index = offset + 2;
         if(!r[index].isNull())
         {
-            username_=std::make_shared<std::string>(r[index].as<std::string>());
+            userId_=std::make_shared<std::string>(r[index].as<std::string>());
         }
         index = offset + 3;
-        if(!r[index].isNull())
-        {
-            ipAddress_=std::make_shared<std::string>(r[index].as<std::string>());
-        }
-        index = offset + 4;
-        if(!r[index].isNull())
-        {
-            userAgent_=std::make_shared<std::string>(r[index].as<std::string>());
-        }
-        index = offset + 5;
-        if(!r[index].isNull())
-        {
-            success_=std::make_shared<bool>(r[index].as<bool>());
-        }
-        index = offset + 6;
-        if(!r[index].isNull())
-        {
-            failureReason_=std::make_shared<std::string>(r[index].as<std::string>());
-        }
-        index = offset + 7;
         if(!r[index].isNull())
         {
             auto timeStr = r[index].as<std::string>();
@@ -159,8 +151,38 @@ LoginHistory::LoginHistory(const Row &r, const ssize_t indexOffset) noexcept
                     }
                     decimalNum = (size_t)atol(decimals.c_str());
                 }
-                createdAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+                loginTime_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
+        }
+        index = offset + 4;
+        if(!r[index].isNull())
+        {
+            ipAddress_=std::make_shared<std::string>(r[index].as<std::string>());
+        }
+        index = offset + 5;
+        if(!r[index].isNull())
+        {
+            userAgent_=std::make_shared<std::string>(r[index].as<std::string>());
+        }
+        index = offset + 6;
+        if(!r[index].isNull())
+        {
+            deviceId_=std::make_shared<std::string>(r[index].as<std::string>());
+        }
+        index = offset + 7;
+        if(!r[index].isNull())
+        {
+            status_=std::make_shared<std::string>(r[index].as<std::string>());
+        }
+        index = offset + 8;
+        if(!r[index].isNull())
+        {
+            failureReason_=std::make_shared<std::string>(r[index].as<std::string>());
+        }
+        index = offset + 9;
+        if(!r[index].isNull())
+        {
+            location_=std::make_shared<std::string>(r[index].as<std::string>());
         }
     }
 
@@ -168,7 +190,7 @@ LoginHistory::LoginHistory(const Row &r, const ssize_t indexOffset) noexcept
 
 LoginHistory::LoginHistory(const Json::Value &pJson, const std::vector<std::string> &pMasqueradingVector) noexcept(false)
 {
-    if(pMasqueradingVector.size() != 8)
+    if(pMasqueradingVector.size() != 10)
     {
         LOG_ERROR << "Bad masquerading vector";
         return;
@@ -186,7 +208,7 @@ LoginHistory::LoginHistory(const Json::Value &pJson, const std::vector<std::stri
         dirtyFlag_[1] = true;
         if(!pJson[pMasqueradingVector[1]].isNull())
         {
-            tenantIdentifier_=std::make_shared<std::string>(pJson[pMasqueradingVector[1]].asString());
+            businessId_=std::make_shared<std::string>(pJson[pMasqueradingVector[1]].asString());
         }
     }
     if(!pMasqueradingVector[2].empty() && pJson.isMember(pMasqueradingVector[2]))
@@ -194,7 +216,7 @@ LoginHistory::LoginHistory(const Json::Value &pJson, const std::vector<std::stri
         dirtyFlag_[2] = true;
         if(!pJson[pMasqueradingVector[2]].isNull())
         {
-            username_=std::make_shared<std::string>(pJson[pMasqueradingVector[2]].asString());
+            userId_=std::make_shared<std::string>(pJson[pMasqueradingVector[2]].asString());
         }
     }
     if(!pMasqueradingVector[3].empty() && pJson.isMember(pMasqueradingVector[3]))
@@ -202,39 +224,7 @@ LoginHistory::LoginHistory(const Json::Value &pJson, const std::vector<std::stri
         dirtyFlag_[3] = true;
         if(!pJson[pMasqueradingVector[3]].isNull())
         {
-            ipAddress_=std::make_shared<std::string>(pJson[pMasqueradingVector[3]].asString());
-        }
-    }
-    if(!pMasqueradingVector[4].empty() && pJson.isMember(pMasqueradingVector[4]))
-    {
-        dirtyFlag_[4] = true;
-        if(!pJson[pMasqueradingVector[4]].isNull())
-        {
-            userAgent_=std::make_shared<std::string>(pJson[pMasqueradingVector[4]].asString());
-        }
-    }
-    if(!pMasqueradingVector[5].empty() && pJson.isMember(pMasqueradingVector[5]))
-    {
-        dirtyFlag_[5] = true;
-        if(!pJson[pMasqueradingVector[5]].isNull())
-        {
-            success_=std::make_shared<bool>(pJson[pMasqueradingVector[5]].asBool());
-        }
-    }
-    if(!pMasqueradingVector[6].empty() && pJson.isMember(pMasqueradingVector[6]))
-    {
-        dirtyFlag_[6] = true;
-        if(!pJson[pMasqueradingVector[6]].isNull())
-        {
-            failureReason_=std::make_shared<std::string>(pJson[pMasqueradingVector[6]].asString());
-        }
-    }
-    if(!pMasqueradingVector[7].empty() && pJson.isMember(pMasqueradingVector[7]))
-    {
-        dirtyFlag_[7] = true;
-        if(!pJson[pMasqueradingVector[7]].isNull())
-        {
-            auto timeStr = pJson[pMasqueradingVector[7]].asString();
+            auto timeStr = pJson[pMasqueradingVector[3]].asString();
             struct tm stm;
             memset(&stm,0,sizeof(stm));
             auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
@@ -251,8 +241,56 @@ LoginHistory::LoginHistory(const Json::Value &pJson, const std::vector<std::stri
                     }
                     decimalNum = (size_t)atol(decimals.c_str());
                 }
-                createdAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+                loginTime_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
+        }
+    }
+    if(!pMasqueradingVector[4].empty() && pJson.isMember(pMasqueradingVector[4]))
+    {
+        dirtyFlag_[4] = true;
+        if(!pJson[pMasqueradingVector[4]].isNull())
+        {
+            ipAddress_=std::make_shared<std::string>(pJson[pMasqueradingVector[4]].asString());
+        }
+    }
+    if(!pMasqueradingVector[5].empty() && pJson.isMember(pMasqueradingVector[5]))
+    {
+        dirtyFlag_[5] = true;
+        if(!pJson[pMasqueradingVector[5]].isNull())
+        {
+            userAgent_=std::make_shared<std::string>(pJson[pMasqueradingVector[5]].asString());
+        }
+    }
+    if(!pMasqueradingVector[6].empty() && pJson.isMember(pMasqueradingVector[6]))
+    {
+        dirtyFlag_[6] = true;
+        if(!pJson[pMasqueradingVector[6]].isNull())
+        {
+            deviceId_=std::make_shared<std::string>(pJson[pMasqueradingVector[6]].asString());
+        }
+    }
+    if(!pMasqueradingVector[7].empty() && pJson.isMember(pMasqueradingVector[7]))
+    {
+        dirtyFlag_[7] = true;
+        if(!pJson[pMasqueradingVector[7]].isNull())
+        {
+            status_=std::make_shared<std::string>(pJson[pMasqueradingVector[7]].asString());
+        }
+    }
+    if(!pMasqueradingVector[8].empty() && pJson.isMember(pMasqueradingVector[8]))
+    {
+        dirtyFlag_[8] = true;
+        if(!pJson[pMasqueradingVector[8]].isNull())
+        {
+            failureReason_=std::make_shared<std::string>(pJson[pMasqueradingVector[8]].asString());
+        }
+    }
+    if(!pMasqueradingVector[9].empty() && pJson.isMember(pMasqueradingVector[9]))
+    {
+        dirtyFlag_[9] = true;
+        if(!pJson[pMasqueradingVector[9]].isNull())
+        {
+            location_=std::make_shared<std::string>(pJson[pMasqueradingVector[9]].asString());
         }
     }
 }
@@ -267,60 +305,28 @@ LoginHistory::LoginHistory(const Json::Value &pJson) noexcept(false)
             id_=std::make_shared<std::string>(pJson["id"].asString());
         }
     }
-    if(pJson.isMember("tenant_identifier"))
+    if(pJson.isMember("business_id"))
     {
         dirtyFlag_[1]=true;
-        if(!pJson["tenant_identifier"].isNull())
+        if(!pJson["business_id"].isNull())
         {
-            tenantIdentifier_=std::make_shared<std::string>(pJson["tenant_identifier"].asString());
+            businessId_=std::make_shared<std::string>(pJson["business_id"].asString());
         }
     }
-    if(pJson.isMember("username"))
+    if(pJson.isMember("user_id"))
     {
         dirtyFlag_[2]=true;
-        if(!pJson["username"].isNull())
+        if(!pJson["user_id"].isNull())
         {
-            username_=std::make_shared<std::string>(pJson["username"].asString());
+            userId_=std::make_shared<std::string>(pJson["user_id"].asString());
         }
     }
-    if(pJson.isMember("ip_address"))
+    if(pJson.isMember("login_time"))
     {
         dirtyFlag_[3]=true;
-        if(!pJson["ip_address"].isNull())
+        if(!pJson["login_time"].isNull())
         {
-            ipAddress_=std::make_shared<std::string>(pJson["ip_address"].asString());
-        }
-    }
-    if(pJson.isMember("user_agent"))
-    {
-        dirtyFlag_[4]=true;
-        if(!pJson["user_agent"].isNull())
-        {
-            userAgent_=std::make_shared<std::string>(pJson["user_agent"].asString());
-        }
-    }
-    if(pJson.isMember("success"))
-    {
-        dirtyFlag_[5]=true;
-        if(!pJson["success"].isNull())
-        {
-            success_=std::make_shared<bool>(pJson["success"].asBool());
-        }
-    }
-    if(pJson.isMember("failure_reason"))
-    {
-        dirtyFlag_[6]=true;
-        if(!pJson["failure_reason"].isNull())
-        {
-            failureReason_=std::make_shared<std::string>(pJson["failure_reason"].asString());
-        }
-    }
-    if(pJson.isMember("created_at"))
-    {
-        dirtyFlag_[7]=true;
-        if(!pJson["created_at"].isNull())
-        {
-            auto timeStr = pJson["created_at"].asString();
+            auto timeStr = pJson["login_time"].asString();
             struct tm stm;
             memset(&stm,0,sizeof(stm));
             auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
@@ -337,8 +343,56 @@ LoginHistory::LoginHistory(const Json::Value &pJson) noexcept(false)
                     }
                     decimalNum = (size_t)atol(decimals.c_str());
                 }
-                createdAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+                loginTime_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
+        }
+    }
+    if(pJson.isMember("ip_address"))
+    {
+        dirtyFlag_[4]=true;
+        if(!pJson["ip_address"].isNull())
+        {
+            ipAddress_=std::make_shared<std::string>(pJson["ip_address"].asString());
+        }
+    }
+    if(pJson.isMember("user_agent"))
+    {
+        dirtyFlag_[5]=true;
+        if(!pJson["user_agent"].isNull())
+        {
+            userAgent_=std::make_shared<std::string>(pJson["user_agent"].asString());
+        }
+    }
+    if(pJson.isMember("device_id"))
+    {
+        dirtyFlag_[6]=true;
+        if(!pJson["device_id"].isNull())
+        {
+            deviceId_=std::make_shared<std::string>(pJson["device_id"].asString());
+        }
+    }
+    if(pJson.isMember("status"))
+    {
+        dirtyFlag_[7]=true;
+        if(!pJson["status"].isNull())
+        {
+            status_=std::make_shared<std::string>(pJson["status"].asString());
+        }
+    }
+    if(pJson.isMember("failure_reason"))
+    {
+        dirtyFlag_[8]=true;
+        if(!pJson["failure_reason"].isNull())
+        {
+            failureReason_=std::make_shared<std::string>(pJson["failure_reason"].asString());
+        }
+    }
+    if(pJson.isMember("location"))
+    {
+        dirtyFlag_[9]=true;
+        if(!pJson["location"].isNull())
+        {
+            location_=std::make_shared<std::string>(pJson["location"].asString());
         }
     }
 }
@@ -346,7 +400,7 @@ LoginHistory::LoginHistory(const Json::Value &pJson) noexcept(false)
 void LoginHistory::updateByMasqueradedJson(const Json::Value &pJson,
                                             const std::vector<std::string> &pMasqueradingVector) noexcept(false)
 {
-    if(pMasqueradingVector.size() != 8)
+    if(pMasqueradingVector.size() != 10)
     {
         LOG_ERROR << "Bad masquerading vector";
         return;
@@ -363,7 +417,7 @@ void LoginHistory::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[1] = true;
         if(!pJson[pMasqueradingVector[1]].isNull())
         {
-            tenantIdentifier_=std::make_shared<std::string>(pJson[pMasqueradingVector[1]].asString());
+            businessId_=std::make_shared<std::string>(pJson[pMasqueradingVector[1]].asString());
         }
     }
     if(!pMasqueradingVector[2].empty() && pJson.isMember(pMasqueradingVector[2]))
@@ -371,7 +425,7 @@ void LoginHistory::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[2] = true;
         if(!pJson[pMasqueradingVector[2]].isNull())
         {
-            username_=std::make_shared<std::string>(pJson[pMasqueradingVector[2]].asString());
+            userId_=std::make_shared<std::string>(pJson[pMasqueradingVector[2]].asString());
         }
     }
     if(!pMasqueradingVector[3].empty() && pJson.isMember(pMasqueradingVector[3]))
@@ -379,39 +433,7 @@ void LoginHistory::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[3] = true;
         if(!pJson[pMasqueradingVector[3]].isNull())
         {
-            ipAddress_=std::make_shared<std::string>(pJson[pMasqueradingVector[3]].asString());
-        }
-    }
-    if(!pMasqueradingVector[4].empty() && pJson.isMember(pMasqueradingVector[4]))
-    {
-        dirtyFlag_[4] = true;
-        if(!pJson[pMasqueradingVector[4]].isNull())
-        {
-            userAgent_=std::make_shared<std::string>(pJson[pMasqueradingVector[4]].asString());
-        }
-    }
-    if(!pMasqueradingVector[5].empty() && pJson.isMember(pMasqueradingVector[5]))
-    {
-        dirtyFlag_[5] = true;
-        if(!pJson[pMasqueradingVector[5]].isNull())
-        {
-            success_=std::make_shared<bool>(pJson[pMasqueradingVector[5]].asBool());
-        }
-    }
-    if(!pMasqueradingVector[6].empty() && pJson.isMember(pMasqueradingVector[6]))
-    {
-        dirtyFlag_[6] = true;
-        if(!pJson[pMasqueradingVector[6]].isNull())
-        {
-            failureReason_=std::make_shared<std::string>(pJson[pMasqueradingVector[6]].asString());
-        }
-    }
-    if(!pMasqueradingVector[7].empty() && pJson.isMember(pMasqueradingVector[7]))
-    {
-        dirtyFlag_[7] = true;
-        if(!pJson[pMasqueradingVector[7]].isNull())
-        {
-            auto timeStr = pJson[pMasqueradingVector[7]].asString();
+            auto timeStr = pJson[pMasqueradingVector[3]].asString();
             struct tm stm;
             memset(&stm,0,sizeof(stm));
             auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
@@ -428,8 +450,56 @@ void LoginHistory::updateByMasqueradedJson(const Json::Value &pJson,
                     }
                     decimalNum = (size_t)atol(decimals.c_str());
                 }
-                createdAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+                loginTime_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
+        }
+    }
+    if(!pMasqueradingVector[4].empty() && pJson.isMember(pMasqueradingVector[4]))
+    {
+        dirtyFlag_[4] = true;
+        if(!pJson[pMasqueradingVector[4]].isNull())
+        {
+            ipAddress_=std::make_shared<std::string>(pJson[pMasqueradingVector[4]].asString());
+        }
+    }
+    if(!pMasqueradingVector[5].empty() && pJson.isMember(pMasqueradingVector[5]))
+    {
+        dirtyFlag_[5] = true;
+        if(!pJson[pMasqueradingVector[5]].isNull())
+        {
+            userAgent_=std::make_shared<std::string>(pJson[pMasqueradingVector[5]].asString());
+        }
+    }
+    if(!pMasqueradingVector[6].empty() && pJson.isMember(pMasqueradingVector[6]))
+    {
+        dirtyFlag_[6] = true;
+        if(!pJson[pMasqueradingVector[6]].isNull())
+        {
+            deviceId_=std::make_shared<std::string>(pJson[pMasqueradingVector[6]].asString());
+        }
+    }
+    if(!pMasqueradingVector[7].empty() && pJson.isMember(pMasqueradingVector[7]))
+    {
+        dirtyFlag_[7] = true;
+        if(!pJson[pMasqueradingVector[7]].isNull())
+        {
+            status_=std::make_shared<std::string>(pJson[pMasqueradingVector[7]].asString());
+        }
+    }
+    if(!pMasqueradingVector[8].empty() && pJson.isMember(pMasqueradingVector[8]))
+    {
+        dirtyFlag_[8] = true;
+        if(!pJson[pMasqueradingVector[8]].isNull())
+        {
+            failureReason_=std::make_shared<std::string>(pJson[pMasqueradingVector[8]].asString());
+        }
+    }
+    if(!pMasqueradingVector[9].empty() && pJson.isMember(pMasqueradingVector[9]))
+    {
+        dirtyFlag_[9] = true;
+        if(!pJson[pMasqueradingVector[9]].isNull())
+        {
+            location_=std::make_shared<std::string>(pJson[pMasqueradingVector[9]].asString());
         }
     }
 }
@@ -443,60 +513,28 @@ void LoginHistory::updateByJson(const Json::Value &pJson) noexcept(false)
             id_=std::make_shared<std::string>(pJson["id"].asString());
         }
     }
-    if(pJson.isMember("tenant_identifier"))
+    if(pJson.isMember("business_id"))
     {
         dirtyFlag_[1] = true;
-        if(!pJson["tenant_identifier"].isNull())
+        if(!pJson["business_id"].isNull())
         {
-            tenantIdentifier_=std::make_shared<std::string>(pJson["tenant_identifier"].asString());
+            businessId_=std::make_shared<std::string>(pJson["business_id"].asString());
         }
     }
-    if(pJson.isMember("username"))
+    if(pJson.isMember("user_id"))
     {
         dirtyFlag_[2] = true;
-        if(!pJson["username"].isNull())
+        if(!pJson["user_id"].isNull())
         {
-            username_=std::make_shared<std::string>(pJson["username"].asString());
+            userId_=std::make_shared<std::string>(pJson["user_id"].asString());
         }
     }
-    if(pJson.isMember("ip_address"))
+    if(pJson.isMember("login_time"))
     {
         dirtyFlag_[3] = true;
-        if(!pJson["ip_address"].isNull())
+        if(!pJson["login_time"].isNull())
         {
-            ipAddress_=std::make_shared<std::string>(pJson["ip_address"].asString());
-        }
-    }
-    if(pJson.isMember("user_agent"))
-    {
-        dirtyFlag_[4] = true;
-        if(!pJson["user_agent"].isNull())
-        {
-            userAgent_=std::make_shared<std::string>(pJson["user_agent"].asString());
-        }
-    }
-    if(pJson.isMember("success"))
-    {
-        dirtyFlag_[5] = true;
-        if(!pJson["success"].isNull())
-        {
-            success_=std::make_shared<bool>(pJson["success"].asBool());
-        }
-    }
-    if(pJson.isMember("failure_reason"))
-    {
-        dirtyFlag_[6] = true;
-        if(!pJson["failure_reason"].isNull())
-        {
-            failureReason_=std::make_shared<std::string>(pJson["failure_reason"].asString());
-        }
-    }
-    if(pJson.isMember("created_at"))
-    {
-        dirtyFlag_[7] = true;
-        if(!pJson["created_at"].isNull())
-        {
-            auto timeStr = pJson["created_at"].asString();
+            auto timeStr = pJson["login_time"].asString();
             struct tm stm;
             memset(&stm,0,sizeof(stm));
             auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
@@ -513,8 +551,56 @@ void LoginHistory::updateByJson(const Json::Value &pJson) noexcept(false)
                     }
                     decimalNum = (size_t)atol(decimals.c_str());
                 }
-                createdAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+                loginTime_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
+        }
+    }
+    if(pJson.isMember("ip_address"))
+    {
+        dirtyFlag_[4] = true;
+        if(!pJson["ip_address"].isNull())
+        {
+            ipAddress_=std::make_shared<std::string>(pJson["ip_address"].asString());
+        }
+    }
+    if(pJson.isMember("user_agent"))
+    {
+        dirtyFlag_[5] = true;
+        if(!pJson["user_agent"].isNull())
+        {
+            userAgent_=std::make_shared<std::string>(pJson["user_agent"].asString());
+        }
+    }
+    if(pJson.isMember("device_id"))
+    {
+        dirtyFlag_[6] = true;
+        if(!pJson["device_id"].isNull())
+        {
+            deviceId_=std::make_shared<std::string>(pJson["device_id"].asString());
+        }
+    }
+    if(pJson.isMember("status"))
+    {
+        dirtyFlag_[7] = true;
+        if(!pJson["status"].isNull())
+        {
+            status_=std::make_shared<std::string>(pJson["status"].asString());
+        }
+    }
+    if(pJson.isMember("failure_reason"))
+    {
+        dirtyFlag_[8] = true;
+        if(!pJson["failure_reason"].isNull())
+        {
+            failureReason_=std::make_shared<std::string>(pJson["failure_reason"].asString());
+        }
+    }
+    if(pJson.isMember("location"))
+    {
+        dirtyFlag_[9] = true;
+        if(!pJson["location"].isNull())
+        {
+            location_=std::make_shared<std::string>(pJson["location"].asString());
         }
     }
 }
@@ -546,48 +632,70 @@ const typename LoginHistory::PrimaryKeyType & LoginHistory::getPrimaryKey() cons
     return *id_;
 }
 
-const std::string &LoginHistory::getValueOfTenantIdentifier() const noexcept
+const std::string &LoginHistory::getValueOfBusinessId() const noexcept
 {
     static const std::string defaultValue = std::string();
-    if(tenantIdentifier_)
-        return *tenantIdentifier_;
+    if(businessId_)
+        return *businessId_;
     return defaultValue;
 }
-const std::shared_ptr<std::string> &LoginHistory::getTenantIdentifier() const noexcept
+const std::shared_ptr<std::string> &LoginHistory::getBusinessId() const noexcept
 {
-    return tenantIdentifier_;
+    return businessId_;
 }
-void LoginHistory::setTenantIdentifier(const std::string &pTenantIdentifier) noexcept
+void LoginHistory::setBusinessId(const std::string &pBusinessId) noexcept
 {
-    tenantIdentifier_ = std::make_shared<std::string>(pTenantIdentifier);
+    businessId_ = std::make_shared<std::string>(pBusinessId);
     dirtyFlag_[1] = true;
 }
-void LoginHistory::setTenantIdentifier(std::string &&pTenantIdentifier) noexcept
+void LoginHistory::setBusinessId(std::string &&pBusinessId) noexcept
 {
-    tenantIdentifier_ = std::make_shared<std::string>(std::move(pTenantIdentifier));
+    businessId_ = std::make_shared<std::string>(std::move(pBusinessId));
     dirtyFlag_[1] = true;
 }
 
-const std::string &LoginHistory::getValueOfUsername() const noexcept
+const std::string &LoginHistory::getValueOfUserId() const noexcept
 {
     static const std::string defaultValue = std::string();
-    if(username_)
-        return *username_;
+    if(userId_)
+        return *userId_;
     return defaultValue;
 }
-const std::shared_ptr<std::string> &LoginHistory::getUsername() const noexcept
+const std::shared_ptr<std::string> &LoginHistory::getUserId() const noexcept
 {
-    return username_;
+    return userId_;
 }
-void LoginHistory::setUsername(const std::string &pUsername) noexcept
+void LoginHistory::setUserId(const std::string &pUserId) noexcept
 {
-    username_ = std::make_shared<std::string>(pUsername);
+    userId_ = std::make_shared<std::string>(pUserId);
     dirtyFlag_[2] = true;
 }
-void LoginHistory::setUsername(std::string &&pUsername) noexcept
+void LoginHistory::setUserId(std::string &&pUserId) noexcept
 {
-    username_ = std::make_shared<std::string>(std::move(pUsername));
+    userId_ = std::make_shared<std::string>(std::move(pUserId));
     dirtyFlag_[2] = true;
+}
+
+const ::trantor::Date &LoginHistory::getValueOfLoginTime() const noexcept
+{
+    static const ::trantor::Date defaultValue = ::trantor::Date();
+    if(loginTime_)
+        return *loginTime_;
+    return defaultValue;
+}
+const std::shared_ptr<::trantor::Date> &LoginHistory::getLoginTime() const noexcept
+{
+    return loginTime_;
+}
+void LoginHistory::setLoginTime(const ::trantor::Date &pLoginTime) noexcept
+{
+    loginTime_ = std::make_shared<::trantor::Date>(pLoginTime);
+    dirtyFlag_[3] = true;
+}
+void LoginHistory::setLoginTimeToNull() noexcept
+{
+    loginTime_.reset();
+    dirtyFlag_[3] = true;
 }
 
 const std::string &LoginHistory::getValueOfIpAddress() const noexcept
@@ -604,17 +712,17 @@ const std::shared_ptr<std::string> &LoginHistory::getIpAddress() const noexcept
 void LoginHistory::setIpAddress(const std::string &pIpAddress) noexcept
 {
     ipAddress_ = std::make_shared<std::string>(pIpAddress);
-    dirtyFlag_[3] = true;
+    dirtyFlag_[4] = true;
 }
 void LoginHistory::setIpAddress(std::string &&pIpAddress) noexcept
 {
     ipAddress_ = std::make_shared<std::string>(std::move(pIpAddress));
-    dirtyFlag_[3] = true;
+    dirtyFlag_[4] = true;
 }
 void LoginHistory::setIpAddressToNull() noexcept
 {
     ipAddress_.reset();
-    dirtyFlag_[3] = true;
+    dirtyFlag_[4] = true;
 }
 
 const std::string &LoginHistory::getValueOfUserAgent() const noexcept
@@ -631,34 +739,66 @@ const std::shared_ptr<std::string> &LoginHistory::getUserAgent() const noexcept
 void LoginHistory::setUserAgent(const std::string &pUserAgent) noexcept
 {
     userAgent_ = std::make_shared<std::string>(pUserAgent);
-    dirtyFlag_[4] = true;
+    dirtyFlag_[5] = true;
 }
 void LoginHistory::setUserAgent(std::string &&pUserAgent) noexcept
 {
     userAgent_ = std::make_shared<std::string>(std::move(pUserAgent));
-    dirtyFlag_[4] = true;
+    dirtyFlag_[5] = true;
 }
 void LoginHistory::setUserAgentToNull() noexcept
 {
     userAgent_.reset();
-    dirtyFlag_[4] = true;
+    dirtyFlag_[5] = true;
 }
 
-const bool &LoginHistory::getValueOfSuccess() const noexcept
+const std::string &LoginHistory::getValueOfDeviceId() const noexcept
 {
-    static const bool defaultValue = bool();
-    if(success_)
-        return *success_;
+    static const std::string defaultValue = std::string();
+    if(deviceId_)
+        return *deviceId_;
     return defaultValue;
 }
-const std::shared_ptr<bool> &LoginHistory::getSuccess() const noexcept
+const std::shared_ptr<std::string> &LoginHistory::getDeviceId() const noexcept
 {
-    return success_;
+    return deviceId_;
 }
-void LoginHistory::setSuccess(const bool &pSuccess) noexcept
+void LoginHistory::setDeviceId(const std::string &pDeviceId) noexcept
 {
-    success_ = std::make_shared<bool>(pSuccess);
-    dirtyFlag_[5] = true;
+    deviceId_ = std::make_shared<std::string>(pDeviceId);
+    dirtyFlag_[6] = true;
+}
+void LoginHistory::setDeviceId(std::string &&pDeviceId) noexcept
+{
+    deviceId_ = std::make_shared<std::string>(std::move(pDeviceId));
+    dirtyFlag_[6] = true;
+}
+void LoginHistory::setDeviceIdToNull() noexcept
+{
+    deviceId_.reset();
+    dirtyFlag_[6] = true;
+}
+
+const std::string &LoginHistory::getValueOfStatus() const noexcept
+{
+    static const std::string defaultValue = std::string();
+    if(status_)
+        return *status_;
+    return defaultValue;
+}
+const std::shared_ptr<std::string> &LoginHistory::getStatus() const noexcept
+{
+    return status_;
+}
+void LoginHistory::setStatus(const std::string &pStatus) noexcept
+{
+    status_ = std::make_shared<std::string>(pStatus);
+    dirtyFlag_[7] = true;
+}
+void LoginHistory::setStatus(std::string &&pStatus) noexcept
+{
+    status_ = std::make_shared<std::string>(std::move(pStatus));
+    dirtyFlag_[7] = true;
 }
 
 const std::string &LoginHistory::getValueOfFailureReason() const noexcept
@@ -675,34 +815,44 @@ const std::shared_ptr<std::string> &LoginHistory::getFailureReason() const noexc
 void LoginHistory::setFailureReason(const std::string &pFailureReason) noexcept
 {
     failureReason_ = std::make_shared<std::string>(pFailureReason);
-    dirtyFlag_[6] = true;
+    dirtyFlag_[8] = true;
 }
 void LoginHistory::setFailureReason(std::string &&pFailureReason) noexcept
 {
     failureReason_ = std::make_shared<std::string>(std::move(pFailureReason));
-    dirtyFlag_[6] = true;
+    dirtyFlag_[8] = true;
 }
 void LoginHistory::setFailureReasonToNull() noexcept
 {
     failureReason_.reset();
-    dirtyFlag_[6] = true;
+    dirtyFlag_[8] = true;
 }
 
-const ::trantor::Date &LoginHistory::getValueOfCreatedAt() const noexcept
+const std::string &LoginHistory::getValueOfLocation() const noexcept
 {
-    static const ::trantor::Date defaultValue = ::trantor::Date();
-    if(createdAt_)
-        return *createdAt_;
+    static const std::string defaultValue = std::string();
+    if(location_)
+        return *location_;
     return defaultValue;
 }
-const std::shared_ptr<::trantor::Date> &LoginHistory::getCreatedAt() const noexcept
+const std::shared_ptr<std::string> &LoginHistory::getLocation() const noexcept
 {
-    return createdAt_;
+    return location_;
 }
-void LoginHistory::setCreatedAt(const ::trantor::Date &pCreatedAt) noexcept
+void LoginHistory::setLocation(const std::string &pLocation) noexcept
 {
-    createdAt_ = std::make_shared<::trantor::Date>(pCreatedAt);
-    dirtyFlag_[7] = true;
+    location_ = std::make_shared<std::string>(pLocation);
+    dirtyFlag_[9] = true;
+}
+void LoginHistory::setLocation(std::string &&pLocation) noexcept
+{
+    location_ = std::make_shared<std::string>(std::move(pLocation));
+    dirtyFlag_[9] = true;
+}
+void LoginHistory::setLocationToNull() noexcept
+{
+    location_.reset();
+    dirtyFlag_[9] = true;
 }
 
 void LoginHistory::updateId(const uint64_t id)
@@ -713,13 +863,15 @@ const std::vector<std::string> &LoginHistory::insertColumns() noexcept
 {
     static const std::vector<std::string> inCols={
         "id",
-        "tenant_identifier",
-        "username",
+        "business_id",
+        "user_id",
+        "login_time",
         "ip_address",
         "user_agent",
-        "success",
+        "device_id",
+        "status",
         "failure_reason",
-        "created_at"
+        "location"
     };
     return inCols;
 }
@@ -739,9 +891,9 @@ void LoginHistory::outputArgs(drogon::orm::internal::SqlBinder &binder) const
     }
     if(dirtyFlag_[1])
     {
-        if(getTenantIdentifier())
+        if(getBusinessId())
         {
-            binder << getValueOfTenantIdentifier();
+            binder << getValueOfBusinessId();
         }
         else
         {
@@ -750,9 +902,9 @@ void LoginHistory::outputArgs(drogon::orm::internal::SqlBinder &binder) const
     }
     if(dirtyFlag_[2])
     {
-        if(getUsername())
+        if(getUserId())
         {
-            binder << getValueOfUsername();
+            binder << getValueOfUserId();
         }
         else
         {
@@ -760,6 +912,17 @@ void LoginHistory::outputArgs(drogon::orm::internal::SqlBinder &binder) const
         }
     }
     if(dirtyFlag_[3])
+    {
+        if(getLoginTime())
+        {
+            binder << getValueOfLoginTime();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[4])
     {
         if(getIpAddress())
         {
@@ -770,7 +933,7 @@ void LoginHistory::outputArgs(drogon::orm::internal::SqlBinder &binder) const
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[4])
+    if(dirtyFlag_[5])
     {
         if(getUserAgent())
         {
@@ -781,18 +944,29 @@ void LoginHistory::outputArgs(drogon::orm::internal::SqlBinder &binder) const
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[5])
+    if(dirtyFlag_[6])
     {
-        if(getSuccess())
+        if(getDeviceId())
         {
-            binder << getValueOfSuccess();
+            binder << getValueOfDeviceId();
         }
         else
         {
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[6])
+    if(dirtyFlag_[7])
+    {
+        if(getStatus())
+        {
+            binder << getValueOfStatus();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[8])
     {
         if(getFailureReason())
         {
@@ -803,11 +977,11 @@ void LoginHistory::outputArgs(drogon::orm::internal::SqlBinder &binder) const
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[7])
+    if(dirtyFlag_[9])
     {
-        if(getCreatedAt())
+        if(getLocation())
         {
-            binder << getValueOfCreatedAt();
+            binder << getValueOfLocation();
         }
         else
         {
@@ -851,6 +1025,14 @@ const std::vector<std::string> LoginHistory::updateColumns() const
     {
         ret.push_back(getColumnName(7));
     }
+    if(dirtyFlag_[8])
+    {
+        ret.push_back(getColumnName(8));
+    }
+    if(dirtyFlag_[9])
+    {
+        ret.push_back(getColumnName(9));
+    }
     return ret;
 }
 
@@ -869,9 +1051,9 @@ void LoginHistory::updateArgs(drogon::orm::internal::SqlBinder &binder) const
     }
     if(dirtyFlag_[1])
     {
-        if(getTenantIdentifier())
+        if(getBusinessId())
         {
-            binder << getValueOfTenantIdentifier();
+            binder << getValueOfBusinessId();
         }
         else
         {
@@ -880,9 +1062,9 @@ void LoginHistory::updateArgs(drogon::orm::internal::SqlBinder &binder) const
     }
     if(dirtyFlag_[2])
     {
-        if(getUsername())
+        if(getUserId())
         {
-            binder << getValueOfUsername();
+            binder << getValueOfUserId();
         }
         else
         {
@@ -890,6 +1072,17 @@ void LoginHistory::updateArgs(drogon::orm::internal::SqlBinder &binder) const
         }
     }
     if(dirtyFlag_[3])
+    {
+        if(getLoginTime())
+        {
+            binder << getValueOfLoginTime();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[4])
     {
         if(getIpAddress())
         {
@@ -900,7 +1093,7 @@ void LoginHistory::updateArgs(drogon::orm::internal::SqlBinder &binder) const
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[4])
+    if(dirtyFlag_[5])
     {
         if(getUserAgent())
         {
@@ -911,18 +1104,29 @@ void LoginHistory::updateArgs(drogon::orm::internal::SqlBinder &binder) const
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[5])
+    if(dirtyFlag_[6])
     {
-        if(getSuccess())
+        if(getDeviceId())
         {
-            binder << getValueOfSuccess();
+            binder << getValueOfDeviceId();
         }
         else
         {
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[6])
+    if(dirtyFlag_[7])
+    {
+        if(getStatus())
+        {
+            binder << getValueOfStatus();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[8])
     {
         if(getFailureReason())
         {
@@ -933,11 +1137,11 @@ void LoginHistory::updateArgs(drogon::orm::internal::SqlBinder &binder) const
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[7])
+    if(dirtyFlag_[9])
     {
-        if(getCreatedAt())
+        if(getLocation())
         {
-            binder << getValueOfCreatedAt();
+            binder << getValueOfLocation();
         }
         else
         {
@@ -956,21 +1160,29 @@ Json::Value LoginHistory::toJson() const
     {
         ret["id"]=Json::Value();
     }
-    if(getTenantIdentifier())
+    if(getBusinessId())
     {
-        ret["tenant_identifier"]=getValueOfTenantIdentifier();
+        ret["business_id"]=getValueOfBusinessId();
     }
     else
     {
-        ret["tenant_identifier"]=Json::Value();
+        ret["business_id"]=Json::Value();
     }
-    if(getUsername())
+    if(getUserId())
     {
-        ret["username"]=getValueOfUsername();
+        ret["user_id"]=getValueOfUserId();
     }
     else
     {
-        ret["username"]=Json::Value();
+        ret["user_id"]=Json::Value();
+    }
+    if(getLoginTime())
+    {
+        ret["login_time"]=getLoginTime()->toDbStringLocal();
+    }
+    else
+    {
+        ret["login_time"]=Json::Value();
     }
     if(getIpAddress())
     {
@@ -988,13 +1200,21 @@ Json::Value LoginHistory::toJson() const
     {
         ret["user_agent"]=Json::Value();
     }
-    if(getSuccess())
+    if(getDeviceId())
     {
-        ret["success"]=getValueOfSuccess();
+        ret["device_id"]=getValueOfDeviceId();
     }
     else
     {
-        ret["success"]=Json::Value();
+        ret["device_id"]=Json::Value();
+    }
+    if(getStatus())
+    {
+        ret["status"]=getValueOfStatus();
+    }
+    else
+    {
+        ret["status"]=Json::Value();
     }
     if(getFailureReason())
     {
@@ -1004,13 +1224,13 @@ Json::Value LoginHistory::toJson() const
     {
         ret["failure_reason"]=Json::Value();
     }
-    if(getCreatedAt())
+    if(getLocation())
     {
-        ret["created_at"]=getCreatedAt()->toDbStringLocal();
+        ret["location"]=getValueOfLocation();
     }
     else
     {
-        ret["created_at"]=Json::Value();
+        ret["location"]=Json::Value();
     }
     return ret;
 }
@@ -1024,7 +1244,7 @@ Json::Value LoginHistory::toMasqueradedJson(
     const std::vector<std::string> &pMasqueradingVector) const
 {
     Json::Value ret;
-    if(pMasqueradingVector.size() == 8)
+    if(pMasqueradingVector.size() == 10)
     {
         if(!pMasqueradingVector[0].empty())
         {
@@ -1039,9 +1259,9 @@ Json::Value LoginHistory::toMasqueradedJson(
         }
         if(!pMasqueradingVector[1].empty())
         {
-            if(getTenantIdentifier())
+            if(getBusinessId())
             {
-                ret[pMasqueradingVector[1]]=getValueOfTenantIdentifier();
+                ret[pMasqueradingVector[1]]=getValueOfBusinessId();
             }
             else
             {
@@ -1050,9 +1270,9 @@ Json::Value LoginHistory::toMasqueradedJson(
         }
         if(!pMasqueradingVector[2].empty())
         {
-            if(getUsername())
+            if(getUserId())
             {
-                ret[pMasqueradingVector[2]]=getValueOfUsername();
+                ret[pMasqueradingVector[2]]=getValueOfUserId();
             }
             else
             {
@@ -1061,9 +1281,9 @@ Json::Value LoginHistory::toMasqueradedJson(
         }
         if(!pMasqueradingVector[3].empty())
         {
-            if(getIpAddress())
+            if(getLoginTime())
             {
-                ret[pMasqueradingVector[3]]=getValueOfIpAddress();
+                ret[pMasqueradingVector[3]]=getLoginTime()->toDbStringLocal();
             }
             else
             {
@@ -1072,9 +1292,9 @@ Json::Value LoginHistory::toMasqueradedJson(
         }
         if(!pMasqueradingVector[4].empty())
         {
-            if(getUserAgent())
+            if(getIpAddress())
             {
-                ret[pMasqueradingVector[4]]=getValueOfUserAgent();
+                ret[pMasqueradingVector[4]]=getValueOfIpAddress();
             }
             else
             {
@@ -1083,9 +1303,9 @@ Json::Value LoginHistory::toMasqueradedJson(
         }
         if(!pMasqueradingVector[5].empty())
         {
-            if(getSuccess())
+            if(getUserAgent())
             {
-                ret[pMasqueradingVector[5]]=getValueOfSuccess();
+                ret[pMasqueradingVector[5]]=getValueOfUserAgent();
             }
             else
             {
@@ -1094,9 +1314,9 @@ Json::Value LoginHistory::toMasqueradedJson(
         }
         if(!pMasqueradingVector[6].empty())
         {
-            if(getFailureReason())
+            if(getDeviceId())
             {
-                ret[pMasqueradingVector[6]]=getValueOfFailureReason();
+                ret[pMasqueradingVector[6]]=getValueOfDeviceId();
             }
             else
             {
@@ -1105,13 +1325,35 @@ Json::Value LoginHistory::toMasqueradedJson(
         }
         if(!pMasqueradingVector[7].empty())
         {
-            if(getCreatedAt())
+            if(getStatus())
             {
-                ret[pMasqueradingVector[7]]=getCreatedAt()->toDbStringLocal();
+                ret[pMasqueradingVector[7]]=getValueOfStatus();
             }
             else
             {
                 ret[pMasqueradingVector[7]]=Json::Value();
+            }
+        }
+        if(!pMasqueradingVector[8].empty())
+        {
+            if(getFailureReason())
+            {
+                ret[pMasqueradingVector[8]]=getValueOfFailureReason();
+            }
+            else
+            {
+                ret[pMasqueradingVector[8]]=Json::Value();
+            }
+        }
+        if(!pMasqueradingVector[9].empty())
+        {
+            if(getLocation())
+            {
+                ret[pMasqueradingVector[9]]=getValueOfLocation();
+            }
+            else
+            {
+                ret[pMasqueradingVector[9]]=Json::Value();
             }
         }
         return ret;
@@ -1125,21 +1367,29 @@ Json::Value LoginHistory::toMasqueradedJson(
     {
         ret["id"]=Json::Value();
     }
-    if(getTenantIdentifier())
+    if(getBusinessId())
     {
-        ret["tenant_identifier"]=getValueOfTenantIdentifier();
+        ret["business_id"]=getValueOfBusinessId();
     }
     else
     {
-        ret["tenant_identifier"]=Json::Value();
+        ret["business_id"]=Json::Value();
     }
-    if(getUsername())
+    if(getUserId())
     {
-        ret["username"]=getValueOfUsername();
+        ret["user_id"]=getValueOfUserId();
     }
     else
     {
-        ret["username"]=Json::Value();
+        ret["user_id"]=Json::Value();
+    }
+    if(getLoginTime())
+    {
+        ret["login_time"]=getLoginTime()->toDbStringLocal();
+    }
+    else
+    {
+        ret["login_time"]=Json::Value();
     }
     if(getIpAddress())
     {
@@ -1157,13 +1407,21 @@ Json::Value LoginHistory::toMasqueradedJson(
     {
         ret["user_agent"]=Json::Value();
     }
-    if(getSuccess())
+    if(getDeviceId())
     {
-        ret["success"]=getValueOfSuccess();
+        ret["device_id"]=getValueOfDeviceId();
     }
     else
     {
-        ret["success"]=Json::Value();
+        ret["device_id"]=Json::Value();
+    }
+    if(getStatus())
+    {
+        ret["status"]=getValueOfStatus();
+    }
+    else
+    {
+        ret["status"]=Json::Value();
     }
     if(getFailureReason())
     {
@@ -1173,13 +1431,13 @@ Json::Value LoginHistory::toMasqueradedJson(
     {
         ret["failure_reason"]=Json::Value();
     }
-    if(getCreatedAt())
+    if(getLocation())
     {
-        ret["created_at"]=getCreatedAt()->toDbStringLocal();
+        ret["location"]=getValueOfLocation();
     }
     else
     {
-        ret["created_at"]=Json::Value();
+        ret["location"]=Json::Value();
     }
     return ret;
 }
@@ -1191,54 +1449,64 @@ bool LoginHistory::validateJsonForCreation(const Json::Value &pJson, std::string
         if(!validJsonOfField(0, "id", pJson["id"], err, true))
             return false;
     }
-    if(pJson.isMember("tenant_identifier"))
+    if(pJson.isMember("business_id"))
     {
-        if(!validJsonOfField(1, "tenant_identifier", pJson["tenant_identifier"], err, true))
+        if(!validJsonOfField(1, "business_id", pJson["business_id"], err, true))
             return false;
     }
     else
     {
-        err="The tenant_identifier column cannot be null";
+        err="The business_id column cannot be null";
         return false;
     }
-    if(pJson.isMember("username"))
+    if(pJson.isMember("user_id"))
     {
-        if(!validJsonOfField(2, "username", pJson["username"], err, true))
+        if(!validJsonOfField(2, "user_id", pJson["user_id"], err, true))
             return false;
     }
     else
     {
-        err="The username column cannot be null";
+        err="The user_id column cannot be null";
         return false;
+    }
+    if(pJson.isMember("login_time"))
+    {
+        if(!validJsonOfField(3, "login_time", pJson["login_time"], err, true))
+            return false;
     }
     if(pJson.isMember("ip_address"))
     {
-        if(!validJsonOfField(3, "ip_address", pJson["ip_address"], err, true))
+        if(!validJsonOfField(4, "ip_address", pJson["ip_address"], err, true))
             return false;
     }
     if(pJson.isMember("user_agent"))
     {
-        if(!validJsonOfField(4, "user_agent", pJson["user_agent"], err, true))
+        if(!validJsonOfField(5, "user_agent", pJson["user_agent"], err, true))
             return false;
     }
-    if(pJson.isMember("success"))
+    if(pJson.isMember("device_id"))
     {
-        if(!validJsonOfField(5, "success", pJson["success"], err, true))
+        if(!validJsonOfField(6, "device_id", pJson["device_id"], err, true))
+            return false;
+    }
+    if(pJson.isMember("status"))
+    {
+        if(!validJsonOfField(7, "status", pJson["status"], err, true))
             return false;
     }
     else
     {
-        err="The success column cannot be null";
+        err="The status column cannot be null";
         return false;
     }
     if(pJson.isMember("failure_reason"))
     {
-        if(!validJsonOfField(6, "failure_reason", pJson["failure_reason"], err, true))
+        if(!validJsonOfField(8, "failure_reason", pJson["failure_reason"], err, true))
             return false;
     }
-    if(pJson.isMember("created_at"))
+    if(pJson.isMember("location"))
     {
-        if(!validJsonOfField(7, "created_at", pJson["created_at"], err, true))
+        if(!validJsonOfField(9, "location", pJson["location"], err, true))
             return false;
     }
     return true;
@@ -1247,7 +1515,7 @@ bool LoginHistory::validateMasqueradedJsonForCreation(const Json::Value &pJson,
                                                       const std::vector<std::string> &pMasqueradingVector,
                                                       std::string &err)
 {
-    if(pMasqueradingVector.size() != 8)
+    if(pMasqueradingVector.size() != 10)
     {
         err = "Bad masquerading vector";
         return false;
@@ -1310,11 +1578,6 @@ bool LoginHistory::validateMasqueradedJsonForCreation(const Json::Value &pJson,
               if(!validJsonOfField(5, pMasqueradingVector[5], pJson[pMasqueradingVector[5]], err, true))
                   return false;
           }
-        else
-        {
-            err="The " + pMasqueradingVector[5] + " column cannot be null";
-            return false;
-        }
       }
       if(!pMasqueradingVector[6].empty())
       {
@@ -1329,6 +1592,27 @@ bool LoginHistory::validateMasqueradedJsonForCreation(const Json::Value &pJson,
           if(pJson.isMember(pMasqueradingVector[7]))
           {
               if(!validJsonOfField(7, pMasqueradingVector[7], pJson[pMasqueradingVector[7]], err, true))
+                  return false;
+          }
+        else
+        {
+            err="The " + pMasqueradingVector[7] + " column cannot be null";
+            return false;
+        }
+      }
+      if(!pMasqueradingVector[8].empty())
+      {
+          if(pJson.isMember(pMasqueradingVector[8]))
+          {
+              if(!validJsonOfField(8, pMasqueradingVector[8], pJson[pMasqueradingVector[8]], err, true))
+                  return false;
+          }
+      }
+      if(!pMasqueradingVector[9].empty())
+      {
+          if(pJson.isMember(pMasqueradingVector[9]))
+          {
+              if(!validJsonOfField(9, pMasqueradingVector[9], pJson[pMasqueradingVector[9]], err, true))
                   return false;
           }
       }
@@ -1352,39 +1636,49 @@ bool LoginHistory::validateJsonForUpdate(const Json::Value &pJson, std::string &
         err = "The value of primary key must be set in the json object for update";
         return false;
     }
-    if(pJson.isMember("tenant_identifier"))
+    if(pJson.isMember("business_id"))
     {
-        if(!validJsonOfField(1, "tenant_identifier", pJson["tenant_identifier"], err, false))
+        if(!validJsonOfField(1, "business_id", pJson["business_id"], err, false))
             return false;
     }
-    if(pJson.isMember("username"))
+    if(pJson.isMember("user_id"))
     {
-        if(!validJsonOfField(2, "username", pJson["username"], err, false))
+        if(!validJsonOfField(2, "user_id", pJson["user_id"], err, false))
+            return false;
+    }
+    if(pJson.isMember("login_time"))
+    {
+        if(!validJsonOfField(3, "login_time", pJson["login_time"], err, false))
             return false;
     }
     if(pJson.isMember("ip_address"))
     {
-        if(!validJsonOfField(3, "ip_address", pJson["ip_address"], err, false))
+        if(!validJsonOfField(4, "ip_address", pJson["ip_address"], err, false))
             return false;
     }
     if(pJson.isMember("user_agent"))
     {
-        if(!validJsonOfField(4, "user_agent", pJson["user_agent"], err, false))
+        if(!validJsonOfField(5, "user_agent", pJson["user_agent"], err, false))
             return false;
     }
-    if(pJson.isMember("success"))
+    if(pJson.isMember("device_id"))
     {
-        if(!validJsonOfField(5, "success", pJson["success"], err, false))
+        if(!validJsonOfField(6, "device_id", pJson["device_id"], err, false))
+            return false;
+    }
+    if(pJson.isMember("status"))
+    {
+        if(!validJsonOfField(7, "status", pJson["status"], err, false))
             return false;
     }
     if(pJson.isMember("failure_reason"))
     {
-        if(!validJsonOfField(6, "failure_reason", pJson["failure_reason"], err, false))
+        if(!validJsonOfField(8, "failure_reason", pJson["failure_reason"], err, false))
             return false;
     }
-    if(pJson.isMember("created_at"))
+    if(pJson.isMember("location"))
     {
-        if(!validJsonOfField(7, "created_at", pJson["created_at"], err, false))
+        if(!validJsonOfField(9, "location", pJson["location"], err, false))
             return false;
     }
     return true;
@@ -1393,7 +1687,7 @@ bool LoginHistory::validateMasqueradedJsonForUpdate(const Json::Value &pJson,
                                                     const std::vector<std::string> &pMasqueradingVector,
                                                     std::string &err)
 {
-    if(pMasqueradingVector.size() != 8)
+    if(pMasqueradingVector.size() != 10)
     {
         err = "Bad masquerading vector";
         return false;
@@ -1444,6 +1738,16 @@ bool LoginHistory::validateMasqueradedJsonForUpdate(const Json::Value &pJson,
           if(!validJsonOfField(7, pMasqueradingVector[7], pJson[pMasqueradingVector[7]], err, false))
               return false;
       }
+      if(!pMasqueradingVector[8].empty() && pJson.isMember(pMasqueradingVector[8]))
+      {
+          if(!validJsonOfField(8, pMasqueradingVector[8], pJson[pMasqueradingVector[8]], err, false))
+              return false;
+      }
+      if(!pMasqueradingVector[9].empty() && pJson.isMember(pMasqueradingVector[9]))
+      {
+          if(!validJsonOfField(9, pMasqueradingVector[9], pJson[pMasqueradingVector[9]], err, false))
+              return false;
+      }
     }
     catch(const Json::LogicError &e)
     {
@@ -1483,14 +1787,6 @@ bool LoginHistory::validJsonOfField(size_t index,
                 err="Type error in the "+fieldName+" field";
                 return false;
             }
-            if(pJson.isString() && std::strlen(pJson.asCString()) > 32)
-            {
-                err="String length exceeds limit for the " +
-                    fieldName +
-                    " field (the maximum value is 32)";
-                return false;
-            }
-
             break;
         case 2:
             if(pJson.isNull())
@@ -1503,14 +1799,6 @@ bool LoginHistory::validJsonOfField(size_t index,
                 err="Type error in the "+fieldName+" field";
                 return false;
             }
-            if(pJson.isString() && std::strlen(pJson.asCString()) > 100)
-            {
-                err="String length exceeds limit for the " +
-                    fieldName +
-                    " field (the maximum value is 100)";
-                return false;
-            }
-
             break;
         case 3:
             if(pJson.isNull())
@@ -1537,12 +1825,19 @@ bool LoginHistory::validJsonOfField(size_t index,
         case 5:
             if(pJson.isNull())
             {
-                err="The " + fieldName + " column cannot be null";
-                return false;
+                return true;
             }
-            if(!pJson.isBool())
+            if(!pJson.isString())
             {
                 err="Type error in the "+fieldName+" field";
+                return false;
+            }
+            if(pJson.isString() && std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>{}
+                .from_bytes(pJson.asCString()).size() > 512)
+            {
+                err="String length exceeds limit for the " +
+                    fieldName +
+                    " field (the maximum value is 512)";
                 return false;
             }
             break;
@@ -1556,14 +1851,14 @@ bool LoginHistory::validJsonOfField(size_t index,
                 err="Type error in the "+fieldName+" field";
                 return false;
             }
-            if(pJson.isString() && std::strlen(pJson.asCString()) > 255)
+            if(pJson.isString() && std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>{}
+                .from_bytes(pJson.asCString()).size() > 128)
             {
                 err="String length exceeds limit for the " +
                     fieldName +
-                    " field (the maximum value is 255)";
+                    " field (the maximum value is 128)";
                 return false;
             }
-
             break;
         case 7:
             if(pJson.isNull())
@@ -1574,6 +1869,52 @@ bool LoginHistory::validJsonOfField(size_t index,
             if(!pJson.isString())
             {
                 err="Type error in the "+fieldName+" field";
+                return false;
+            }
+            if(pJson.isString() && std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>{}
+                .from_bytes(pJson.asCString()).size() > 50)
+            {
+                err="String length exceeds limit for the " +
+                    fieldName +
+                    " field (the maximum value is 50)";
+                return false;
+            }
+            break;
+        case 8:
+            if(pJson.isNull())
+            {
+                return true;
+            }
+            if(!pJson.isString())
+            {
+                err="Type error in the "+fieldName+" field";
+                return false;
+            }
+            if(pJson.isString() && std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>{}
+                .from_bytes(pJson.asCString()).size() > 255)
+            {
+                err="String length exceeds limit for the " +
+                    fieldName +
+                    " field (the maximum value is 255)";
+                return false;
+            }
+            break;
+        case 9:
+            if(pJson.isNull())
+            {
+                return true;
+            }
+            if(!pJson.isString())
+            {
+                err="Type error in the "+fieldName+" field";
+                return false;
+            }
+            if(pJson.isString() && std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>{}
+                .from_bytes(pJson.asCString()).size() > 255)
+            {
+                err="String length exceeds limit for the " +
+                    fieldName +
+                    " field (the maximum value is 255)";
                 return false;
             }
             break;

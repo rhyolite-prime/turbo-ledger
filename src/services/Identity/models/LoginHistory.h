@@ -36,7 +36,7 @@ using DbClientPtr = std::shared_ptr<DbClient>;
 }
 namespace drogon_model
 {
-namespace TurboLedgerIdentity
+namespace TlIdentity
 {
 
 class LoginHistory
@@ -45,13 +45,15 @@ class LoginHistory
     struct Cols
     {
         static const std::string _id;
-        static const std::string _tenant_identifier;
-        static const std::string _username;
+        static const std::string _business_id;
+        static const std::string _user_id;
+        static const std::string _login_time;
         static const std::string _ip_address;
         static const std::string _user_agent;
-        static const std::string _success;
+        static const std::string _device_id;
+        static const std::string _status;
         static const std::string _failure_reason;
-        static const std::string _created_at;
+        static const std::string _location;
     };
 
     static const int primaryKeyNumber;
@@ -112,23 +114,32 @@ class LoginHistory
     void setId(const std::string &pId) noexcept;
     void setId(std::string &&pId) noexcept;
 
-    /**  For column tenant_identifier  */
-    ///Get the value of the column tenant_identifier, returns the default value if the column is null
-    const std::string &getValueOfTenantIdentifier() const noexcept;
+    /**  For column business_id  */
+    ///Get the value of the column business_id, returns the default value if the column is null
+    const std::string &getValueOfBusinessId() const noexcept;
     ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
-    const std::shared_ptr<std::string> &getTenantIdentifier() const noexcept;
-    ///Set the value of the column tenant_identifier
-    void setTenantIdentifier(const std::string &pTenantIdentifier) noexcept;
-    void setTenantIdentifier(std::string &&pTenantIdentifier) noexcept;
+    const std::shared_ptr<std::string> &getBusinessId() const noexcept;
+    ///Set the value of the column business_id
+    void setBusinessId(const std::string &pBusinessId) noexcept;
+    void setBusinessId(std::string &&pBusinessId) noexcept;
 
-    /**  For column username  */
-    ///Get the value of the column username, returns the default value if the column is null
-    const std::string &getValueOfUsername() const noexcept;
+    /**  For column user_id  */
+    ///Get the value of the column user_id, returns the default value if the column is null
+    const std::string &getValueOfUserId() const noexcept;
     ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
-    const std::shared_ptr<std::string> &getUsername() const noexcept;
-    ///Set the value of the column username
-    void setUsername(const std::string &pUsername) noexcept;
-    void setUsername(std::string &&pUsername) noexcept;
+    const std::shared_ptr<std::string> &getUserId() const noexcept;
+    ///Set the value of the column user_id
+    void setUserId(const std::string &pUserId) noexcept;
+    void setUserId(std::string &&pUserId) noexcept;
+
+    /**  For column login_time  */
+    ///Get the value of the column login_time, returns the default value if the column is null
+    const ::trantor::Date &getValueOfLoginTime() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<::trantor::Date> &getLoginTime() const noexcept;
+    ///Set the value of the column login_time
+    void setLoginTime(const ::trantor::Date &pLoginTime) noexcept;
+    void setLoginTimeToNull() noexcept;
 
     /**  For column ip_address  */
     ///Get the value of the column ip_address, returns the default value if the column is null
@@ -150,13 +161,24 @@ class LoginHistory
     void setUserAgent(std::string &&pUserAgent) noexcept;
     void setUserAgentToNull() noexcept;
 
-    /**  For column success  */
-    ///Get the value of the column success, returns the default value if the column is null
-    const bool &getValueOfSuccess() const noexcept;
+    /**  For column device_id  */
+    ///Get the value of the column device_id, returns the default value if the column is null
+    const std::string &getValueOfDeviceId() const noexcept;
     ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
-    const std::shared_ptr<bool> &getSuccess() const noexcept;
-    ///Set the value of the column success
-    void setSuccess(const bool &pSuccess) noexcept;
+    const std::shared_ptr<std::string> &getDeviceId() const noexcept;
+    ///Set the value of the column device_id
+    void setDeviceId(const std::string &pDeviceId) noexcept;
+    void setDeviceId(std::string &&pDeviceId) noexcept;
+    void setDeviceIdToNull() noexcept;
+
+    /**  For column status  */
+    ///Get the value of the column status, returns the default value if the column is null
+    const std::string &getValueOfStatus() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<std::string> &getStatus() const noexcept;
+    ///Set the value of the column status
+    void setStatus(const std::string &pStatus) noexcept;
+    void setStatus(std::string &&pStatus) noexcept;
 
     /**  For column failure_reason  */
     ///Get the value of the column failure_reason, returns the default value if the column is null
@@ -168,16 +190,18 @@ class LoginHistory
     void setFailureReason(std::string &&pFailureReason) noexcept;
     void setFailureReasonToNull() noexcept;
 
-    /**  For column created_at  */
-    ///Get the value of the column created_at, returns the default value if the column is null
-    const ::trantor::Date &getValueOfCreatedAt() const noexcept;
+    /**  For column location  */
+    ///Get the value of the column location, returns the default value if the column is null
+    const std::string &getValueOfLocation() const noexcept;
     ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
-    const std::shared_ptr<::trantor::Date> &getCreatedAt() const noexcept;
-    ///Set the value of the column created_at
-    void setCreatedAt(const ::trantor::Date &pCreatedAt) noexcept;
+    const std::shared_ptr<std::string> &getLocation() const noexcept;
+    ///Set the value of the column location
+    void setLocation(const std::string &pLocation) noexcept;
+    void setLocation(std::string &&pLocation) noexcept;
+    void setLocationToNull() noexcept;
 
 
-    static size_t getColumnNumber() noexcept {  return 8;  }
+    static size_t getColumnNumber() noexcept {  return 10;  }
     static const std::string &getColumnName(size_t index) noexcept(false);
 
     Json::Value toJson() const;
@@ -200,13 +224,15 @@ class LoginHistory
     ///For mysql or sqlite3
     void updateId(const uint64_t id);
     std::shared_ptr<std::string> id_;
-    std::shared_ptr<std::string> tenantIdentifier_;
-    std::shared_ptr<std::string> username_;
+    std::shared_ptr<std::string> businessId_;
+    std::shared_ptr<std::string> userId_;
+    std::shared_ptr<::trantor::Date> loginTime_;
     std::shared_ptr<std::string> ipAddress_;
     std::shared_ptr<std::string> userAgent_;
-    std::shared_ptr<bool> success_;
+    std::shared_ptr<std::string> deviceId_;
+    std::shared_ptr<std::string> status_;
     std::shared_ptr<std::string> failureReason_;
-    std::shared_ptr<::trantor::Date> createdAt_;
+    std::shared_ptr<std::string> location_;
     struct MetaData
     {
         const std::string colName_;
@@ -218,7 +244,7 @@ class LoginHistory
         const bool notNull_;
     };
     static const std::vector<MetaData> metaData_;
-    bool dirtyFlag_[8]={ false };
+    bool dirtyFlag_[10]={ false };
   public:
     static const std::string &sqlForFindingByPrimaryKey()
     {
@@ -244,39 +270,49 @@ class LoginHistory
         }
         if(dirtyFlag_[1])
         {
-            sql += "tenant_identifier,";
+            sql += "business_id,";
             ++parametersCount;
         }
         if(dirtyFlag_[2])
         {
-            sql += "username,";
+            sql += "user_id,";
             ++parametersCount;
         }
-        if(dirtyFlag_[3])
+        sql += "login_time,";
+        ++parametersCount;
+        if(!dirtyFlag_[3])
+        {
+            needSelection=true;
+        }
+        if(dirtyFlag_[4])
         {
             sql += "ip_address,";
             ++parametersCount;
         }
-        if(dirtyFlag_[4])
+        if(dirtyFlag_[5])
         {
             sql += "user_agent,";
             ++parametersCount;
         }
-        if(dirtyFlag_[5])
+        if(dirtyFlag_[6])
         {
-            sql += "success,";
+            sql += "device_id,";
             ++parametersCount;
         }
-        if(dirtyFlag_[6])
+        if(dirtyFlag_[7])
+        {
+            sql += "status,";
+            ++parametersCount;
+        }
+        if(dirtyFlag_[8])
         {
             sql += "failure_reason,";
             ++parametersCount;
         }
-        sql += "created_at,";
-        ++parametersCount;
-        if(!dirtyFlag_[7])
+        if(dirtyFlag_[9])
         {
-            needSelection=true;
+            sql += "location,";
+            ++parametersCount;
         }
         if(parametersCount > 0)
         {
@@ -313,6 +349,10 @@ class LoginHistory
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
         }
+        else
+        {
+            sql +="default,";
+        }
         if(dirtyFlag_[4])
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
@@ -333,9 +373,15 @@ class LoginHistory
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
         }
-        else
+        if(dirtyFlag_[8])
         {
-            sql +="default,";
+            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
+            sql.append(placeholderStr, n);
+        }
+        if(dirtyFlag_[9])
+        {
+            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
+            sql.append(placeholderStr, n);
         }
         if(parametersCount > 0)
         {
@@ -353,5 +399,5 @@ class LoginHistory
         return sql;
     }
 };
-} // namespace TurboLedgerIdentity
+} // namespace TlIdentity
 } // namespace drogon_model

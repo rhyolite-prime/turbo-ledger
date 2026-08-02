@@ -1,26 +1,26 @@
 #pragma once
 
-
-#include "BaseController.h"
-
+#include <drogon/HttpController.h>
 
 using namespace drogon;
 
 
-class AuthController : public BaseController<AuthController>
+class AuthController : public drogon::HttpController<AuthController>
 {
   public:
-  static constexpr const char *PREFIX = "/api/v1/auth";
+  static constexpr const char *PREFIX = "/api/v1/auth/";
   METHOD_LIST_BEGIN
-    ADD_METHOD_TO(AuthController::generateAuthToken, std::string(PREFIX) + "/tenant-signin", Post);
-    ADD_METHOD_TO(AuthController::generateAuthToken, std::string(PREFIX) + "/host-signin", Post);
+    ADD_METHOD_TO(AuthController::signIn, std::string(PREFIX) + "signin", Post, Options);
     //2 factor
     // after logging in username and password: a token is generated for the user which is used to send and verify the otp
-    ADD_METHOD_TO(AuthController::generateAuthToken, std::string(PREFIX) + "/send-otp", Get);
-    ADD_METHOD_TO(AuthController::generateAuthToken, std::string(PREFIX) + "/verify-otp", Post);  // returns with a token
-    ADD_METHOD_TO(AuthController::generateAuthToken, std::string(PREFIX) + "/get-otp-delivery-methods", Get);  // returns with a token
-    ADD_METHOD_TO(AuthController::generateAuthToken, std::string(PREFIX) + "/configure-twofactor", Post);
+    ADD_METHOD_TO(AuthController::sendOtp, std::string(PREFIX) + "send-otp", Get, Options);
+    ADD_METHOD_TO(AuthController::verifyOtp, std::string(PREFIX) + "verify-otp", Post, Options);  // returns with a token
+  ADD_METHOD_TO(AuthController::changeUserPassword, std::string(PREFIX) + "change-user-password", Post, Options, "JwtAuthFilter");
   METHOD_LIST_END
 
-  void generateAuthToken(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback);
+  Task<HttpResponsePtr> signIn(HttpRequestPtr req);
+  Task<HttpResponsePtr> sendOtp(HttpRequestPtr req);
+  Task<HttpResponsePtr> verifyOtp(HttpRequestPtr req);
+  Task<HttpResponsePtr> changeUserPassword(HttpRequestPtr req);
+
 };

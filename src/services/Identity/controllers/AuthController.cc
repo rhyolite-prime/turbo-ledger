@@ -1,54 +1,60 @@
 #include "AuthController.h"
-
 #include "dto/BaseApiResponse.h"
-#include "dto/SigninDto.h"
 #include "plugins/IdentityServicePlugin.h"
+#include "dto/SigninDto.h"
 
+using namespace drogon;
+using namespace turbo_ledger_identity::plugins;
+using namespace turbo_ledger_identity::dto;
 
-
-void AuthController::generateAuthToken(const HttpRequestPtr& req, std::function<void (const HttpResponsePtr &)> &&callback)
-{
-
-    auto jsonBody = req->getJsonObject();
-
-    if (!jsonBody) {
-        turbo_ledger_identity::dto::BaseApiResponse response;
-        response.success = false;
-        response.error["message"] = "Invalid JSON body";
-        auto resp = HttpResponse::newHttpJsonResponse(response.toJson());
+Task<HttpResponsePtr> AuthController::signIn(HttpRequestPtr req) {
+    auto json = req->getJsonObject();
+    BaseApiResponse apiResponse;
+    if (!json) {
+        apiResponse.success = false;
+        apiResponse.message = "Invalid JSON payload";
+        auto resp = HttpResponse::newHttpJsonResponse(apiResponse.toJson());
         resp->setStatusCode(k400BadRequest);
-        callback(resp);
-        return;
+        co_return resp;
     }
 
-    std::string tenantId = getTenantFromRequest(req);
+    SigninDto dto;
+    dto.fromJson(*json);
 
-    turbo_ledger_identity::dto::SigninDto signin_dto;
-
-    try {
-
-        signin_dto.fromJson(*jsonBody);
-
-    } catch (const std::exception& e) {
-        turbo_ledger_identity::dto::BaseApiResponse response;
-        response.success = false;
-        response.error["message"] = "Missing or invalid required fields";
-        auto resp = HttpResponse::newHttpJsonResponse(response.toJson());
-        resp->setStatusCode(k400BadRequest);
-        callback(resp);
-        return;
-    }
-
-    auto plugin = drogon::app().getPlugin<turbo_ledger_identity::plugins::IdentityServicePlugin>();
+    auto *plugin = app().getPlugin<IdentityServicePlugin>();
     auto& userService = plugin->getUserService();
 
-    userService.validateUserCredentials(signin_dto, tenantId, [callback](const turbo_ledger_identity::dto::BaseApiResponse& result) {
-       auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
-       resp->setStatusCode(result.success ? k200OK : k500InternalServerError);
-       callback(resp);
-   });
+    auto result = co_await userService.validateUserCredentials(dto);
+
+    auto resp = HttpResponse::newHttpJsonResponse(apiResponse.toJson());
+    resp->setStatusCode(result.success ? k200OK : k401Unauthorized);
+    co_return resp;
+}
 
 
+Task<HttpResponsePtr> AuthController::sendOtp(HttpRequestPtr req) {
+    BaseApiResponse apiResponse;
+    apiResponse.success = false;
+    apiResponse.message = "Not implemented";
+    auto resp = HttpResponse::newHttpJsonResponse(apiResponse.toJson());
+    resp->setStatusCode(k501NotImplemented);
+    co_return resp;
+}
 
+Task<HttpResponsePtr> AuthController::verifyOtp(HttpRequestPtr req) {
+    BaseApiResponse apiResponse;
+    apiResponse.success = false;
+    apiResponse.message = "Not implemented";
+    auto resp = HttpResponse::newHttpJsonResponse(apiResponse.toJson());
+    resp->setStatusCode(k501NotImplemented);
+    co_return resp;
+}
 
+Task<HttpResponsePtr> AuthController::changeUserPassword(HttpRequestPtr req) {
+    BaseApiResponse apiResponse;
+    apiResponse.success = false;
+    apiResponse.message = "Not implemented";
+    auto resp = HttpResponse::newHttpJsonResponse(apiResponse.toJson());
+    resp->setStatusCode(k501NotImplemented);
+    co_return resp;
 }
