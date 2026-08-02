@@ -22,6 +22,7 @@ const std::string AuditLogs::Cols::_action = "\"action\"";
 const std::string AuditLogs::Cols::_old_values = "\"old_values\"";
 const std::string AuditLogs::Cols::_new_values = "\"new_values\"";
 const std::string AuditLogs::Cols::_ip_address = "\"ip_address\"";
+const std::string AuditLogs::Cols::_is_archived = "\"is_archived\"";
 const std::string AuditLogs::Cols::_user_agent = "\"user_agent\"";
 const std::string AuditLogs::Cols::_created_at = "\"created_at\"";
 const std::string AuditLogs::primaryKeyName = "id";
@@ -30,7 +31,7 @@ const std::string AuditLogs::tableName = "\"audit_logs\"";
 
 const std::vector<typename AuditLogs::MetaData> AuditLogs::metaData_={
 {"id","std::string","uuid",0,0,1,1},
-{"business_id","std::string","uuid",0,0,0,1},
+{"business_id","std::string","uuid",0,0,0,0},
 {"actor_id","std::string","uuid",0,0,0,0},
 {"entity_type","std::string","character varying",100,0,0,1},
 {"entity_id","std::string","uuid",0,0,0,1},
@@ -38,6 +39,7 @@ const std::vector<typename AuditLogs::MetaData> AuditLogs::metaData_={
 {"old_values","std::string","jsonb",0,0,0,0},
 {"new_values","std::string","jsonb",0,0,0,0},
 {"ip_address","std::string","inet",0,0,0,0},
+{"is_archived","bool","boolean",1,0,0,1},
 {"user_agent","std::string","character varying",512,0,0,0},
 {"created_at","::trantor::Date","timestamp with time zone",0,0,0,0}
 };
@@ -86,6 +88,10 @@ AuditLogs::AuditLogs(const Row &r, const ssize_t indexOffset) noexcept
         {
             ipAddress_=std::make_shared<std::string>(r["ip_address"].as<std::string>());
         }
+        if(!r["is_archived"].isNull())
+        {
+            isArchived_=std::make_shared<bool>(r["is_archived"].as<bool>());
+        }
         if(!r["user_agent"].isNull())
         {
             userAgent_=std::make_shared<std::string>(r["user_agent"].as<std::string>());
@@ -116,7 +122,7 @@ AuditLogs::AuditLogs(const Row &r, const ssize_t indexOffset) noexcept
     else
     {
         size_t offset = (size_t)indexOffset;
-        if(offset + 11 > r.size())
+        if(offset + 12 > r.size())
         {
             LOG_FATAL << "Invalid SQL result for this model";
             return;
@@ -170,9 +176,14 @@ AuditLogs::AuditLogs(const Row &r, const ssize_t indexOffset) noexcept
         index = offset + 9;
         if(!r[index].isNull())
         {
-            userAgent_=std::make_shared<std::string>(r[index].as<std::string>());
+            isArchived_=std::make_shared<bool>(r[index].as<bool>());
         }
         index = offset + 10;
+        if(!r[index].isNull())
+        {
+            userAgent_=std::make_shared<std::string>(r[index].as<std::string>());
+        }
+        index = offset + 11;
         if(!r[index].isNull())
         {
             auto timeStr = r[index].as<std::string>();
@@ -201,7 +212,7 @@ AuditLogs::AuditLogs(const Row &r, const ssize_t indexOffset) noexcept
 
 AuditLogs::AuditLogs(const Json::Value &pJson, const std::vector<std::string> &pMasqueradingVector) noexcept(false)
 {
-    if(pMasqueradingVector.size() != 11)
+    if(pMasqueradingVector.size() != 12)
     {
         LOG_ERROR << "Bad masquerading vector";
         return;
@@ -283,7 +294,7 @@ AuditLogs::AuditLogs(const Json::Value &pJson, const std::vector<std::string> &p
         dirtyFlag_[9] = true;
         if(!pJson[pMasqueradingVector[9]].isNull())
         {
-            userAgent_=std::make_shared<std::string>(pJson[pMasqueradingVector[9]].asString());
+            isArchived_=std::make_shared<bool>(pJson[pMasqueradingVector[9]].asBool());
         }
     }
     if(!pMasqueradingVector[10].empty() && pJson.isMember(pMasqueradingVector[10]))
@@ -291,7 +302,15 @@ AuditLogs::AuditLogs(const Json::Value &pJson, const std::vector<std::string> &p
         dirtyFlag_[10] = true;
         if(!pJson[pMasqueradingVector[10]].isNull())
         {
-            auto timeStr = pJson[pMasqueradingVector[10]].asString();
+            userAgent_=std::make_shared<std::string>(pJson[pMasqueradingVector[10]].asString());
+        }
+    }
+    if(!pMasqueradingVector[11].empty() && pJson.isMember(pMasqueradingVector[11]))
+    {
+        dirtyFlag_[11] = true;
+        if(!pJson[pMasqueradingVector[11]].isNull())
+        {
+            auto timeStr = pJson[pMasqueradingVector[11]].asString();
             struct tm stm;
             memset(&stm,0,sizeof(stm));
             auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
@@ -388,9 +407,17 @@ AuditLogs::AuditLogs(const Json::Value &pJson) noexcept(false)
             ipAddress_=std::make_shared<std::string>(pJson["ip_address"].asString());
         }
     }
-    if(pJson.isMember("user_agent"))
+    if(pJson.isMember("is_archived"))
     {
         dirtyFlag_[9]=true;
+        if(!pJson["is_archived"].isNull())
+        {
+            isArchived_=std::make_shared<bool>(pJson["is_archived"].asBool());
+        }
+    }
+    if(pJson.isMember("user_agent"))
+    {
+        dirtyFlag_[10]=true;
         if(!pJson["user_agent"].isNull())
         {
             userAgent_=std::make_shared<std::string>(pJson["user_agent"].asString());
@@ -398,7 +425,7 @@ AuditLogs::AuditLogs(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("created_at"))
     {
-        dirtyFlag_[10]=true;
+        dirtyFlag_[11]=true;
         if(!pJson["created_at"].isNull())
         {
             auto timeStr = pJson["created_at"].asString();
@@ -427,7 +454,7 @@ AuditLogs::AuditLogs(const Json::Value &pJson) noexcept(false)
 void AuditLogs::updateByMasqueradedJson(const Json::Value &pJson,
                                             const std::vector<std::string> &pMasqueradingVector) noexcept(false)
 {
-    if(pMasqueradingVector.size() != 11)
+    if(pMasqueradingVector.size() != 12)
     {
         LOG_ERROR << "Bad masquerading vector";
         return;
@@ -508,7 +535,7 @@ void AuditLogs::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[9] = true;
         if(!pJson[pMasqueradingVector[9]].isNull())
         {
-            userAgent_=std::make_shared<std::string>(pJson[pMasqueradingVector[9]].asString());
+            isArchived_=std::make_shared<bool>(pJson[pMasqueradingVector[9]].asBool());
         }
     }
     if(!pMasqueradingVector[10].empty() && pJson.isMember(pMasqueradingVector[10]))
@@ -516,7 +543,15 @@ void AuditLogs::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[10] = true;
         if(!pJson[pMasqueradingVector[10]].isNull())
         {
-            auto timeStr = pJson[pMasqueradingVector[10]].asString();
+            userAgent_=std::make_shared<std::string>(pJson[pMasqueradingVector[10]].asString());
+        }
+    }
+    if(!pMasqueradingVector[11].empty() && pJson.isMember(pMasqueradingVector[11]))
+    {
+        dirtyFlag_[11] = true;
+        if(!pJson[pMasqueradingVector[11]].isNull())
+        {
+            auto timeStr = pJson[pMasqueradingVector[11]].asString();
             struct tm stm;
             memset(&stm,0,sizeof(stm));
             auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
@@ -612,9 +647,17 @@ void AuditLogs::updateByJson(const Json::Value &pJson) noexcept(false)
             ipAddress_=std::make_shared<std::string>(pJson["ip_address"].asString());
         }
     }
-    if(pJson.isMember("user_agent"))
+    if(pJson.isMember("is_archived"))
     {
         dirtyFlag_[9] = true;
+        if(!pJson["is_archived"].isNull())
+        {
+            isArchived_=std::make_shared<bool>(pJson["is_archived"].asBool());
+        }
+    }
+    if(pJson.isMember("user_agent"))
+    {
+        dirtyFlag_[10] = true;
         if(!pJson["user_agent"].isNull())
         {
             userAgent_=std::make_shared<std::string>(pJson["user_agent"].asString());
@@ -622,7 +665,7 @@ void AuditLogs::updateByJson(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("created_at"))
     {
-        dirtyFlag_[10] = true;
+        dirtyFlag_[11] = true;
         if(!pJson["created_at"].isNull())
         {
             auto timeStr = pJson["created_at"].asString();
@@ -694,6 +737,11 @@ void AuditLogs::setBusinessId(const std::string &pBusinessId) noexcept
 void AuditLogs::setBusinessId(std::string &&pBusinessId) noexcept
 {
     businessId_ = std::make_shared<std::string>(std::move(pBusinessId));
+    dirtyFlag_[1] = true;
+}
+void AuditLogs::setBusinessIdToNull() noexcept
+{
+    businessId_.reset();
     dirtyFlag_[1] = true;
 }
 
@@ -871,6 +919,23 @@ void AuditLogs::setIpAddressToNull() noexcept
     dirtyFlag_[8] = true;
 }
 
+const bool &AuditLogs::getValueOfIsArchived() const noexcept
+{
+    static const bool defaultValue = bool();
+    if(isArchived_)
+        return *isArchived_;
+    return defaultValue;
+}
+const std::shared_ptr<bool> &AuditLogs::getIsArchived() const noexcept
+{
+    return isArchived_;
+}
+void AuditLogs::setIsArchived(const bool &pIsArchived) noexcept
+{
+    isArchived_ = std::make_shared<bool>(pIsArchived);
+    dirtyFlag_[9] = true;
+}
+
 const std::string &AuditLogs::getValueOfUserAgent() const noexcept
 {
     static const std::string defaultValue = std::string();
@@ -885,17 +950,17 @@ const std::shared_ptr<std::string> &AuditLogs::getUserAgent() const noexcept
 void AuditLogs::setUserAgent(const std::string &pUserAgent) noexcept
 {
     userAgent_ = std::make_shared<std::string>(pUserAgent);
-    dirtyFlag_[9] = true;
+    dirtyFlag_[10] = true;
 }
 void AuditLogs::setUserAgent(std::string &&pUserAgent) noexcept
 {
     userAgent_ = std::make_shared<std::string>(std::move(pUserAgent));
-    dirtyFlag_[9] = true;
+    dirtyFlag_[10] = true;
 }
 void AuditLogs::setUserAgentToNull() noexcept
 {
     userAgent_.reset();
-    dirtyFlag_[9] = true;
+    dirtyFlag_[10] = true;
 }
 
 const ::trantor::Date &AuditLogs::getValueOfCreatedAt() const noexcept
@@ -912,12 +977,12 @@ const std::shared_ptr<::trantor::Date> &AuditLogs::getCreatedAt() const noexcept
 void AuditLogs::setCreatedAt(const ::trantor::Date &pCreatedAt) noexcept
 {
     createdAt_ = std::make_shared<::trantor::Date>(pCreatedAt);
-    dirtyFlag_[10] = true;
+    dirtyFlag_[11] = true;
 }
 void AuditLogs::setCreatedAtToNull() noexcept
 {
     createdAt_.reset();
-    dirtyFlag_[10] = true;
+    dirtyFlag_[11] = true;
 }
 
 void AuditLogs::updateId(const uint64_t id)
@@ -936,6 +1001,7 @@ const std::vector<std::string> &AuditLogs::insertColumns() noexcept
         "old_values",
         "new_values",
         "ip_address",
+        "is_archived",
         "user_agent",
         "created_at"
     };
@@ -1045,6 +1111,17 @@ void AuditLogs::outputArgs(drogon::orm::internal::SqlBinder &binder) const
     }
     if(dirtyFlag_[9])
     {
+        if(getIsArchived())
+        {
+            binder << getValueOfIsArchived();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[10])
+    {
         if(getUserAgent())
         {
             binder << getValueOfUserAgent();
@@ -1054,7 +1131,7 @@ void AuditLogs::outputArgs(drogon::orm::internal::SqlBinder &binder) const
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[10])
+    if(dirtyFlag_[11])
     {
         if(getCreatedAt())
         {
@@ -1113,6 +1190,10 @@ const std::vector<std::string> AuditLogs::updateColumns() const
     if(dirtyFlag_[10])
     {
         ret.push_back(getColumnName(10));
+    }
+    if(dirtyFlag_[11])
+    {
+        ret.push_back(getColumnName(11));
     }
     return ret;
 }
@@ -1220,6 +1301,17 @@ void AuditLogs::updateArgs(drogon::orm::internal::SqlBinder &binder) const
     }
     if(dirtyFlag_[9])
     {
+        if(getIsArchived())
+        {
+            binder << getValueOfIsArchived();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[10])
+    {
         if(getUserAgent())
         {
             binder << getValueOfUserAgent();
@@ -1229,7 +1321,7 @@ void AuditLogs::updateArgs(drogon::orm::internal::SqlBinder &binder) const
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[10])
+    if(dirtyFlag_[11])
     {
         if(getCreatedAt())
         {
@@ -1316,6 +1408,14 @@ Json::Value AuditLogs::toJson() const
     {
         ret["ip_address"]=Json::Value();
     }
+    if(getIsArchived())
+    {
+        ret["is_archived"]=getValueOfIsArchived();
+    }
+    else
+    {
+        ret["is_archived"]=Json::Value();
+    }
     if(getUserAgent())
     {
         ret["user_agent"]=getValueOfUserAgent();
@@ -1344,7 +1444,7 @@ Json::Value AuditLogs::toMasqueradedJson(
     const std::vector<std::string> &pMasqueradingVector) const
 {
     Json::Value ret;
-    if(pMasqueradingVector.size() == 11)
+    if(pMasqueradingVector.size() == 12)
     {
         if(!pMasqueradingVector[0].empty())
         {
@@ -1447,9 +1547,9 @@ Json::Value AuditLogs::toMasqueradedJson(
         }
         if(!pMasqueradingVector[9].empty())
         {
-            if(getUserAgent())
+            if(getIsArchived())
             {
-                ret[pMasqueradingVector[9]]=getValueOfUserAgent();
+                ret[pMasqueradingVector[9]]=getValueOfIsArchived();
             }
             else
             {
@@ -1458,13 +1558,24 @@ Json::Value AuditLogs::toMasqueradedJson(
         }
         if(!pMasqueradingVector[10].empty())
         {
-            if(getCreatedAt())
+            if(getUserAgent())
             {
-                ret[pMasqueradingVector[10]]=getCreatedAt()->toDbStringLocal();
+                ret[pMasqueradingVector[10]]=getValueOfUserAgent();
             }
             else
             {
                 ret[pMasqueradingVector[10]]=Json::Value();
+            }
+        }
+        if(!pMasqueradingVector[11].empty())
+        {
+            if(getCreatedAt())
+            {
+                ret[pMasqueradingVector[11]]=getCreatedAt()->toDbStringLocal();
+            }
+            else
+            {
+                ret[pMasqueradingVector[11]]=Json::Value();
             }
         }
         return ret;
@@ -1542,6 +1653,14 @@ Json::Value AuditLogs::toMasqueradedJson(
     {
         ret["ip_address"]=Json::Value();
     }
+    if(getIsArchived())
+    {
+        ret["is_archived"]=getValueOfIsArchived();
+    }
+    else
+    {
+        ret["is_archived"]=Json::Value();
+    }
     if(getUserAgent())
     {
         ret["user_agent"]=getValueOfUserAgent();
@@ -1572,11 +1691,6 @@ bool AuditLogs::validateJsonForCreation(const Json::Value &pJson, std::string &e
     {
         if(!validJsonOfField(1, "business_id", pJson["business_id"], err, true))
             return false;
-    }
-    else
-    {
-        err="The business_id column cannot be null";
-        return false;
     }
     if(pJson.isMember("actor_id"))
     {
@@ -1628,14 +1742,19 @@ bool AuditLogs::validateJsonForCreation(const Json::Value &pJson, std::string &e
         if(!validJsonOfField(8, "ip_address", pJson["ip_address"], err, true))
             return false;
     }
+    if(pJson.isMember("is_archived"))
+    {
+        if(!validJsonOfField(9, "is_archived", pJson["is_archived"], err, true))
+            return false;
+    }
     if(pJson.isMember("user_agent"))
     {
-        if(!validJsonOfField(9, "user_agent", pJson["user_agent"], err, true))
+        if(!validJsonOfField(10, "user_agent", pJson["user_agent"], err, true))
             return false;
     }
     if(pJson.isMember("created_at"))
     {
-        if(!validJsonOfField(10, "created_at", pJson["created_at"], err, true))
+        if(!validJsonOfField(11, "created_at", pJson["created_at"], err, true))
             return false;
     }
     return true;
@@ -1644,7 +1763,7 @@ bool AuditLogs::validateMasqueradedJsonForCreation(const Json::Value &pJson,
                                                    const std::vector<std::string> &pMasqueradingVector,
                                                    std::string &err)
 {
-    if(pMasqueradingVector.size() != 11)
+    if(pMasqueradingVector.size() != 12)
     {
         err = "Bad masquerading vector";
         return false;
@@ -1665,11 +1784,6 @@ bool AuditLogs::validateMasqueradedJsonForCreation(const Json::Value &pJson,
               if(!validJsonOfField(1, pMasqueradingVector[1], pJson[pMasqueradingVector[1]], err, true))
                   return false;
           }
-        else
-        {
-            err="The " + pMasqueradingVector[1] + " column cannot be null";
-            return false;
-        }
       }
       if(!pMasqueradingVector[2].empty())
       {
@@ -1758,6 +1872,14 @@ bool AuditLogs::validateMasqueradedJsonForCreation(const Json::Value &pJson,
                   return false;
           }
       }
+      if(!pMasqueradingVector[11].empty())
+      {
+          if(pJson.isMember(pMasqueradingVector[11]))
+          {
+              if(!validJsonOfField(11, pMasqueradingVector[11], pJson[pMasqueradingVector[11]], err, true))
+                  return false;
+          }
+      }
     }
     catch(const Json::LogicError &e)
     {
@@ -1818,14 +1940,19 @@ bool AuditLogs::validateJsonForUpdate(const Json::Value &pJson, std::string &err
         if(!validJsonOfField(8, "ip_address", pJson["ip_address"], err, false))
             return false;
     }
+    if(pJson.isMember("is_archived"))
+    {
+        if(!validJsonOfField(9, "is_archived", pJson["is_archived"], err, false))
+            return false;
+    }
     if(pJson.isMember("user_agent"))
     {
-        if(!validJsonOfField(9, "user_agent", pJson["user_agent"], err, false))
+        if(!validJsonOfField(10, "user_agent", pJson["user_agent"], err, false))
             return false;
     }
     if(pJson.isMember("created_at"))
     {
-        if(!validJsonOfField(10, "created_at", pJson["created_at"], err, false))
+        if(!validJsonOfField(11, "created_at", pJson["created_at"], err, false))
             return false;
     }
     return true;
@@ -1834,7 +1961,7 @@ bool AuditLogs::validateMasqueradedJsonForUpdate(const Json::Value &pJson,
                                                  const std::vector<std::string> &pMasqueradingVector,
                                                  std::string &err)
 {
-    if(pMasqueradingVector.size() != 11)
+    if(pMasqueradingVector.size() != 12)
     {
         err = "Bad masquerading vector";
         return false;
@@ -1900,6 +2027,11 @@ bool AuditLogs::validateMasqueradedJsonForUpdate(const Json::Value &pJson,
           if(!validJsonOfField(10, pMasqueradingVector[10], pJson[pMasqueradingVector[10]], err, false))
               return false;
       }
+      if(!pMasqueradingVector[11].empty() && pJson.isMember(pMasqueradingVector[11]))
+      {
+          if(!validJsonOfField(11, pMasqueradingVector[11], pJson[pMasqueradingVector[11]], err, false))
+              return false;
+      }
     }
     catch(const Json::LogicError &e)
     {
@@ -1931,8 +2063,7 @@ bool AuditLogs::validJsonOfField(size_t index,
         case 1:
             if(pJson.isNull())
             {
-                err="The " + fieldName + " column cannot be null";
-                return false;
+                return true;
             }
             if(!pJson.isString())
             {
@@ -2039,6 +2170,18 @@ bool AuditLogs::validJsonOfField(size_t index,
         case 9:
             if(pJson.isNull())
             {
+                err="The " + fieldName + " column cannot be null";
+                return false;
+            }
+            if(!pJson.isBool())
+            {
+                err="Type error in the "+fieldName+" field";
+                return false;
+            }
+            break;
+        case 10:
+            if(pJson.isNull())
+            {
                 return true;
             }
             if(!pJson.isString())
@@ -2055,7 +2198,7 @@ bool AuditLogs::validJsonOfField(size_t index,
                 return false;
             }
             break;
-        case 10:
+        case 11:
             if(pJson.isNull())
             {
                 return true;

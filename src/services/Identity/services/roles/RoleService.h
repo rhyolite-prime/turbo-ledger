@@ -16,7 +16,9 @@ namespace turbo_ledger_identity::services {
 
         drogon::Task<dto::BaseApiResponse> getAll(const std::string &businessId, int pageNo, int pageSize, const std::string &query);
 
-        drogon::Task<dto::BaseApiResponse> getAllPermissions();
+        drogon::Task<dto::BaseApiResponse> getTenantPermissions();
+
+        drogon::Task<dto::BaseApiResponse> getHostPermissions();
 
         drogon::Task<dto::BaseApiResponse> create(const std::string &businessId, const dto::RoleDto &dto);
 

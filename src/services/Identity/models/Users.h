@@ -69,7 +69,6 @@ class Users
         static const std::string _credential_type;
         static const std::string _last_active;
         static const std::string _roles;
-        static const std::string _user_groups;
         static const std::string _created_by;
         static const std::string _created_at;
         static const std::string _modified_by;
@@ -142,6 +141,7 @@ class Users
     ///Set the value of the column business_id
     void setBusinessId(const std::string &pBusinessId) noexcept;
     void setBusinessId(std::string &&pBusinessId) noexcept;
+    void setBusinessIdToNull() noexcept;
 
     /**  For column first_name  */
     ///Get the value of the column first_name, returns the default value if the column is null
@@ -368,16 +368,6 @@ class Users
     void setRoles(std::string &&pRoles) noexcept;
     void setRolesToNull() noexcept;
 
-    /**  For column user_groups  */
-    ///Get the value of the column user_groups, returns the default value if the column is null
-    const std::string &getValueOfUserGroups() const noexcept;
-    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
-    const std::shared_ptr<std::string> &getUserGroups() const noexcept;
-    ///Set the value of the column user_groups
-    void setUserGroups(const std::string &pUserGroups) noexcept;
-    void setUserGroups(std::string &&pUserGroups) noexcept;
-    void setUserGroupsToNull() noexcept;
-
     /**  For column created_by  */
     ///Get the value of the column created_by, returns the default value if the column is null
     const std::string &getValueOfCreatedBy() const noexcept;
@@ -417,7 +407,7 @@ class Users
     void setModifiedAtToNull() noexcept;
 
 
-    static size_t getColumnNumber() noexcept {  return 30;  }
+    static size_t getColumnNumber() noexcept {  return 29;  }
     static const std::string &getColumnName(size_t index) noexcept(false);
 
     Json::Value toJson() const;
@@ -464,7 +454,6 @@ class Users
     std::shared_ptr<std::string> credentialType_;
     std::shared_ptr<::trantor::Date> lastActive_;
     std::shared_ptr<std::string> roles_;
-    std::shared_ptr<std::string> userGroups_;
     std::shared_ptr<std::string> createdBy_;
     std::shared_ptr<::trantor::Date> createdAt_;
     std::shared_ptr<std::string> modifiedBy_;
@@ -480,7 +469,7 @@ class Users
         const bool notNull_;
     };
     static const std::vector<MetaData> metaData_;
-    bool dirtyFlag_[30]={ false };
+    bool dirtyFlag_[29]={ false };
   public:
     static const std::string &sqlForFindingByPrimaryKey()
     {
@@ -631,28 +620,23 @@ class Users
         }
         if(dirtyFlag_[25])
         {
-            sql += "user_groups,";
-            ++parametersCount;
-        }
-        if(dirtyFlag_[26])
-        {
             sql += "created_by,";
             ++parametersCount;
         }
         sql += "created_at,";
         ++parametersCount;
-        if(!dirtyFlag_[27])
+        if(!dirtyFlag_[26])
         {
             needSelection=true;
         }
-        if(dirtyFlag_[28])
+        if(dirtyFlag_[27])
         {
             sql += "modified_by,";
             ++parametersCount;
         }
         sql += "modified_at,";
         ++parametersCount;
-        if(!dirtyFlag_[29])
+        if(!dirtyFlag_[28])
         {
             needSelection=true;
         }
@@ -826,21 +810,16 @@ class Users
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
         }
+        else
+        {
+            sql +="default,";
+        }
         if(dirtyFlag_[27])
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
         }
-        else
-        {
-            sql +="default,";
-        }
         if(dirtyFlag_[28])
-        {
-            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
-            sql.append(placeholderStr, n);
-        }
-        if(dirtyFlag_[29])
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);

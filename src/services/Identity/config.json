@@ -81,7 +81,7 @@
         "session_timeout": 0,
         //string value of SameSite attribute of the Set-Cookie HTTP response header
         //valid value is either 'Null' (default), 'Lax', 'Strict' or 'None'
-        "session_same_site" : "Null",
+        "session_same_site": "Null",
         //session_cookie_key: The cookie key of the session, "JSESSIONID" by default
         "session_cookie_key": "JSESSIONID",
         //session_max_age: The max age of the session cookie, -1 by default
@@ -321,10 +321,10 @@
     //custom_config: custom configuration for users. This object can be get by the app().getCustomConfig() method. 
     "custom_config": {
         "JwtBearer": {
-            "JwtSecurityKey" : "TurboLedgerIdentity_ca01ca76-3866-4d44-9881-d9e365b81472",
-            "JwtIssuer" : "TurboLedgerIdentity",
-            "JwtAudience" : "TurboLedgerIdentity",
-            "JwtExpirationTime" : 3600
+            "JwtSecurityKey": "TurboLedgerIdentity_ca01ca76-3866-4d44-9881-d9e365b81472",
+            "JwtIssuer": "TurboLedgerIdentity",
+            "JwtAudience": "TurboLedgerIdentity",
+            "JwtExpirationTime": 3600
         },
         "PrivateKey": "ca01ca76-3866-4d44-9881-d9e365b81473",
         "TenantPermissions": [
@@ -382,8 +382,154 @@
                         "description": "Assign or revoke roles from users and manage role memberships"
                     }
                 ]
+            },
+            {
+                "name": "API Keys Management",
+                "permissions": [
+                    {
+                        "id": "api_key.view",
+                        "label": "View API Keys",
+                        "description": "View and browse all API key definitions and their associated permissions"
+                    },
+                    {
+                        "id": "api_key.create",
+                        "label": "Create New API Keys",
+                        "description": "Define new API key with custom permission sets and access levels"
+                    },
+                    {
+                        "id": "api_key.revoke",
+                        "label": "Revoke API Keys",
+                        "description": "Revoke API key permissions"
+                    },
+                    {
+                        "id": "api_key.activate",
+                        "label": "Activate API Keys",
+                        "description": "Activate API keys"
+                    },
+                    {
+                        "id": "api_key.delete",
+                        "label": "Delete API Keys",
+                        "description": "Delete API keys"
+                    }
+                ]
+            },
+            {
+                "name": "Audit Logs",
+                "permissions": [
+                    {
+                        "id": "audit_logs.view",
+                        "label": "View Audit Logs",
+                        "description": "View audit logs"
+                    },
+                    {
+                        "id": "audit_logs.archive",
+                        "label": "Archive Audit Logs",
+                        "description": "Archive audit logs"
+                    }
+                ]
             }
-
+        ],
+        "HostPermissions": [
+            {
+                "name": "User Management",
+                "permissions": [
+                    {
+                        "id": "user.view",
+                        "label": "View Users",
+                        "description": "Access and view user profiles and account information"
+                    },
+                    {
+                        "id": "user.create",
+                        "label": "Create New Users",
+                        "description": "Add new user accounts to the system with assigned roles"
+                    },
+                    {
+                        "id": "user.edit",
+                        "label": "Edit Users",
+                        "description": "Update user profiles, roles, and account settings"
+                    },
+                    {
+                        "id": "user.delete",
+                        "label": "Delete Users",
+                        "description": "Permanently remove user accounts and associated data"
+                    }
+                ]
+            },
+            {
+                "name": "Roles Management",
+                "permissions": [
+                    {
+                        "id": "role.view",
+                        "label": "View Roles",
+                        "description": "View and browse all role definitions and their associated permissions"
+                    },
+                    {
+                        "id": "role.create",
+                        "label": "Create New Roles",
+                        "description": "Define new roles with custom permission sets and access levels"
+                    },
+                    {
+                        "id": "role.edit",
+                        "label": "Edit Roles",
+                        "description": "Modify existing role configurations, permissions, and assignments"
+                    },
+                    {
+                        "id": "role.delete",
+                        "label": "Delete Roles",
+                        "description": "Permanently remove roles and reassign affected users to alternative roles"
+                    },
+                    {
+                        "id": "role.assign",
+                        "label": "Assign Roles",
+                        "description": "Assign or revoke roles from users and manage role memberships"
+                    }
+                ]
+            },
+            {
+                "name": "API Keys Management",
+                "permissions": [
+                    {
+                        "id": "api_key.view",
+                        "label": "View API Keys",
+                        "description": "View and browse all API key definitions and their associated permissions"
+                    },
+                    {
+                        "id": "api_key.create",
+                        "label": "Create New API Keys",
+                        "description": "Define new API key with custom permission sets and access levels"
+                    },
+                    {
+                        "id": "api_key.revoke",
+                        "label": "Revoke API Keys",
+                        "description": "Revoke API key permissions"
+                    },
+                    {
+                        "id": "api_key.activate",
+                        "label": "Activate API Keys",
+                        "description": "Activate API keys"
+                    },
+                    {
+                        "id": "api_key.delete",
+                        "label": "Delete API Keys",
+                        "description": "Delete API keys"
+                    }
+                ]
+            },
+            {
+                "name": "Audit Logs",
+                "permissions": [
+                    {
+                        "id": "audit_logs.view",
+                        "label": "View Audit Logs",
+                        "description": "View audit logs"
+                    },
+                    {
+                        "id": "audit_logs.archive",
+                        "label": "Archive Audit Logs",
+                        "description": "Archive audit logs"
+                    }
+                ]
+            }
         ]
     }
 }

@@ -75,6 +75,12 @@ void JwtAuthFilter::doFilter(const HttpRequestPtr &req, FilterCallback &&fcb,
       LOG_DEBUG << "Extracted userId: " << userId;
     }
 
+    if (decoded.has_payload_claim("businessId")) {
+      auto businessId = decoded.get_payload_claim("businessId").as_string();
+      req->attributes()->insert("businessId", businessId);
+      LOG_DEBUG << "Extracted businessId: " << businessId;
+    }
+
     if (decoded.has_payload_claim("email")) {
       auto email = decoded.get_payload_claim("email").as_string();
       req->attributes()->insert("email", email);

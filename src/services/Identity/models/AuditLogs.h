@@ -53,6 +53,7 @@ class AuditLogs
         static const std::string _old_values;
         static const std::string _new_values;
         static const std::string _ip_address;
+        static const std::string _is_archived;
         static const std::string _user_agent;
         static const std::string _created_at;
     };
@@ -123,6 +124,7 @@ class AuditLogs
     ///Set the value of the column business_id
     void setBusinessId(const std::string &pBusinessId) noexcept;
     void setBusinessId(std::string &&pBusinessId) noexcept;
+    void setBusinessIdToNull() noexcept;
 
     /**  For column actor_id  */
     ///Get the value of the column actor_id, returns the default value if the column is null
@@ -191,6 +193,14 @@ class AuditLogs
     void setIpAddress(std::string &&pIpAddress) noexcept;
     void setIpAddressToNull() noexcept;
 
+    /**  For column is_archived  */
+    ///Get the value of the column is_archived, returns the default value if the column is null
+    const bool &getValueOfIsArchived() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<bool> &getIsArchived() const noexcept;
+    ///Set the value of the column is_archived
+    void setIsArchived(const bool &pIsArchived) noexcept;
+
     /**  For column user_agent  */
     ///Get the value of the column user_agent, returns the default value if the column is null
     const std::string &getValueOfUserAgent() const noexcept;
@@ -211,7 +221,7 @@ class AuditLogs
     void setCreatedAtToNull() noexcept;
 
 
-    static size_t getColumnNumber() noexcept {  return 11;  }
+    static size_t getColumnNumber() noexcept {  return 12;  }
     static const std::string &getColumnName(size_t index) noexcept(false);
 
     Json::Value toJson() const;
@@ -242,6 +252,7 @@ class AuditLogs
     std::shared_ptr<std::string> oldValues_;
     std::shared_ptr<std::string> newValues_;
     std::shared_ptr<std::string> ipAddress_;
+    std::shared_ptr<bool> isArchived_;
     std::shared_ptr<std::string> userAgent_;
     std::shared_ptr<::trantor::Date> createdAt_;
     struct MetaData
@@ -255,7 +266,7 @@ class AuditLogs
         const bool notNull_;
     };
     static const std::vector<MetaData> metaData_;
-    bool dirtyFlag_[11]={ false };
+    bool dirtyFlag_[12]={ false };
   public:
     static const std::string &sqlForFindingByPrimaryKey()
     {
@@ -319,14 +330,20 @@ class AuditLogs
             sql += "ip_address,";
             ++parametersCount;
         }
-        if(dirtyFlag_[9])
+        sql += "is_archived,";
+        ++parametersCount;
+        if(!dirtyFlag_[9])
+        {
+            needSelection=true;
+        }
+        if(dirtyFlag_[10])
         {
             sql += "user_agent,";
             ++parametersCount;
         }
         sql += "created_at,";
         ++parametersCount;
-        if(!dirtyFlag_[10])
+        if(!dirtyFlag_[11])
         {
             needSelection=true;
         }
@@ -395,7 +412,16 @@ class AuditLogs
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
         }
+        else
+        {
+            sql +="default,";
+        }
         if(dirtyFlag_[10])
+        {
+            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
+            sql.append(placeholderStr, n);
+        }
+        if(dirtyFlag_[11])
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);

@@ -29,7 +29,7 @@ const std::string LoginHistory::tableName = "\"login_history\"";
 
 const std::vector<typename LoginHistory::MetaData> LoginHistory::metaData_={
 {"id","std::string","uuid",0,0,1,1},
-{"business_id","std::string","uuid",0,0,0,1},
+{"business_id","std::string","uuid",0,0,0,0},
 {"user_id","std::string","uuid",0,0,0,1},
 {"login_time","::trantor::Date","timestamp with time zone",0,0,0,0},
 {"ip_address","std::string","inet",0,0,0,0},
@@ -651,6 +651,11 @@ void LoginHistory::setBusinessId(const std::string &pBusinessId) noexcept
 void LoginHistory::setBusinessId(std::string &&pBusinessId) noexcept
 {
     businessId_ = std::make_shared<std::string>(std::move(pBusinessId));
+    dirtyFlag_[1] = true;
+}
+void LoginHistory::setBusinessIdToNull() noexcept
+{
+    businessId_.reset();
     dirtyFlag_[1] = true;
 }
 
@@ -1454,11 +1459,6 @@ bool LoginHistory::validateJsonForCreation(const Json::Value &pJson, std::string
         if(!validJsonOfField(1, "business_id", pJson["business_id"], err, true))
             return false;
     }
-    else
-    {
-        err="The business_id column cannot be null";
-        return false;
-    }
     if(pJson.isMember("user_id"))
     {
         if(!validJsonOfField(2, "user_id", pJson["user_id"], err, true))
@@ -1536,11 +1536,6 @@ bool LoginHistory::validateMasqueradedJsonForCreation(const Json::Value &pJson,
               if(!validJsonOfField(1, pMasqueradingVector[1], pJson[pMasqueradingVector[1]], err, true))
                   return false;
           }
-        else
-        {
-            err="The " + pMasqueradingVector[1] + " column cannot be null";
-            return false;
-        }
       }
       if(!pMasqueradingVector[2].empty())
       {
@@ -1779,8 +1774,7 @@ bool LoginHistory::validJsonOfField(size_t index,
         case 1:
             if(pJson.isNull())
             {
-                err="The " + fieldName + " column cannot be null";
-                return false;
+                return true;
             }
             if(!pJson.isString())
             {

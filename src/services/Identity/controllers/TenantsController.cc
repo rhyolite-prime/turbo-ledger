@@ -1,9 +1,25 @@
 #include "TenantsController.h"
+
+#include "constants/ErrorCodes.h"
 #include "plugins/IdentityServicePlugin.h"
 
 using namespace turbo_ledger_identity::plugins;
 
 Task<HttpResponsePtr> TenantsController::getTenants(HttpRequestPtr req) {
+
+    std::string businessId;
+    try { businessId = req->attributes()->get<std::string>("businessId"); } catch (...) {}
+
+    if (!businessId.empty()) {
+        turbo_ledger_identity::dto::BaseApiResponse apiResponse;
+        apiResponse.success = false;
+        apiResponse.message = "Forbidden: Tenant tokens cannot access host endpoints";
+        apiResponse.error["code"] = turbo_ledger_identity::constants::ErrorCode::ERR_PERMISSION_DENIED;
+        auto resp = HttpResponse::newHttpJsonResponse(apiResponse.toJson());
+        resp->setStatusCode(k403Forbidden);
+        co_return resp;
+    }
+
     int pageSize = 10;
     int pageNo = 1;
 
@@ -24,6 +40,19 @@ Task<HttpResponsePtr> TenantsController::getTenants(HttpRequestPtr req) {
 }
 
 Task<HttpResponsePtr> TenantsController::updateStatus(HttpRequestPtr req, std::string id) {
+
+    std::string businessId;
+    try { businessId = req->attributes()->get<std::string>("businessId"); } catch (...) {}
+
+    if (!businessId.empty()) {
+        turbo_ledger_identity::dto::BaseApiResponse apiResponse;
+        apiResponse.success = false;
+        apiResponse.message = "Forbidden: Tenant tokens cannot access host endpoints";
+        apiResponse.error["code"] = turbo_ledger_identity::constants::ErrorCode::ERR_PERMISSION_DENIED;
+        auto resp = HttpResponse::newHttpJsonResponse(apiResponse.toJson());
+        resp->setStatusCode(k403Forbidden);
+        co_return resp;
+    }
 
     std::string statusStr = req->getParameter("status");
     turbo_ledger_identity::constants::StatusType status = turbo_ledger_identity::constants::StatusType::Inactive;
@@ -48,6 +77,20 @@ Task<HttpResponsePtr> TenantsController::updateStatus(HttpRequestPtr req, std::s
 }
 
 Task<HttpResponsePtr> TenantsController::createTenant(HttpRequestPtr req) {
+
+    std::string businessId;
+    try { businessId = req->attributes()->get<std::string>("businessId"); } catch (...) {}
+
+    if (!businessId.empty()) {
+        turbo_ledger_identity::dto::BaseApiResponse apiResponse;
+        apiResponse.success = false;
+        apiResponse.message = "Forbidden: Tenant tokens cannot access host endpoints";
+        apiResponse.error["code"] = turbo_ledger_identity::constants::ErrorCode::ERR_PERMISSION_DENIED;
+        auto resp = HttpResponse::newHttpJsonResponse(apiResponse.toJson());
+        resp->setStatusCode(k403Forbidden);
+        co_return resp;
+    }
+
     auto jsonBody = req->getJsonObject();
     if (!jsonBody) {
         turbo_ledger_identity::dto::BaseApiResponse response;
@@ -70,6 +113,20 @@ Task<HttpResponsePtr> TenantsController::createTenant(HttpRequestPtr req) {
 }
 
 Task<HttpResponsePtr> TenantsController::updateTenant(HttpRequestPtr req, std::string id) {
+
+    std::string businessId;
+    try { businessId = req->attributes()->get<std::string>("businessId"); } catch (...) {}
+
+    if (!businessId.empty()) {
+        turbo_ledger_identity::dto::BaseApiResponse apiResponse;
+        apiResponse.success = false;
+        apiResponse.message = "Forbidden: Tenant tokens cannot access host endpoints";
+        apiResponse.error["code"] = turbo_ledger_identity::constants::ErrorCode::ERR_PERMISSION_DENIED;
+        auto resp = HttpResponse::newHttpJsonResponse(apiResponse.toJson());
+        resp->setStatusCode(k403Forbidden);
+        co_return resp;
+    }
+
     auto jsonBody = req->getJsonObject();
     if (!jsonBody) {
         turbo_ledger_identity::dto::BaseApiResponse response;
@@ -91,8 +148,22 @@ Task<HttpResponsePtr> TenantsController::updateTenant(HttpRequestPtr req, std::s
     co_return resp;
 }
 
-Task<HttpResponsePtr> TenantsController::deleteTenant(HttpRequestPtr req) {
-    std::string id = req->getParameter("id");
+Task<HttpResponsePtr> TenantsController::deleteTenant(HttpRequestPtr req, std::string id) {
+
+    std::string businessId;
+    try { businessId = req->attributes()->get<std::string>("businessId"); } catch (...) {}
+
+    if (!businessId.empty()) {
+        turbo_ledger_identity::dto::BaseApiResponse apiResponse;
+        apiResponse.success = false;
+        apiResponse.message = "Forbidden: Tenant tokens cannot access host endpoints";
+        apiResponse.error["code"] = turbo_ledger_identity::constants::ErrorCode::ERR_PERMISSION_DENIED;
+        auto resp = HttpResponse::newHttpJsonResponse(apiResponse.toJson());
+        resp->setStatusCode(k403Forbidden);
+        co_return resp;
+    }
+
+
     if (id.empty()) {
         turbo_ledger_identity::dto::BaseApiResponse response;
         response.success = false;

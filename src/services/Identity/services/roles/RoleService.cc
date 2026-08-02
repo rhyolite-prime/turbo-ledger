@@ -11,7 +11,7 @@ using namespace drogon::orm;
 namespace turbo_ledger_identity::services {
 
 
-    drogon::Task<dto::BaseApiResponse> RoleService::getAllPermissions() {
+    drogon::Task<dto::BaseApiResponse> RoleService::getTenantPermissions() {
 
         dto::BaseApiResponse response;
         try {
@@ -31,11 +31,31 @@ namespace turbo_ledger_identity::services {
         co_return response;
     }
 
+    drogon::Task<dto::BaseApiResponse> RoleService::getHostPermissions() {
+
+        dto::BaseApiResponse response;
+        try {
+            auto customConfig = drogon::app().getCustomConfig();
+            if (customConfig.isMember("HostPermissions")) {
+                response.success = true;
+                response.result = customConfig["HostPermissions"];
+            } else {
+                response.success = false;
+                response.error["message"] = "Permissions not found in configuration.";
+            }
+        } catch (const std::exception &e) {
+            response.success = false;
+            response.error["message"] = "Error retrieving permissions.";
+            response.error["detail"] = e.what();
+        }
+        co_return response;
+    }
+
     drogon::Task<dto::BaseApiResponse> RoleService::getAll(const std::string &businessId, int pageNo, int pageSize, const std::string &query) {
         dto::BaseApiResponse response;
         try {
             auto dbClient = drogon::app().getDbClient();
-            drogon::orm::CoroMapper<drogon_model::TlIdentity::Roles> mapper(dbClient);
+            CoroMapper<drogon_model::TlIdentity::Roles> mapper(dbClient);
             
             auto criteria = Criteria(drogon_model::TlIdentity::Roles::Cols::_business_id, CompareOperator::EQ, businessId);
             
@@ -44,15 +64,37 @@ namespace turbo_ledger_identity::services {
                                         Criteria(drogon_model::TlIdentity::Roles::Cols::_description, CompareOperator::Like, "%" + query + "%"));
             }
 
-            auto roles = co_await mapper.paginate(pageNo, pageSize).findBy(criteria);
-            
-            Json::Value rolesJson = Json::arrayValue;
-            for (const auto& role : roles) {
-                rolesJson.append(role.toJson());
+            size_t totalCount = co_await mapper.count(criteria);
+
+            if (totalCount == 0) {
+                response.success = true;
+                response.result["data"] = Json::arrayValue;
+                response.result["totalCount"] = 0;
+                response.result["pageNo"] = pageNo;
+                response.result["pageSize"] = pageSize;
+                response.result["totalPages"] = 0;
+                response.result["lowerBound"] = 0;
+                response.result["upperBound"] = 0;
+                co_return response;
             }
 
+            int offset = (pageNo - 1) * pageSize;
+            auto roles = co_await mapper.limit(pageSize).offset(offset).findBy(criteria);
+            auto totalPages = (totalCount + pageSize - 1) / pageSize;
+
             response.success = true;
-            response.result = rolesJson;
+            response.result["totalCount"] = (Json::UInt64)totalCount;
+            response.result["pageNo"] = pageNo;
+            response.result["pageSize"] = pageSize;
+            response.result["totalPages"] = (int)totalPages;
+            response.result["lowerBound"] = pageSize * (pageNo - 1) + 1;
+            response.result["upperBound"] = (int)totalPages == pageNo ? (Json::UInt64)totalCount  : (Json::UInt64)(pageNo * pageSize);
+
+            Json::Value data = Json::arrayValue;
+            for (const auto& role : roles) {
+                data.append(role.toJson());
+            }
+            response.result["data"] = data;
 
         } catch (const drogon::orm::DrogonDbException &e) {
             response.success = false;

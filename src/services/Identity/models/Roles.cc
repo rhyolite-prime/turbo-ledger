@@ -28,7 +28,7 @@ const std::string Roles::tableName = "\"roles\"";
 
 const std::vector<typename Roles::MetaData> Roles::metaData_={
 {"id","std::string","uuid",0,0,1,1},
-{"business_id","std::string","uuid",0,0,0,1},
+{"business_id","std::string","uuid",0,0,0,0},
 {"name","std::string","character varying",100,0,0,1},
 {"description","std::string","character varying",250,0,0,0},
 {"permissions","std::string","jsonb",0,0,0,1},
@@ -716,6 +716,11 @@ void Roles::setBusinessId(const std::string &pBusinessId) noexcept
 void Roles::setBusinessId(std::string &&pBusinessId) noexcept
 {
     businessId_ = std::make_shared<std::string>(std::move(pBusinessId));
+    dirtyFlag_[1] = true;
+}
+void Roles::setBusinessIdToNull() noexcept
+{
+    businessId_.reset();
     dirtyFlag_[1] = true;
 }
 
@@ -1433,11 +1438,6 @@ bool Roles::validateJsonForCreation(const Json::Value &pJson, std::string &err)
         if(!validJsonOfField(1, "business_id", pJson["business_id"], err, true))
             return false;
     }
-    else
-    {
-        err="The business_id column cannot be null";
-        return false;
-    }
     if(pJson.isMember("name"))
     {
         if(!validJsonOfField(2, "name", pJson["name"], err, true))
@@ -1510,11 +1510,6 @@ bool Roles::validateMasqueradedJsonForCreation(const Json::Value &pJson,
               if(!validJsonOfField(1, pMasqueradingVector[1], pJson[pMasqueradingVector[1]], err, true))
                   return false;
           }
-        else
-        {
-            err="The " + pMasqueradingVector[1] + " column cannot be null";
-            return false;
-        }
       }
       if(!pMasqueradingVector[2].empty())
       {
@@ -1735,8 +1730,7 @@ bool Roles::validJsonOfField(size_t index,
         case 1:
             if(pJson.isNull())
             {
-                err="The " + fieldName + " column cannot be null";
-                return false;
+                return true;
             }
             if(!pJson.isString())
             {

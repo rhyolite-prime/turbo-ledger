@@ -122,6 +122,7 @@ class LoginHistory
     ///Set the value of the column business_id
     void setBusinessId(const std::string &pBusinessId) noexcept;
     void setBusinessId(std::string &&pBusinessId) noexcept;
+    void setBusinessIdToNull() noexcept;
 
     /**  For column user_id  */
     ///Get the value of the column user_id, returns the default value if the column is null

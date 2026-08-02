@@ -20,24 +20,64 @@ namespace turbo_ledger_identity::services
             drogon::orm::CoroMapper<drogon_model::TlIdentity::Users> mapper(dbClient);
             
             Criteria criteria;
+            if (!businessId.empty()) {
+                criteria = Criteria(drogon_model::TlIdentity::Users::Cols::_business_id, CompareOperator::EQ, businessId);
+            } else {
+                criteria = Criteria(drogon_model::TlIdentity::Users::Cols::_business_id, CompareOperator::IsNull);
+            }
+
             if (!query.empty()) {
-                criteria = Criteria(drogon_model::TlIdentity::Users::Cols::_first_name, CompareOperator::Like, "%" + query + "%") || 
+                Criteria searchCriteria = Criteria(drogon_model::TlIdentity::Users::Cols::_first_name, CompareOperator::Like, "%" + query + "%") || 
                            Criteria(drogon_model::TlIdentity::Users::Cols::_last_name, CompareOperator::Like, "%" + query + "%") ||
                            Criteria(drogon_model::TlIdentity::Users::Cols::_email, CompareOperator::Like, "%" + query + "%") ||
                            Criteria(drogon_model::TlIdentity::Users::Cols::_username, CompareOperator::Like, "%" + query + "%");
+                criteria = criteria && searchCriteria;
             }
             
-            auto users = co_await mapper.paginate(pageNo, pageSize).findBy(criteria);
-            
-            Json::Value usersJson = Json::arrayValue;
-            for (const auto& user : users) {
-                auto json = user.toJson();
-                json.removeMember("password_hash");
-                usersJson.append(json);
+            size_t totalCount = co_await mapper.count(criteria);
+
+            if (totalCount == 0) {
+                response.success = true;
+                response.result["data"] = Json::arrayValue;
+                response.result["totalCount"] = 0;
+                response.result["pageNo"] = pageNo;
+                response.result["pageSize"] = pageSize;
+                response.result["totalPages"] = 0;
+                response.result["lowerBound"] = 0;
+                response.result["upperBound"] = 0;
+                co_return response;
             }
-            
+
+            int offset = (pageNo - 1) * pageSize;
+            auto users = co_await mapper.limit(pageSize).offset(offset).findBy(criteria);
+            auto totalPages = (totalCount + pageSize - 1) / pageSize;
+
             response.success = true;
-            response.result = usersJson;
+            response.result["totalCount"] = (Json::UInt64)totalCount;
+            response.result["pageNo"] = pageNo;
+            response.result["pageSize"] = pageSize;
+            response.result["totalPages"] = (int)totalPages;
+            response.result["lowerBound"] = pageSize * (pageNo - 1) + 1;
+            response.result["upperBound"] = (int)totalPages == pageNo ? (Json::UInt64)totalCount  : (Json::UInt64)(pageNo * pageSize);
+
+            Json::Value data = Json::arrayValue;
+            for (const auto& user : users) {
+                auto roleJson = user.toJson();
+                Json::Value camelCaseRole;
+                camelCaseRole["id"] = roleJson["id"];
+                camelCaseRole["firstName"] = roleJson["first_name"];
+                camelCaseRole["lastName"] = roleJson["last_name"];
+                camelCaseRole["email"] = roleJson["email"];
+                camelCaseRole["phoneNumber"] = roleJson["phone_number"];
+                camelCaseRole["country"] = roleJson["country"];
+                camelCaseRole["profileImageUrl"] = roleJson["profile_image_url"];
+                camelCaseRole["isLockedOut"] = roleJson["is_locked_out"];
+                camelCaseRole["isActive"] = roleJson["is_active"];
+                camelCaseRole["createdAt"] = roleJson["created_at"];
+                camelCaseRole["updatedAt"] = roleJson["updated_at"];
+                data.append(camelCaseRole);
+            }
+            response.result["data"] = data;
         } catch (const std::exception &e) {
             response.success = false;
             response.error["message"] = "Error retrieving users.";
@@ -79,7 +119,7 @@ namespace turbo_ledger_identity::services
             newUser.setLastName(dto.getLastName());
             newUser.setEmail(dto.getEmail());
             newUser.setUsername(dto.getUsername());
-            newUser.setPasswordHash(bcrypt::generateHash(dto.getPassword()));
+            newUser.setPasswordHash(bcrypt::generateHash(dto.getPassword(),8));
             newUser.setPhoneNumber(dto.getPhoneNumber());
             newUser.setCountry(dto.getCountry());
             newUser.setIsActive(true);
@@ -319,8 +359,7 @@ namespace turbo_ledger_identity::services
                 std::string jwtSecurityKey = customConfig["JwtBearer"]["JwtSecurityKey"].asString();
                 std::string jwtIssuer = customConfig["JwtBearer"]["JwtIssuer"].asString();
 
-                auto token =
-                    jwt::create()
+                auto token = jwt::create()
                         .set_issuer(jwtIssuer)
                         .set_type("JWT")
                         .set_issued_at(std::chrono::system_clock::now())

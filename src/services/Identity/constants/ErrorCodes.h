@@ -10,7 +10,7 @@ namespace turbo_ledger_identity::constants {
         ERR_DB_CONNECTION = 1001,         // Database connection error
         ERR_DB_QUERY = 1002,              // Database query error
         ERR_DB_NOT_FOUND = 1003,          // Resource not found in database
-        ERR_RESOURCE_NOT_FOUND = 1004, // General resource not found error
+        ERR_RESOURCE_NOT_FOUND = 1004,   // General resource not found error
         ERR_VALIDATION = 1101,            // Input validation failed
         ERR_AUTH_INVALID_CREDENTIALS = 1201, // Invalid username or password
         ERR_AUTH_LOCKED_OUT = 1202,       // User account is locked out
@@ -21,7 +21,7 @@ namespace turbo_ledger_identity::constants {
         ERR_INTERNAL = 1500,              // Internal server error
         ERR_PERMISSION_DENIED = 1401,     // Insufficient permissions
         ERR_MISSING_PARAMETER = 1102,     // Required parameter is missing
-        ERR_UNSUPPORTED_OPERATION = 1601  // Operation not supported
+        ERR_UNSUPPORTED_OPERATION = 1601,  // Operation not supported
     };
 }
 #endif //ERRORCODES_H

@@ -10,6 +10,7 @@
 #include "services/users/UserService.h"
 #include "services/business_accounts/BusinessAccountService.h"
 #include "services/roles/RoleService.h"
+#include "services/api_keys/ApiKeyService.h"
 
 
 namespace turbo_ledger_identity::plugins {
@@ -30,12 +31,14 @@ namespace turbo_ledger_identity::plugins {
         services::UserService& getUserService() { return userService_; }
         services::BusinessAccountService& getBusinessAccountService() { return businessAccountService_; }
         services::RoleService& getRoleService() { return roleService_; }
+        services::ApiKeyService& getApiKeyService() { return apiKeyService_; }
 
 
     private:
         services::UserService userService_;
         services::BusinessAccountService businessAccountService_;
         services::RoleService roleService_;
+        services::ApiKeyService apiKeyService_;
     };
 
 }

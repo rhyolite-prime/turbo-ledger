@@ -121,6 +121,7 @@ class Roles
     ///Set the value of the column business_id
     void setBusinessId(const std::string &pBusinessId) noexcept;
     void setBusinessId(std::string &&pBusinessId) noexcept;
+    void setBusinessIdToNull() noexcept;
 
     /**  For column name  */
     ///Get the value of the column name, returns the default value if the column is null

@@ -26,7 +26,7 @@ Task<HttpResponsePtr> AuthController::signIn(HttpRequestPtr req) {
 
     auto result = co_await userService.validateUserCredentials(dto);
 
-    auto resp = HttpResponse::newHttpJsonResponse(apiResponse.toJson());
+    auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
     resp->setStatusCode(result.success ? k200OK : k401Unauthorized);
     co_return resp;
 }
