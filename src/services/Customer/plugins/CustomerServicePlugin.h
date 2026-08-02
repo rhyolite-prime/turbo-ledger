@@ -8,6 +8,7 @@
 
 #include <drogon/plugins/Plugin.h>
 #include "services/client/ClientService.h"
+#include "services/identity/IdentityApi.h"
 
 
 namespace customer::plugins {
@@ -25,10 +26,12 @@ namespace customer::plugins {
         /// It must be implemented by the user.
         void shutdown() override;
 
-        customer::services::ClientService &getClientService() { return clientService_; }
+        services::ClientService &getClientService() { return clientService_; }
+        services::IdentityApi &getIdentityApi() { return identityApi_; }
 
     private:
-        customer::services::ClientService clientService_;
+        services::ClientService clientService_;
+        services::IdentityApi identityApi_;
     };
 }
 

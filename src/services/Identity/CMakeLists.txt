@@ -3,41 +3,41 @@ project(Identity CXX)
 
 include(CheckIncludeFileCXX)
 
-check_include_file_cxx(any HAS_ANY)
-check_include_file_cxx(string_view HAS_STRING_VIEW)
-check_include_file_cxx(coroutine HAS_COROUTINE)
-if (NOT "${CMAKE_CXX_STANDARD}" STREQUAL "")
-    # Do nothing
-elseif (HAS_ANY AND HAS_STRING_VIEW AND HAS_COROUTINE)
-    set(CMAKE_CXX_STANDARD 20)
-elseif (HAS_ANY AND HAS_STRING_VIEW)
-    set(CMAKE_CXX_STANDARD 17)
-else ()
-    set(CMAKE_CXX_STANDARD 14)
-endif ()
-
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    add_compile_options(-fcoroutines)
+endif()
+
+add_compile_options("-include" "${CMAKE_CURRENT_SOURCE_DIR}/utils/codecvt_helper.h" "-Wno-deprecated-declarations")
+
 add_executable(${PROJECT_NAME} main.cc
         dto/BaseApiResponse.h
-        dto/CreateUserDto.cc
-        dto/SigninDto.h
-        dto/SigninDto.cc
-        dto/CreateTenantDto.h
-        dto/CreateTenantDto.cc
-        dto/UpdateTenantDto.h
-        dto/UpdateTenantDto.cc
         constants/ErrorCodes.h
-        dto/UpdateUserDto.h
-        dto/UpdateUserDto.cc
-        services/tenants/TenantService.h
-        services/tenants/TenantService.cc
         services/users/UserService.h
         services/users/UserService.cc
         services/roles/RoleService.h
         services/roles/RoleService.cc
-        controllers/SelfController.h
+        services/api_keys/ApiKeyService.h
+        services/business_accounts/BusinessAccountService.h
+        services/business_accounts/BusinessAccountService.cc
+        dto/BusinessAccountDto.h
+        constants/StatusType.h
+        utils/JsonUtils.h
+        services/audit_logs/AuditLogService.h
+        services/audit_logs/AuditLogService.cc
+        dto/ApiKeyDto.h
+        services/api_keys/ApiKeyService.cc
+        utils/IdGeneratorUtils.h
+        utils/IdGeneratorUtils.cc
+        dto/RoleDto.h
+        dto/UserDto.h
+        dto/SigninDto.h
+        utils/PasswordUtils.h
+        utils/PasswordUtils.cc
+        utils/codecvt_helper.h
 )
 
 # ##############################################################################
@@ -48,9 +48,9 @@ add_executable(${PROJECT_NAME} main.cc
 #
 # and comment out the following lines
 find_package(Drogon CONFIG REQUIRED)
-find_package(bcrypt CONFIG REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE Drogon::Drogon)
-target_link_libraries(${PROJECT_NAME} PRIVATE bcrypt::bcrypt)
+find_package(OpenSSL REQUIRED)
+add_subdirectory(external_deps/Bcrypt.cpp)
+target_link_libraries(${PROJECT_NAME} PRIVATE Drogon::Drogon bcrypt OpenSSL::SSL OpenSSL::Crypto)
 
 
 

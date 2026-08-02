@@ -36,7 +36,7 @@ using DbClientPtr = std::shared_ptr<DbClient>;
 }
 namespace drogon_model
 {
-namespace TurboLedgerIdentity
+namespace TlIdentity
 {
 
 class Roles
@@ -45,12 +45,14 @@ class Roles
     struct Cols
     {
         static const std::string _id;
-        static const std::string _tenant_identifier;
+        static const std::string _business_id;
         static const std::string _name;
         static const std::string _description;
-        static const std::string _created_at;
-        static const std::string _updated_at;
         static const std::string _permissions;
+        static const std::string _created_by;
+        static const std::string _created_at;
+        static const std::string _modified_by;
+        static const std::string _modified_at;
     };
 
     static const int primaryKeyNumber;
@@ -111,14 +113,15 @@ class Roles
     void setId(const std::string &pId) noexcept;
     void setId(std::string &&pId) noexcept;
 
-    /**  For column tenant_identifier  */
-    ///Get the value of the column tenant_identifier, returns the default value if the column is null
-    const std::string &getValueOfTenantIdentifier() const noexcept;
+    /**  For column business_id  */
+    ///Get the value of the column business_id, returns the default value if the column is null
+    const std::string &getValueOfBusinessId() const noexcept;
     ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
-    const std::shared_ptr<std::string> &getTenantIdentifier() const noexcept;
-    ///Set the value of the column tenant_identifier
-    void setTenantIdentifier(const std::string &pTenantIdentifier) noexcept;
-    void setTenantIdentifier(std::string &&pTenantIdentifier) noexcept;
+    const std::shared_ptr<std::string> &getBusinessId() const noexcept;
+    ///Set the value of the column business_id
+    void setBusinessId(const std::string &pBusinessId) noexcept;
+    void setBusinessId(std::string &&pBusinessId) noexcept;
+    void setBusinessIdToNull() noexcept;
 
     /**  For column name  */
     ///Get the value of the column name, returns the default value if the column is null
@@ -139,22 +142,6 @@ class Roles
     void setDescription(std::string &&pDescription) noexcept;
     void setDescriptionToNull() noexcept;
 
-    /**  For column created_at  */
-    ///Get the value of the column created_at, returns the default value if the column is null
-    const ::trantor::Date &getValueOfCreatedAt() const noexcept;
-    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
-    const std::shared_ptr<::trantor::Date> &getCreatedAt() const noexcept;
-    ///Set the value of the column created_at
-    void setCreatedAt(const ::trantor::Date &pCreatedAt) noexcept;
-
-    /**  For column updated_at  */
-    ///Get the value of the column updated_at, returns the default value if the column is null
-    const ::trantor::Date &getValueOfUpdatedAt() const noexcept;
-    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
-    const std::shared_ptr<::trantor::Date> &getUpdatedAt() const noexcept;
-    ///Set the value of the column updated_at
-    void setUpdatedAt(const ::trantor::Date &pUpdatedAt) noexcept;
-
     /**  For column permissions  */
     ///Get the value of the column permissions, returns the default value if the column is null
     const std::string &getValueOfPermissions() const noexcept;
@@ -163,10 +150,47 @@ class Roles
     ///Set the value of the column permissions
     void setPermissions(const std::string &pPermissions) noexcept;
     void setPermissions(std::string &&pPermissions) noexcept;
-    void setPermissionsToNull() noexcept;
+
+    /**  For column created_by  */
+    ///Get the value of the column created_by, returns the default value if the column is null
+    const std::string &getValueOfCreatedBy() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<std::string> &getCreatedBy() const noexcept;
+    ///Set the value of the column created_by
+    void setCreatedBy(const std::string &pCreatedBy) noexcept;
+    void setCreatedBy(std::string &&pCreatedBy) noexcept;
+    void setCreatedByToNull() noexcept;
+
+    /**  For column created_at  */
+    ///Get the value of the column created_at, returns the default value if the column is null
+    const ::trantor::Date &getValueOfCreatedAt() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<::trantor::Date> &getCreatedAt() const noexcept;
+    ///Set the value of the column created_at
+    void setCreatedAt(const ::trantor::Date &pCreatedAt) noexcept;
+    void setCreatedAtToNull() noexcept;
+
+    /**  For column modified_by  */
+    ///Get the value of the column modified_by, returns the default value if the column is null
+    const std::string &getValueOfModifiedBy() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<std::string> &getModifiedBy() const noexcept;
+    ///Set the value of the column modified_by
+    void setModifiedBy(const std::string &pModifiedBy) noexcept;
+    void setModifiedBy(std::string &&pModifiedBy) noexcept;
+    void setModifiedByToNull() noexcept;
+
+    /**  For column modified_at  */
+    ///Get the value of the column modified_at, returns the default value if the column is null
+    const ::trantor::Date &getValueOfModifiedAt() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<::trantor::Date> &getModifiedAt() const noexcept;
+    ///Set the value of the column modified_at
+    void setModifiedAt(const ::trantor::Date &pModifiedAt) noexcept;
+    void setModifiedAtToNull() noexcept;
 
 
-    static size_t getColumnNumber() noexcept {  return 7;  }
+    static size_t getColumnNumber() noexcept {  return 9;  }
     static const std::string &getColumnName(size_t index) noexcept(false);
 
     Json::Value toJson() const;
@@ -189,12 +213,14 @@ class Roles
     ///For mysql or sqlite3
     void updateId(const uint64_t id);
     std::shared_ptr<std::string> id_;
-    std::shared_ptr<std::string> tenantIdentifier_;
+    std::shared_ptr<std::string> businessId_;
     std::shared_ptr<std::string> name_;
     std::shared_ptr<std::string> description_;
-    std::shared_ptr<::trantor::Date> createdAt_;
-    std::shared_ptr<::trantor::Date> updatedAt_;
     std::shared_ptr<std::string> permissions_;
+    std::shared_ptr<std::string> createdBy_;
+    std::shared_ptr<::trantor::Date> createdAt_;
+    std::shared_ptr<std::string> modifiedBy_;
+    std::shared_ptr<::trantor::Date> modifiedAt_;
     struct MetaData
     {
         const std::string colName_;
@@ -206,7 +232,7 @@ class Roles
         const bool notNull_;
     };
     static const std::vector<MetaData> metaData_;
-    bool dirtyFlag_[7]={ false };
+    bool dirtyFlag_[9]={ false };
   public:
     static const std::string &sqlForFindingByPrimaryKey()
     {
@@ -232,7 +258,7 @@ class Roles
         }
         if(dirtyFlag_[1])
         {
-            sql += "tenant_identifier,";
+            sql += "business_id,";
             ++parametersCount;
         }
         if(dirtyFlag_[2])
@@ -245,21 +271,30 @@ class Roles
             sql += "description,";
             ++parametersCount;
         }
+        if(dirtyFlag_[4])
+        {
+            sql += "permissions,";
+            ++parametersCount;
+        }
+        if(dirtyFlag_[5])
+        {
+            sql += "created_by,";
+            ++parametersCount;
+        }
         sql += "created_at,";
         ++parametersCount;
-        if(!dirtyFlag_[4])
-        {
-            needSelection=true;
-        }
-        sql += "updated_at,";
-        ++parametersCount;
-        if(!dirtyFlag_[5])
-        {
-            needSelection=true;
-        }
-        sql += "permissions,";
-        ++parametersCount;
         if(!dirtyFlag_[6])
+        {
+            needSelection=true;
+        }
+        if(dirtyFlag_[7])
+        {
+            sql += "modified_by,";
+            ++parametersCount;
+        }
+        sql += "modified_at,";
+        ++parametersCount;
+        if(!dirtyFlag_[8])
         {
             needSelection=true;
         }
@@ -303,11 +338,12 @@ class Roles
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
         }
-        else
-        {
-            sql +="default,";
-        }
         if(dirtyFlag_[5])
+        {
+            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
+            sql.append(placeholderStr, n);
+        }
+        if(dirtyFlag_[6])
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
@@ -316,7 +352,12 @@ class Roles
         {
             sql +="default,";
         }
-        if(dirtyFlag_[6])
+        if(dirtyFlag_[7])
+        {
+            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
+            sql.append(placeholderStr, n);
+        }
+        if(dirtyFlag_[8])
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
@@ -341,5 +382,5 @@ class Roles
         return sql;
     }
 };
-} // namespace TurboLedgerIdentity
+} // namespace TlIdentity
 } // namespace drogon_model

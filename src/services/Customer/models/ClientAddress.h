@@ -123,6 +123,7 @@ class ClientAddress
     ///Set the value of the column client_id
     void setClientId(const std::string &pClientId) noexcept;
     void setClientId(std::string &&pClientId) noexcept;
+    void setClientIdToNull() noexcept;
 
     /**  For column street  */
     ///Get the value of the column street, returns the default value if the column is null
@@ -202,6 +203,7 @@ class ClientAddress
     ///Set the value of the column address_type_id
     void setAddressTypeId(const std::string &pAddressTypeId) noexcept;
     void setAddressTypeId(std::string &&pAddressTypeId) noexcept;
+    void setAddressTypeIdToNull() noexcept;
 
     /**  For column is_active  */
     ///Get the value of the column is_active, returns the default value if the column is null
@@ -280,11 +282,10 @@ class ClientAddress
         {
             needSelection=true;
         }
-        sql += "client_id,";
-        ++parametersCount;
-        if(!dirtyFlag_[1])
+        if(dirtyFlag_[1])
         {
-            needSelection=true;
+            sql += "client_id,";
+            ++parametersCount;
         }
         sql += "street,";
         ++parametersCount;
@@ -328,11 +329,10 @@ class ClientAddress
         {
             needSelection=true;
         }
-        sql += "address_type_id,";
-        ++parametersCount;
-        if(!dirtyFlag_[9])
+        if(dirtyFlag_[9])
         {
-            needSelection=true;
+            sql += "address_type_id,";
+            ++parametersCount;
         }
         sql += "is_active,";
         ++parametersCount;
@@ -364,10 +364,6 @@ class ClientAddress
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
-        }
-        else
-        {
-            sql +="default,";
         }
         if(dirtyFlag_[2])
         {
@@ -436,10 +432,6 @@ class ClientAddress
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
-        }
-        else
-        {
-            sql +="default,";
         }
         if(dirtyFlag_[10])
         {

@@ -1,0 +1,8 @@
+//
+// Created by Emmanuel Addo-Odame on 19/04/2026.
+//
+
+#ifndef GROUP_ACTIVATECENTERDTO_H
+#define GROUP_ACTIVATECENTERDTO_H
+
+#endif //GROUP_ACTIVATECENTERDTO_H

@@ -16,16 +16,16 @@ using namespace drogon_model::TlCustomerDb;
 const std::string ClientAttendance::Cols::_id = "\"id\"";
 const std::string ClientAttendance::Cols::_client_id = "\"client_id\"";
 const std::string ClientAttendance::Cols::_meeting_id = "\"meeting_id\"";
-const std::string ClientAttendance::Cols::_attendance_type_enum = "\"attendance_type_enum\"";
-const std::string ClientAttendance::primaryKeyName = "";
-const bool ClientAttendance::hasPrimaryKey = false;
+const std::string ClientAttendance::Cols::_attendance_type = "\"attendance_type\"";
+const std::string ClientAttendance::primaryKeyName = "id";
+const bool ClientAttendance::hasPrimaryKey = true;
 const std::string ClientAttendance::tableName = "\"client_attendance\"";
 
 const std::vector<typename ClientAttendance::MetaData> ClientAttendance::metaData_={
-{"id","std::string","uuid",0,0,0,1},
+{"id","std::string","uuid",0,0,1,1},
 {"client_id","std::string","uuid",0,0,0,1},
-{"meeting_id","std::string","uuid",0,0,0,1},
-{"attendance_type_enum","int32_t","integer",4,0,0,1}
+{"meeting_id","std::string","uuid",0,0,0,0},
+{"attendance_type","int32_t","integer",4,0,0,1}
 };
 const std::string &ClientAttendance::getColumnName(size_t index) noexcept(false)
 {
@@ -48,9 +48,9 @@ ClientAttendance::ClientAttendance(const Row &r, const ssize_t indexOffset) noex
         {
             meetingId_=std::make_shared<std::string>(r["meeting_id"].as<std::string>());
         }
-        if(!r["attendance_type_enum"].isNull())
+        if(!r["attendance_type"].isNull())
         {
-            attendanceTypeEnum_=std::make_shared<int32_t>(r["attendance_type_enum"].as<int32_t>());
+            attendanceType_=std::make_shared<int32_t>(r["attendance_type"].as<int32_t>());
         }
     }
     else
@@ -80,7 +80,7 @@ ClientAttendance::ClientAttendance(const Row &r, const ssize_t indexOffset) noex
         index = offset + 3;
         if(!r[index].isNull())
         {
-            attendanceTypeEnum_=std::make_shared<int32_t>(r[index].as<int32_t>());
+            attendanceType_=std::make_shared<int32_t>(r[index].as<int32_t>());
         }
     }
 
@@ -122,7 +122,7 @@ ClientAttendance::ClientAttendance(const Json::Value &pJson, const std::vector<s
         dirtyFlag_[3] = true;
         if(!pJson[pMasqueradingVector[3]].isNull())
         {
-            attendanceTypeEnum_=std::make_shared<int32_t>((int32_t)pJson[pMasqueradingVector[3]].asInt64());
+            attendanceType_=std::make_shared<int32_t>((int32_t)pJson[pMasqueradingVector[3]].asInt64());
         }
     }
 }
@@ -153,12 +153,12 @@ ClientAttendance::ClientAttendance(const Json::Value &pJson) noexcept(false)
             meetingId_=std::make_shared<std::string>(pJson["meeting_id"].asString());
         }
     }
-    if(pJson.isMember("attendance_type_enum"))
+    if(pJson.isMember("attendance_type"))
     {
         dirtyFlag_[3]=true;
-        if(!pJson["attendance_type_enum"].isNull())
+        if(!pJson["attendance_type"].isNull())
         {
-            attendanceTypeEnum_=std::make_shared<int32_t>((int32_t)pJson["attendance_type_enum"].asInt64());
+            attendanceType_=std::make_shared<int32_t>((int32_t)pJson["attendance_type"].asInt64());
         }
     }
 }
@@ -173,7 +173,6 @@ void ClientAttendance::updateByMasqueradedJson(const Json::Value &pJson,
     }
     if(!pMasqueradingVector[0].empty() && pJson.isMember(pMasqueradingVector[0]))
     {
-        dirtyFlag_[0] = true;
         if(!pJson[pMasqueradingVector[0]].isNull())
         {
             id_=std::make_shared<std::string>(pJson[pMasqueradingVector[0]].asString());
@@ -200,7 +199,7 @@ void ClientAttendance::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[3] = true;
         if(!pJson[pMasqueradingVector[3]].isNull())
         {
-            attendanceTypeEnum_=std::make_shared<int32_t>((int32_t)pJson[pMasqueradingVector[3]].asInt64());
+            attendanceType_=std::make_shared<int32_t>((int32_t)pJson[pMasqueradingVector[3]].asInt64());
         }
     }
 }
@@ -209,7 +208,6 @@ void ClientAttendance::updateByJson(const Json::Value &pJson) noexcept(false)
 {
     if(pJson.isMember("id"))
     {
-        dirtyFlag_[0] = true;
         if(!pJson["id"].isNull())
         {
             id_=std::make_shared<std::string>(pJson["id"].asString());
@@ -231,12 +229,12 @@ void ClientAttendance::updateByJson(const Json::Value &pJson) noexcept(false)
             meetingId_=std::make_shared<std::string>(pJson["meeting_id"].asString());
         }
     }
-    if(pJson.isMember("attendance_type_enum"))
+    if(pJson.isMember("attendance_type"))
     {
         dirtyFlag_[3] = true;
-        if(!pJson["attendance_type_enum"].isNull())
+        if(!pJson["attendance_type"].isNull())
         {
-            attendanceTypeEnum_=std::make_shared<int32_t>((int32_t)pJson["attendance_type_enum"].asInt64());
+            attendanceType_=std::make_shared<int32_t>((int32_t)pJson["attendance_type"].asInt64());
         }
     }
 }
@@ -261,6 +259,11 @@ void ClientAttendance::setId(std::string &&pId) noexcept
 {
     id_ = std::make_shared<std::string>(std::move(pId));
     dirtyFlag_[0] = true;
+}
+const typename ClientAttendance::PrimaryKeyType & ClientAttendance::getPrimaryKey() const
+{
+    assert(id_);
+    return *id_;
 }
 
 const std::string &ClientAttendance::getValueOfClientId() const noexcept
@@ -306,21 +309,26 @@ void ClientAttendance::setMeetingId(std::string &&pMeetingId) noexcept
     meetingId_ = std::make_shared<std::string>(std::move(pMeetingId));
     dirtyFlag_[2] = true;
 }
+void ClientAttendance::setMeetingIdToNull() noexcept
+{
+    meetingId_.reset();
+    dirtyFlag_[2] = true;
+}
 
-const int32_t &ClientAttendance::getValueOfAttendanceTypeEnum() const noexcept
+const int32_t &ClientAttendance::getValueOfAttendanceType() const noexcept
 {
     static const int32_t defaultValue = int32_t();
-    if(attendanceTypeEnum_)
-        return *attendanceTypeEnum_;
+    if(attendanceType_)
+        return *attendanceType_;
     return defaultValue;
 }
-const std::shared_ptr<int32_t> &ClientAttendance::getAttendanceTypeEnum() const noexcept
+const std::shared_ptr<int32_t> &ClientAttendance::getAttendanceType() const noexcept
 {
-    return attendanceTypeEnum_;
+    return attendanceType_;
 }
-void ClientAttendance::setAttendanceTypeEnum(const int32_t &pAttendanceTypeEnum) noexcept
+void ClientAttendance::setAttendanceType(const int32_t &pAttendanceType) noexcept
 {
-    attendanceTypeEnum_ = std::make_shared<int32_t>(pAttendanceTypeEnum);
+    attendanceType_ = std::make_shared<int32_t>(pAttendanceType);
     dirtyFlag_[3] = true;
 }
 
@@ -334,7 +342,7 @@ const std::vector<std::string> &ClientAttendance::insertColumns() noexcept
         "id",
         "client_id",
         "meeting_id",
-        "attendance_type_enum"
+        "attendance_type"
     };
     return inCols;
 }
@@ -376,9 +384,9 @@ void ClientAttendance::outputArgs(drogon::orm::internal::SqlBinder &binder) cons
     }
     if(dirtyFlag_[3])
     {
-        if(getAttendanceTypeEnum())
+        if(getAttendanceType())
         {
-            binder << getValueOfAttendanceTypeEnum();
+            binder << getValueOfAttendanceType();
         }
         else
         {
@@ -446,9 +454,9 @@ void ClientAttendance::updateArgs(drogon::orm::internal::SqlBinder &binder) cons
     }
     if(dirtyFlag_[3])
     {
-        if(getAttendanceTypeEnum())
+        if(getAttendanceType())
         {
-            binder << getValueOfAttendanceTypeEnum();
+            binder << getValueOfAttendanceType();
         }
         else
         {
@@ -483,13 +491,13 @@ Json::Value ClientAttendance::toJson() const
     {
         ret["meeting_id"]=Json::Value();
     }
-    if(getAttendanceTypeEnum())
+    if(getAttendanceType())
     {
-        ret["attendance_type_enum"]=getValueOfAttendanceTypeEnum();
+        ret["attendance_type"]=getValueOfAttendanceType();
     }
     else
     {
-        ret["attendance_type_enum"]=Json::Value();
+        ret["attendance_type"]=Json::Value();
     }
     return ret;
 }
@@ -540,9 +548,9 @@ Json::Value ClientAttendance::toMasqueradedJson(
         }
         if(!pMasqueradingVector[3].empty())
         {
-            if(getAttendanceTypeEnum())
+            if(getAttendanceType())
             {
-                ret[pMasqueradingVector[3]]=getValueOfAttendanceTypeEnum();
+                ret[pMasqueradingVector[3]]=getValueOfAttendanceType();
             }
             else
             {
@@ -576,13 +584,13 @@ Json::Value ClientAttendance::toMasqueradedJson(
     {
         ret["meeting_id"]=Json::Value();
     }
-    if(getAttendanceTypeEnum())
+    if(getAttendanceType())
     {
-        ret["attendance_type_enum"]=getValueOfAttendanceTypeEnum();
+        ret["attendance_type"]=getValueOfAttendanceType();
     }
     else
     {
-        ret["attendance_type_enum"]=Json::Value();
+        ret["attendance_type"]=Json::Value();
     }
     return ret;
 }
@@ -599,19 +607,24 @@ bool ClientAttendance::validateJsonForCreation(const Json::Value &pJson, std::st
         if(!validJsonOfField(1, "client_id", pJson["client_id"], err, true))
             return false;
     }
+    else
+    {
+        err="The client_id column cannot be null";
+        return false;
+    }
     if(pJson.isMember("meeting_id"))
     {
         if(!validJsonOfField(2, "meeting_id", pJson["meeting_id"], err, true))
             return false;
     }
-    if(pJson.isMember("attendance_type_enum"))
+    if(pJson.isMember("attendance_type"))
     {
-        if(!validJsonOfField(3, "attendance_type_enum", pJson["attendance_type_enum"], err, true))
+        if(!validJsonOfField(3, "attendance_type", pJson["attendance_type"], err, true))
             return false;
     }
     else
     {
-        err="The attendance_type_enum column cannot be null";
+        err="The attendance_type column cannot be null";
         return false;
     }
     return true;
@@ -641,6 +654,11 @@ bool ClientAttendance::validateMasqueradedJsonForCreation(const Json::Value &pJs
               if(!validJsonOfField(1, pMasqueradingVector[1], pJson[pMasqueradingVector[1]], err, true))
                   return false;
           }
+        else
+        {
+            err="The " + pMasqueradingVector[1] + " column cannot be null";
+            return false;
+        }
       }
       if(!pMasqueradingVector[2].empty())
       {
@@ -678,6 +696,11 @@ bool ClientAttendance::validateJsonForUpdate(const Json::Value &pJson, std::stri
         if(!validJsonOfField(0, "id", pJson["id"], err, false))
             return false;
     }
+    else
+    {
+        err = "The value of primary key must be set in the json object for update";
+        return false;
+    }
     if(pJson.isMember("client_id"))
     {
         if(!validJsonOfField(1, "client_id", pJson["client_id"], err, false))
@@ -688,9 +711,9 @@ bool ClientAttendance::validateJsonForUpdate(const Json::Value &pJson, std::stri
         if(!validJsonOfField(2, "meeting_id", pJson["meeting_id"], err, false))
             return false;
     }
-    if(pJson.isMember("attendance_type_enum"))
+    if(pJson.isMember("attendance_type"))
     {
-        if(!validJsonOfField(3, "attendance_type_enum", pJson["attendance_type_enum"], err, false))
+        if(!validJsonOfField(3, "attendance_type", pJson["attendance_type"], err, false))
             return false;
     }
     return true;
@@ -710,6 +733,11 @@ bool ClientAttendance::validateMasqueradedJsonForUpdate(const Json::Value &pJson
           if(!validJsonOfField(0, pMasqueradingVector[0], pJson[pMasqueradingVector[0]], err, false))
               return false;
       }
+    else
+    {
+        err = "The value of primary key must be set in the json object for update";
+        return false;
+    }
       if(!pMasqueradingVector[1].empty() && pJson.isMember(pMasqueradingVector[1]))
       {
           if(!validJsonOfField(1, pMasqueradingVector[1], pJson[pMasqueradingVector[1]], err, false))
@@ -768,8 +796,7 @@ bool ClientAttendance::validJsonOfField(size_t index,
         case 2:
             if(pJson.isNull())
             {
-                err="The " + fieldName + " column cannot be null";
-                return false;
+                return true;
             }
             if(!pJson.isString())
             {

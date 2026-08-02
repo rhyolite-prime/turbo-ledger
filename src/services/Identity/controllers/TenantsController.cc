@@ -1,122 +1,132 @@
 #include "TenantsController.h"
-#include "dto/CreateTenantDto.h"
+
+#include "constants/ErrorCodes.h"
 #include "plugins/IdentityServicePlugin.h"
 
-void TenantsController::getTenants(const HttpRequestPtr& req, std::function<void (const HttpResponsePtr &)> &&callback)
-{
+using namespace turbo_ledger_identity::plugins;
 
-    int pageSize = 10; // Default page size
-    int pageNo = 1;    //  Default page number
+Task<HttpResponsePtr> TenantsController::getTenants(HttpRequestPtr req) {
+
+    std::string businessId;
+    try { businessId = req->attributes()->get<std::string>("businessId"); } catch (...) {}
+
+    if (!businessId.empty()) {
+        turbo_ledger_identity::dto::BaseApiResponse apiResponse;
+        apiResponse.success = false;
+        apiResponse.message = "Forbidden: Tenant tokens cannot access host endpoints";
+        apiResponse.error["code"] = turbo_ledger_identity::constants::ErrorCode::ERR_PERMISSION_DENIED;
+        auto resp = HttpResponse::newHttpJsonResponse(apiResponse.toJson());
+        resp->setStatusCode(k403Forbidden);
+        co_return resp;
+    }
+
+    int pageSize = 10;
+    int pageNo = 1;
 
     if (!req->getParameter("pageSize").empty()) {
-        try {
-            pageSize = std::stoi(req->getParameter("pageSize"));
-            pageSize = std::max(1, std::min(100, pageSize)); // Limit between 1-100
-        } catch (...) {
-            // Keep default if conversion fails
-        }
+        try { pageSize = std::max(1, std::min(100, std::stoi(req->getParameter("pageSize")))); } catch (...) {}
     }
-
     if (!req->getParameter("pageNo").empty()) {
-        try {
-            pageNo = std::stoi(req->getParameter("pageNo"));
-            pageNo = std::max(1, pageNo); // Ensure page number is at least 1
-        } catch (...) {
-            // Keep default if conversion fails
-        }
+        try { pageNo = std::max(1, std::stoi(req->getParameter("pageNo"))); } catch (...) {}
     }
-
     std::string query = req->getParameter("query");
-    if (query.empty()) {
-        query = ""; // Default to empty string if not specified
-    }
 
-    auto plugin = drogon::app().getPlugin<turbo_ledger_identity::plugins::IdentityServicePlugin>();
-    auto& tenantService = plugin->getTenantService();
+    auto plugin = drogon::app().getPlugin<IdentityServicePlugin>();
+    auto& tenantService = plugin->getBusinessAccountService();
 
-    tenantService.getTenants(pageNo, pageSize, query, [callback](const turbo_ledger_identity::dto::BaseApiResponse& result) {
-        auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
-        callback(resp);
-    });
-
-
+    auto result = co_await tenantService.getAll(pageNo, pageSize, query);
+    auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
+    co_return resp;
 }
 
+Task<HttpResponsePtr> TenantsController::updateStatus(HttpRequestPtr req, std::string id) {
 
-void TenantsController::createTenant(const HttpRequestPtr& req, std::function<void (const HttpResponsePtr &)> &&callback)
-{
-    // Parse JSON from request body
+    std::string businessId;
+    try { businessId = req->attributes()->get<std::string>("businessId"); } catch (...) {}
+
+    if (!businessId.empty()) {
+        turbo_ledger_identity::dto::BaseApiResponse apiResponse;
+        apiResponse.success = false;
+        apiResponse.message = "Forbidden: Tenant tokens cannot access host endpoints";
+        apiResponse.error["code"] = turbo_ledger_identity::constants::ErrorCode::ERR_PERMISSION_DENIED;
+        auto resp = HttpResponse::newHttpJsonResponse(apiResponse.toJson());
+        resp->setStatusCode(k403Forbidden);
+        co_return resp;
+    }
+
+    std::string statusStr = req->getParameter("status");
+    turbo_ledger_identity::constants::StatusType status = turbo_ledger_identity::constants::StatusType::Inactive;
+
+    if (statusStr == "ACTIVE") status = turbo_ledger_identity::constants::StatusType::Active;
+    else if (statusStr == "SUSPENDED") status = turbo_ledger_identity::constants::StatusType::Suspended;
+    else if (statusStr != "INACTIVE") {
+        turbo_ledger_identity::dto::BaseApiResponse response;
+        response.success = false;
+        response.error["message"] = "Invalid status provided. Must be ACTIVE, INACTIVE, or SUSPENDED";
+        auto resp = HttpResponse::newHttpJsonResponse(response.toJson());
+        resp->setStatusCode(k400BadRequest);
+        co_return resp;
+    }
+
+    auto plugin = drogon::app().getPlugin<IdentityServicePlugin>();
+    auto& tenantService = plugin->getBusinessAccountService();
+
+    auto result = co_await tenantService.updateAccountStatus(id, status);
+    auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
+    co_return resp;
+}
+
+Task<HttpResponsePtr> TenantsController::createTenant(HttpRequestPtr req) {
+
+    std::string businessId;
+    try { businessId = req->attributes()->get<std::string>("businessId"); } catch (...) {}
+
+    if (!businessId.empty()) {
+        turbo_ledger_identity::dto::BaseApiResponse apiResponse;
+        apiResponse.success = false;
+        apiResponse.message = "Forbidden: Tenant tokens cannot access host endpoints";
+        apiResponse.error["code"] = turbo_ledger_identity::constants::ErrorCode::ERR_PERMISSION_DENIED;
+        auto resp = HttpResponse::newHttpJsonResponse(apiResponse.toJson());
+        resp->setStatusCode(k403Forbidden);
+        co_return resp;
+    }
+
     auto jsonBody = req->getJsonObject();
-
     if (!jsonBody) {
         turbo_ledger_identity::dto::BaseApiResponse response;
         response.success = false;
         response.error["message"] = "Invalid JSON body";
         auto resp = HttpResponse::newHttpJsonResponse(response.toJson());
         resp->setStatusCode(k400BadRequest);
-        callback(resp);
-        return;
+        co_return resp;
     }
 
-    turbo_ledger_identity::dto::CreateTenantDto tenantDto;
+    turbo_ledger_identity::dto::BusinessAccountDto tenantDto;
     tenantDto.fromJson(*jsonBody);
 
-    // Get tenant service from plugin
-    auto plugin = drogon::app().getPlugin<turbo_ledger_identity::plugins::IdentityServicePlugin>();
-    auto& tenantService = plugin->getTenantService();
+    auto plugin = drogon::app().getPlugin<IdentityServicePlugin>();
+    auto& tenantService = plugin->getBusinessAccountService();
 
-    tenantService.createTenant(tenantDto, [callback](const turbo_ledger_identity::dto::BaseApiResponse& result) {
-        auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
-        callback(resp);
-    });
-
+    auto result = co_await tenantService.create(tenantDto);
+    auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
+    co_return resp;
 }
 
-void TenantsController::updateConnectionString(const HttpRequestPtr& req, std::function<void (const HttpResponsePtr &)> &&callback)
-{
-    // Parse JSON from request body
-    auto jsonBody = req->getJsonObject();
+Task<HttpResponsePtr> TenantsController::updateTenant(HttpRequestPtr req, std::string id) {
 
-    if (!jsonBody) {
-        turbo_ledger_identity::dto::BaseApiResponse response;
-        response.success = false;
-        response.error["message"] = "Invalid JSON body";
-        auto resp = HttpResponse::newHttpJsonResponse(response.toJson());
-        resp->setStatusCode(k400BadRequest);
-        callback(resp);
-        return;
+    std::string businessId;
+    try { businessId = req->attributes()->get<std::string>("businessId"); } catch (...) {}
+
+    if (!businessId.empty()) {
+        turbo_ledger_identity::dto::BaseApiResponse apiResponse;
+        apiResponse.success = false;
+        apiResponse.message = "Forbidden: Tenant tokens cannot access host endpoints";
+        apiResponse.error["code"] = turbo_ledger_identity::constants::ErrorCode::ERR_PERMISSION_DENIED;
+        auto resp = HttpResponse::newHttpJsonResponse(apiResponse.toJson());
+        resp->setStatusCode(k403Forbidden);
+        co_return resp;
     }
 
-    // Extract id and connectionString from the JSON body
-    if (!(*jsonBody).isMember("id") || !(*jsonBody).isMember("connectionString")) {
-        turbo_ledger_identity::dto::BaseApiResponse response;
-        response.success = false;
-        response.error["message"] = "Missing required fields: id and connectionString";
-        auto resp = HttpResponse::newHttpJsonResponse(response.toJson());
-        resp->setStatusCode(k400BadRequest);
-        callback(resp);
-        return;
-    }
-
-    std::string id = (*jsonBody)["id"].asString();
-    std::string connectionString = (*jsonBody)["connectionString"].asString();
-
-    // Get tenant service from plugin
-    auto plugin = drogon::app().getPlugin<turbo_ledger_identity::plugins::IdentityServicePlugin>();
-    auto& tenantService = plugin->getTenantService();
-
-    // Call service method to update connection string
-    tenantService.updateConnectionString(id, connectionString, [callback](const turbo_ledger_identity::dto::BaseApiResponse& result) {
-        auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
-        callback(resp);
-    });
-}
-
-
-void TenantsController::updateTenant(const HttpRequestPtr& req, std::function<void (const HttpResponsePtr &)> &&callback)
-{
-
-    // Parse JSON from request body
     auto jsonBody = req->getJsonObject();
     if (!jsonBody) {
         turbo_ledger_identity::dto::BaseApiResponse response;
@@ -124,103 +134,49 @@ void TenantsController::updateTenant(const HttpRequestPtr& req, std::function<vo
         response.error["message"] = "Invalid JSON body";
         auto resp = HttpResponse::newHttpJsonResponse(response.toJson());
         resp->setStatusCode(k400BadRequest);
-        callback(resp);
-        return;
+        co_return resp;
     }
 
-    // Create DTO and populate it
-    turbo_ledger_identity::dto::UpdateTenantDto tenantDto;
+    turbo_ledger_identity::dto::BusinessAccountDto tenantDto;
     tenantDto.fromJson(*jsonBody);
 
-    // Get tenant service from plugin
-    auto plugin = drogon::app().getPlugin<turbo_ledger_identity::plugins::IdentityServicePlugin>();
-    auto& tenantService = plugin->getTenantService();
+    auto plugin = drogon::app().getPlugin<IdentityServicePlugin>();
+    auto& tenantService = plugin->getBusinessAccountService();
 
-    // Call service method to update tenant
-    tenantService.updateTenant(tenantDto, [callback](const turbo_ledger_identity::dto::BaseApiResponse& result) {
-        auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
-        callback(resp);
-    });
+    auto result = co_await tenantService.update(tenantDto, id);
+    auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
+    co_return resp;
 }
 
-void TenantsController::activate(const HttpRequestPtr& req, std::function<void (const HttpResponsePtr &)> &&callback)
-{
-    // Extract the tenant ID from the request parameters
-    if (req->getParameter("id").empty()) {
-        // Missing tenant ID - return early
+Task<HttpResponsePtr> TenantsController::deleteTenant(HttpRequestPtr req, std::string id) {
+
+    std::string businessId;
+    try { businessId = req->attributes()->get<std::string>("businessId"); } catch (...) {}
+
+    if (!businessId.empty()) {
+        turbo_ledger_identity::dto::BaseApiResponse apiResponse;
+        apiResponse.success = false;
+        apiResponse.message = "Forbidden: Tenant tokens cannot access host endpoints";
+        apiResponse.error["code"] = turbo_ledger_identity::constants::ErrorCode::ERR_PERMISSION_DENIED;
+        auto resp = HttpResponse::newHttpJsonResponse(apiResponse.toJson());
+        resp->setStatusCode(k403Forbidden);
+        co_return resp;
+    }
+
+
+    if (id.empty()) {
         turbo_ledger_identity::dto::BaseApiResponse response;
         response.success = false;
         response.error["message"] = "Missing required parameter: id";
         auto resp = HttpResponse::newHttpJsonResponse(response.toJson());
         resp->setStatusCode(k400BadRequest);
-        callback(resp);
-        return;
+        co_return resp;
     }
 
-    std::string id = req->getParameter("id");
+    auto plugin = drogon::app().getPlugin<IdentityServicePlugin>();
+    auto& tenantService = plugin->getBusinessAccountService();
 
-    // Get tenant service from plugin
-    auto plugin = drogon::app().getPlugin<turbo_ledger_identity::plugins::IdentityServicePlugin>();
-    auto& tenantService = plugin->getTenantService();
-
-    // Call service method to activate the tenant account
-    tenantService.activateTenantAccount(id, [callback](const turbo_ledger_identity::dto::BaseApiResponse& result) {
-        auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
-        callback(resp);
-    });
-}
-
-
-void TenantsController::deactivate(const HttpRequestPtr& req, std::function<void (const HttpResponsePtr &)> &&callback)
-{
-    // Extract the tenant ID from the request parameters
-    if (req->getParameter("id").empty()) {
-        // Missing tenant ID - return early
-        turbo_ledger_identity::dto::BaseApiResponse response;
-        response.success = false;
-        response.error["message"] = "Missing required parameter: id";
-        auto resp = HttpResponse::newHttpJsonResponse(response.toJson());
-        resp->setStatusCode(k400BadRequest);
-        callback(resp);
-        return;
-    }
-
-    std::string id = req->getParameter("id");
-
-    // Get tenant service from plugin
-    auto plugin = drogon::app().getPlugin<turbo_ledger_identity::plugins::IdentityServicePlugin>();
-    auto& tenantService = plugin->getTenantService();
-
-    // Call service method to deactivate the tenant account
-    tenantService.deactivateTenantAccount(id, [callback](const turbo_ledger_identity::dto::BaseApiResponse& result) {
-        auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
-        callback(resp);
-    });
-}
-
-
-void TenantsController::deleteTenant(const HttpRequestPtr& req, std::function<void (const HttpResponsePtr &)> &&callback) {
-    // Extract the tenant ID from the request parameters
-    if (req->getParameter("id").empty()) {
-        // Missing tenant ID - return early
-        turbo_ledger_identity::dto::BaseApiResponse response;
-        response.success = false;
-        response.error["message"] = "Missing required parameter: id";
-        auto resp = HttpResponse::newHttpJsonResponse(response.toJson());
-        resp->setStatusCode(k400BadRequest);
-        callback(resp);
-        return;
-    }
-
-    std::string id = req->getParameter("id");
-
-    // Get tenant service from plugin
-    auto plugin = drogon::app().getPlugin<turbo_ledger_identity::plugins::IdentityServicePlugin>();
-    auto& tenantService = plugin->getTenantService();
-
-    // Call service method to delete the tenant
-    tenantService.deleteTenant(id, [callback](const turbo_ledger_identity::dto::BaseApiResponse& result) {
-        auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
-        callback(resp);
-    });
+    auto result = co_await tenantService.deleteAccount(id);
+    auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
+    co_return resp;
 }

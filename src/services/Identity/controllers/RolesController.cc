@@ -1,186 +1,149 @@
 #include "RolesController.h"
 #include "constants/ErrorCodes.h"
-#include "dto/UpdateRoleDto.h"
 #include "dto/BaseApiResponse.h"
 #include "plugins/IdentityServicePlugin.h"
+#include "dto/RoleDto.h"
 
+using namespace drogon;
+using namespace turbo_ledger_identity::plugins;
+using namespace turbo_ledger_identity::dto;
 
+Task<HttpResponsePtr> RolesController::getRoles(HttpRequestPtr req) {
 
-
-void RolesController::getRoles(const HttpRequestPtr& req, std::function<void (const HttpResponsePtr &)> &&callback)
-{
-
-    // write your application logic here
-    int pageSize = 10; // Default page size
-    int pageNo = 1;    // Default page number
-
-    if (!req->getParameter("pageSize").empty()) {
-        try {
-            pageSize = std::stoi(req->getParameter("pageSize"));
-            pageSize = std::max(1, std::min(100, pageSize)); // Limit between 1-100
-        } catch (...) {
-            // Keep default if conversion fails
-        }
-    }
+    std::string businessId;
+    try { businessId = req->attributes()->get<std::string>("businessId"); } catch (...) {}
+    
+    int pageNo = 1;
+    int pageSize = 10;
+    std::string query = "";
 
     if (!req->getParameter("pageNo").empty()) {
-        try {
-            pageNo = std::stoi(req->getParameter("pageNo"));
-            pageNo = std::max(1, pageNo); // Ensure page number is at least 1
-        } catch (...) {
-            // Keep default if conversion fails
-        }
+        try { pageNo = std::stoi(req->getParameter("pageNo")); } catch (...) {}
+    }
+    if (!req->getParameter("pageSize").empty()) {
+        try { pageSize = std::stoi(req->getParameter("pageSize")); } catch (...) {}
+    }
+    if (!req->getParameter("query").empty()) {
+        query = req->getParameter("query");
     }
 
-    std::string tenantId;
-    try {
-        tenantId = getTenantFromRequest(req);
-    } catch (const std::runtime_error& e) {
-        // Handle error (e.g., return 400 Bad Request)
-    }
-
-    std::string query = req->getParameter("query");
-    if (query.empty()) {
-        query = ""; // Default to empty string if not specified
-    }
-
-    auto plugin = drogon::app().getPlugin<turbo_ledger_identity::plugins::IdentityServicePlugin>();
+    auto plugin = app().getPlugin<IdentityServicePlugin>();
     auto& roleService = plugin->getRoleService();
 
+    auto response = co_await roleService.getAll(businessId, pageNo, pageSize, query);
 
-    roleService.getRoles(pageNo, pageSize, query, tenantId, [callback](const turbo_ledger_identity::dto::BaseApiResponse& result) {
-        auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
-        callback(resp);
-    });
+    auto resp = HttpResponse::newHttpJsonResponse(response.toJson());
+    resp->setStatusCode(response.success ? k200OK : k400BadRequest);
+    co_return resp;
+}
+
+
+Task<HttpResponsePtr> RolesController::getTenantPermissions(HttpRequestPtr req) {
+
+    auto plugin = app().getPlugin<IdentityServicePlugin>();
+    auto& roleService = plugin->getRoleService();
+
+    auto response = co_await roleService.getTenantPermissions();
+
+    auto resp = HttpResponse::newHttpJsonResponse(response.toJson());
+    resp->setStatusCode(response.success ? k200OK : k400BadRequest);
+    co_return resp;
 
 }
 
 
-void RolesController::createRole(const HttpRequestPtr& req, std::function<void (const HttpResponsePtr &)> &&callback)
-{
-    auto jsonBody = req->getJsonObject();
+Task<HttpResponsePtr> RolesController::getHostPermissions(HttpRequestPtr req) {
+    std::string businessId;
+    try { businessId = req->attributes()->get<std::string>("businessId"); } catch (...) {}
 
-    if (!jsonBody) {
-        turbo_ledger_identity::dto::BaseApiResponse response;
-        response.success = false;
-        response.error["message"] = "Invalid JSON body";
-        auto resp = HttpResponse::newHttpJsonResponse(response.toJson());
-        resp->setStatusCode(k400BadRequest);
-        callback(resp);
-        return;
+
+    if (!businessId.empty()) {
+        BaseApiResponse apiResponse;
+        apiResponse.success = false;
+        apiResponse.message = "Forbidden: Tenant tokens cannot access host endpoints";
+        apiResponse.error["code"] = turbo_ledger_identity::constants::ERR_PERMISSION_DENIED;
+        auto resp = HttpResponse::newHttpJsonResponse(apiResponse.toJson());
+        resp->setStatusCode(k403Forbidden);
+        co_return resp;
     }
 
-    turbo_ledger_identity::dto::CreateRoleDto roleData;
-
-    try {
-
-        roleData.fromJson(*jsonBody);
-
-    } catch (const std::exception& e) {
-        turbo_ledger_identity::dto::BaseApiResponse response;
-        response.success = false;
-        response.error["message"] = "Missing or invalid required fields";
-        auto resp = HttpResponse::newHttpJsonResponse(response.toJson());
-        resp->setStatusCode(k400BadRequest);
-        callback(resp);
-        return;
-    }
-
-    // Get tenant ID from the request via the helper in BaseController
-    std::string tenantId;
-    try
-    {
-        tenantId = getTenantFromRequest(req);
-    }
-    catch (const std::runtime_error& e)
-    {
-        turbo_ledger_identity::dto::BaseApiResponse response;
-        response.success = false;
-        response.error["message"] = e.what();
-        auto resp = HttpResponse::newHttpJsonResponse(response.toJson());
-        resp->setStatusCode(k400BadRequest);
-        callback(resp);
-        return;
-    }
-
-    auto plugin = drogon::app().getPlugin<turbo_ledger_identity::plugins::IdentityServicePlugin>();
+    auto plugin = drogon::app().getPlugin<IdentityServicePlugin>();
     auto& roleService = plugin->getRoleService();
 
-    roleService.createRole(roleData, tenantId, [callback](const turbo_ledger_identity::dto::BaseApiResponse& result) {
-        auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
-        resp->setStatusCode(result.success ? k201Created : k500InternalServerError);
-        callback(resp);
-    });
+    auto response = co_await roleService.getHostPermissions();
+
+    auto resp = HttpResponse::newHttpJsonResponse(response.toJson());
+    resp->setStatusCode(response.success ? k200OK : k400BadRequest);
+    co_return resp;
 }
 
-void RolesController::updateRole(const HttpRequestPtr& req, std::function<void (const HttpResponsePtr &)> &&callback)
-{
-    auto jsonBody = req->getJsonObject();
-    if (!jsonBody) {
-        turbo_ledger_identity::dto::BaseApiResponse response;
-        response.success = false;
-        response.error["message"] = "Invalid JSON body";
-        auto resp = HttpResponse::newHttpJsonResponse(response.toJson());
+
+Task<HttpResponsePtr> RolesController::createRole(HttpRequestPtr req) {
+    BaseApiResponse apiResponse;
+    auto json = req->getJsonObject();
+    if (!json) {
+        apiResponse.success = false;
+        apiResponse.message = "Invalid JSON payload";
+        auto resp = HttpResponse::newHttpJsonResponse(apiResponse.toJson());
         resp->setStatusCode(k400BadRequest);
-        callback(resp);
-        return;
+        co_return resp;
     }
+    
+    std::string businessId;
+    try { businessId = req->attributes()->get<std::string>("businessId"); } catch (...) {}
 
-    std::string tenantId = getTenantFromRequest(req);
+    RoleDto dto;
+    dto.fromJson(*json);
 
-    turbo_ledger_identity::dto::UpdateRoleDto roleData;
-
-    try {
-
-        roleData.fromJson(*jsonBody);
-
-    } catch (const std::exception& e) {
-        turbo_ledger_identity::dto::BaseApiResponse response;
-        response.success = false;
-        response.error["message"] = "Missing or invalid required fields";
-        auto resp = HttpResponse::newHttpJsonResponse(response.toJson());
-        resp->setStatusCode(k400BadRequest);
-        callback(resp);
-        return;
-    }
-
-    auto plugin = drogon::app().getPlugin<turbo_ledger_identity::plugins::IdentityServicePlugin>();
+    auto plugin = drogon::app().getPlugin<IdentityServicePlugin>();
     auto& roleService = plugin->getRoleService();
 
-    roleService.updateRole(roleData, tenantId, [callback](const turbo_ledger_identity::dto::BaseApiResponse& result) {
-        auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
-        resp->setStatusCode(result.success ? k200OK : k500InternalServerError);
-        callback(resp);
-    });
+    auto result = co_await roleService.create(businessId, dto);
+
+    auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
+    resp->setStatusCode(result.success ? k200OK : k400BadRequest);
+    co_return resp;
 }
 
-void RolesController::deleteRole(const HttpRequestPtr& req, std::function<void (const HttpResponsePtr &)> &&callback)
-{
-    auto userId = req->getParameter("id");
 
-    if (userId.empty()) {
-        turbo_ledger_identity::dto::BaseApiResponse response;
-        response.success = false;
-        response.error["message"] = "User ID is required";
-        auto resp = HttpResponse::newHttpJsonResponse(response.toJson());
+Task<HttpResponsePtr> RolesController::updateRole(HttpRequestPtr req, std::string roleId) {
+    BaseApiResponse apiResponse;
+    auto json = req->getJsonObject();
+    if (!json) {
+        apiResponse.success = false;
+        apiResponse.message = "Invalid JSON payload";
+        auto resp = HttpResponse::newHttpJsonResponse(apiResponse.toJson());
         resp->setStatusCode(k400BadRequest);
-        callback(resp);
-        return;
+        co_return resp;
     }
+    
+    std::string businessId;
+    try { businessId = req->attributes()->get<std::string>("businessId"); } catch (...) {}
 
-    // Get tenant ID from the request
-    std::string tenantId = getTenantFromRequest(req);
+    RoleDto dto;
+    dto.fromJson(*json);
 
-    // Get the user service from the plugin
-    auto plugin = drogon::app().getPlugin<turbo_ledger_identity::plugins::IdentityServicePlugin>();
+    auto plugin = app().getPlugin<IdentityServicePlugin>();
     auto& roleService = plugin->getRoleService();
 
-    // Call the service to delete the user
-    roleService.deleteRole(userId, tenantId, [callback](const turbo_ledger_identity::dto::BaseApiResponse& result) {
-        auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
-        resp->setStatusCode(result.success ? k200OK : (result.error.isMember("code") &&
-                                                     result.error["code"].asInt() == turbo_ledger_identity::constants::ERR_RESOURCE_NOT_FOUND ?
-                                                     k404NotFound : k500InternalServerError));
-        callback(resp);
-    });
+    auto result = co_await roleService.update(businessId, dto, roleId);
+
+    auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
+    resp->setStatusCode(result.success ? k200OK : k400BadRequest);
+    co_return resp;
+}
+
+Task<HttpResponsePtr> RolesController::deleteRole(HttpRequestPtr req, std::string roleId) {
+
+    std::string businessId;
+    try { businessId = req->attributes()->get<std::string>("businessId"); } catch (...) {}
+
+    auto plugin = app().getPlugin<IdentityServicePlugin>();
+    auto& roleService = plugin->getRoleService();
+
+    auto result = co_await roleService.deleteRole(businessId, roleId);
+
+    auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
+    resp->setStatusCode(result.success ? k200OK : k400BadRequest);
+    co_return resp;
 }

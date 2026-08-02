@@ -1,413 +1,375 @@
 #include "UserService.h"
 #include <drogon/orm/Mapper.h>
 #include <drogon/orm/Criteria.h>
-#include <jwt-cpp/jwt.h>
-#include "Users.h"
-#include "dto/BaseApiResponse.h"
-#include "bcrypt.h"
+#include "models/Users.h"
+#include "models/BusinessAccounts.h"
 #include "constants/ErrorCodes.h"
-#include "dto/SigninDto.h"
-#include "dto/UpdateUserDto.h"
-
+#include "utils/PasswordUtils.h"
+#include <bcrypt.h>
+#include <jwt-cpp/jwt.h>
 
 using namespace drogon::orm;
-using namespace drogon_model::TurboLedgerIdentity;
-
 
 namespace turbo_ledger_identity::services
 {
 
-    void UserService::getUsers(
-        int pageNo,
-        int pageSize,
-        const std::string& query,
-        const std::string& tenantId,
-        const std::function<void(const dto::BaseApiResponse&)>& callback)
-    {
+    drogon::Task<dto::BaseApiResponse> UserService::getAll(const std::string &businessId, int pageNo, int pageSize, const std::string &query) {
+        dto::BaseApiResponse response;
+        try {
+            auto dbClient = drogon::app().getDbClient();
+            drogon::orm::CoroMapper<drogon_model::TlIdentity::Users> mapper(dbClient);
+            
+            Criteria criteria;
+            if (!businessId.empty()) {
+                criteria = Criteria(drogon_model::TlIdentity::Users::Cols::_business_id, CompareOperator::EQ, businessId);
+            } else {
+                criteria = Criteria(drogon_model::TlIdentity::Users::Cols::_business_id, CompareOperator::IsNull);
+            }
+
+            if (!query.empty()) {
+                Criteria searchCriteria = Criteria(drogon_model::TlIdentity::Users::Cols::_first_name, CompareOperator::Like, "%" + query + "%") || 
+                           Criteria(drogon_model::TlIdentity::Users::Cols::_last_name, CompareOperator::Like, "%" + query + "%") ||
+                           Criteria(drogon_model::TlIdentity::Users::Cols::_email, CompareOperator::Like, "%" + query + "%") ||
+                           Criteria(drogon_model::TlIdentity::Users::Cols::_username, CompareOperator::Like, "%" + query + "%");
+                criteria = criteria && searchCriteria;
+            }
+            
+            size_t totalCount = co_await mapper.count(criteria);
+
+            if (totalCount == 0) {
+                response.success = true;
+                response.result["data"] = Json::arrayValue;
+                response.result["totalCount"] = 0;
+                response.result["pageNo"] = pageNo;
+                response.result["pageSize"] = pageSize;
+                response.result["totalPages"] = 0;
+                response.result["lowerBound"] = 0;
+                response.result["upperBound"] = 0;
+                co_return response;
+            }
+
+            int offset = (pageNo - 1) * pageSize;
+            auto users = co_await mapper.limit(pageSize).offset(offset).findBy(criteria);
+            auto totalPages = (totalCount + pageSize - 1) / pageSize;
+
+            response.success = true;
+            response.result["totalCount"] = (Json::UInt64)totalCount;
+            response.result["pageNo"] = pageNo;
+            response.result["pageSize"] = pageSize;
+            response.result["totalPages"] = (int)totalPages;
+            response.result["lowerBound"] = pageSize * (pageNo - 1) + 1;
+            response.result["upperBound"] = (int)totalPages == pageNo ? (Json::UInt64)totalCount  : (Json::UInt64)(pageNo * pageSize);
+
+            Json::Value data = Json::arrayValue;
+            for (const auto& user : users) {
+                auto roleJson = user.toJson();
+                Json::Value camelCaseRole;
+                camelCaseRole["id"] = roleJson["id"];
+                camelCaseRole["firstName"] = roleJson["first_name"];
+                camelCaseRole["lastName"] = roleJson["last_name"];
+                camelCaseRole["email"] = roleJson["email"];
+                camelCaseRole["phoneNumber"] = roleJson["phone_number"];
+                camelCaseRole["country"] = roleJson["country"];
+                camelCaseRole["profileImageUrl"] = roleJson["profile_image_url"];
+                camelCaseRole["isLockedOut"] = roleJson["is_locked_out"];
+                camelCaseRole["isActive"] = roleJson["is_active"];
+                camelCaseRole["createdAt"] = roleJson["created_at"];
+                camelCaseRole["updatedAt"] = roleJson["updated_at"];
+                data.append(camelCaseRole);
+            }
+            response.result["data"] = data;
+        } catch (const std::exception &e) {
+            response.success = false;
+            response.error["message"] = "Error retrieving users.";
+            response.error["detail"] = e.what();
+        }
+        co_return response;
+    }
+
+    drogon::Task<dto::BaseApiResponse> UserService::getDetails(const std::string &businessId, const std::string &id) {
+        dto::BaseApiResponse response;
+        try {
+            auto dbClient = drogon::app().getDbClient();
+            drogon::orm::CoroMapper<drogon_model::TlIdentity::Users> mapper(dbClient);
+            auto users = co_await mapper.findBy(Criteria(drogon_model::TlIdentity::Users::Cols::_id, CompareOperator::EQ, id));
+            if (users.empty()) {
+                response.success = false;
+                response.error["message"] = "User not found.";
+                co_return response;
+            }
+            response.success = true;
+            auto json = users.front().toJson();
+            json.removeMember("password_hash");
+            response.result = json;
+        } catch (const std::exception &e) {
+            response.success = false;
+            response.error["message"] = "Error fetching user.";
+        }
+        co_return response;
+    }
+
+    drogon::Task<dto::BaseApiResponse> UserService::create(const std::string &businessId, const dto::UserDto &dto) {
+        dto::BaseApiResponse response;
+        try {
+            auto dbClient = drogon::app().getDbClient();
+            drogon::orm::CoroMapper<drogon_model::TlIdentity::Users> mapper(dbClient);
+            
+            drogon_model::TlIdentity::Users newUser;
+            newUser.setFirstName(dto.getFirstName());
+            newUser.setLastName(dto.getLastName());
+            newUser.setEmail(dto.getEmail());
+            newUser.setUsername(dto.getUsername());
+            newUser.setPasswordHash(bcrypt::generateHash(dto.getPassword(),8));
+            newUser.setPhoneNumber(dto.getPhoneNumber());
+            newUser.setCountry(dto.getCountry());
+            newUser.setIsActive(true);
+            newUser.setIsLockedOut(false);
+            
+            auto savedUser = co_await mapper.insert(newUser);
+            auto json = savedUser.toJson();
+            json.removeMember("password_hash");
+            
+            response.success = true;
+            response.result = json;
+        } catch (const drogon::orm::DrogonDbException &e) {
+            response.success = false;
+            response.error["message"] = "Database error creating user.";
+            response.error["detail"] = e.base().what();
+        } catch (const std::exception &e) {
+            response.success = false;
+            response.error["message"] = "Unknown error creating user.";
+            response.error["detail"] = e.what();
+        }
+        co_return response;
+    }
+
+    drogon::Task<dto::BaseApiResponse> UserService::update(const std::string &businessId, const dto::UserDto &dto, const std::string &id) {
+        dto::BaseApiResponse response;
+        try {
+            auto dbClient = drogon::app().getDbClient();
+            drogon::orm::CoroMapper<drogon_model::TlIdentity::Users> mapper(dbClient);
+            
+            auto users = co_await mapper.findBy(Criteria(drogon_model::TlIdentity::Users::Cols::_id, CompareOperator::EQ, id));
+            if (users.empty()) {
+                response.success = false;
+                response.error["message"] = "User not found.";
+                co_return response;
+            }
+            
+            auto user = users.front();
+            if (!dto.getFirstName().empty()) user.setFirstName(dto.getFirstName());
+            if (!dto.getLastName().empty()) user.setLastName(dto.getLastName());
+            if (!dto.getEmail().empty()) user.setEmail(dto.getEmail());
+            if (!dto.getUsername().empty()) user.setUsername(dto.getUsername());
+            if (!dto.getPhoneNumber().empty()) user.setPhoneNumber(dto.getPhoneNumber());
+            if (!dto.getCountry().empty()) user.setCountry(dto.getCountry());
+            
+            auto updatedCount = co_await mapper.update(user);
+            auto json = user.toJson();
+            json.removeMember("password_hash");
+            
+            response.success = updatedCount > 0;
+            if (response.success) response.result = json;
+            else response.error["message"] = "Failed to update user.";
+        } catch (const std::exception &e) {
+            response.success = false;
+            response.error["message"] = "Error updating user.";
+            response.error["detail"] = e.what();
+        }
+        co_return response;
+    }
+
+    drogon::Task<dto::BaseApiResponse> UserService::lockUserAccount(const std::string &businessId, const std::string &userId) {
+        dto::BaseApiResponse response;
+        try {
+            auto dbClient = drogon::app().getDbClient();
+            drogon::orm::CoroMapper<drogon_model::TlIdentity::Users> mapper(dbClient);
+            
+            auto users = co_await mapper.findBy(Criteria(drogon_model::TlIdentity::Users::Cols::_id, CompareOperator::EQ, userId));
+            if (users.empty()) {
+                response.success = false;
+                response.error["message"] = "User not found.";
+                co_return response;
+            }
+            
+            auto user = users.front();
+            user.setIsLockedOut(true);
+            co_await mapper.update(user);
+            
+            response.success = true;
+            response.message = "User account locked.";
+        } catch (const std::exception &e) {
+            response.success = false;
+            response.error["message"] = "Error locking user account.";
+        }
+        co_return response;
+    }
+
+    drogon::Task<dto::BaseApiResponse> UserService::unlockUserAccount(const std::string &businessId, const std::string &userId) {
+        dto::BaseApiResponse response;
+        try {
+            auto dbClient = drogon::app().getDbClient();
+            drogon::orm::CoroMapper<drogon_model::TlIdentity::Users> mapper(dbClient);
+            
+            auto users = co_await mapper.findBy(Criteria(drogon_model::TlIdentity::Users::Cols::_id, CompareOperator::EQ, userId));
+            if (users.empty()) {
+                response.success = false;
+                response.error["message"] = "User not found.";
+                co_return response;
+            }
+            
+            auto user = users.front();
+            user.setIsLockedOut(false);
+            co_await mapper.update(user);
+            
+            response.success = true;
+            response.message = "User account unlocked.";
+        } catch (const std::exception &e) {
+            response.success = false;
+            response.error["message"] = "Error unlocking user account.";
+        }
+        co_return response;
+    }
+
+    drogon::Task<dto::BaseApiResponse> UserService::activateUserAccount(const std::string &businessId, const std::string &userId) {
+        dto::BaseApiResponse response;
+        try {
+            auto dbClient = drogon::app().getDbClient();
+            drogon::orm::CoroMapper<drogon_model::TlIdentity::Users> mapper(dbClient);
+            
+            auto users = co_await mapper.findBy(Criteria(drogon_model::TlIdentity::Users::Cols::_id, CompareOperator::EQ, userId));
+            if (users.empty()) {
+                response.success = false;
+                response.error["message"] = "User not found.";
+                co_return response;
+            }
+            
+            auto user = users.front();
+            user.setIsActive(true);
+            co_await mapper.update(user);
+            
+            response.success = true;
+            response.message = "User account activated.";
+        } catch (const std::exception &e) {
+            response.success = false;
+            response.error["message"] = "Error activating user account.";
+        }
+        co_return response;
+    }
+
+    drogon::Task<dto::BaseApiResponse> UserService::deactivateUserAccount(const std::string &businessId, const std::string &userId) {
+        dto::BaseApiResponse response;
+        try {
+            auto dbClient = drogon::app().getDbClient();
+            drogon::orm::CoroMapper<drogon_model::TlIdentity::Users> mapper(dbClient);
+            
+            auto users = co_await mapper.findBy(Criteria(drogon_model::TlIdentity::Users::Cols::_id, CompareOperator::EQ, userId));
+            if (users.empty()) {
+                response.success = false;
+                response.error["message"] = "User not found.";
+                co_return response;
+            }
+            
+            auto user = users.front();
+            user.setIsActive(false);
+            co_await mapper.update(user);
+            
+            response.success = true;
+            response.message = "User account deactivated.";
+        } catch (const std::exception &e) {
+            response.success = false;
+            response.error["message"] = "Error deactivating user account.";
+        }
+        co_return response;
+    }
+
+    drogon::Task<dto::BaseApiResponse> UserService::deleteUser(const std::string &businessId, const std::string &userId) {
+        dto::BaseApiResponse response;
+        try {
+            auto dbClient = drogon::app().getDbClient();
+            drogon::orm::CoroMapper<drogon_model::TlIdentity::Users> mapper(dbClient);
+            
+            auto deletedCount = co_await mapper.deleteBy(Criteria(drogon_model::TlIdentity::Users::Cols::_id, CompareOperator::EQ, userId));
+            if (deletedCount > 0) {
+                response.success = true;
+                response.message = "User deleted successfully.";
+            } else {
+                response.success = false;
+                response.error["message"] = "User not found.";
+            }
+        } catch (const std::exception &e) {
+            response.success = false;
+            response.error["message"] = "Error deleting user.";
+            response.error["detail"] = e.what();
+        }
+        co_return response;
+    }
+
+    drogon::Task<dto::BaseApiResponse> UserService::validateUserCredentials(const dto::SigninDto &signin_dto) {
         auto dbClient = drogon::app().getDbClient();
-        auto mp = std::make_shared<Mapper<Users>>(dbClient);
+        CoroMapper<drogon_model::TlIdentity::Users> mapper(dbClient);
 
-        // 1. Build the search criteria
-        Criteria criteria(Users::Cols::_tenant_identifier, CompareOperator::EQ, tenantId);
-        if (!query.empty())
-        {
-            std::string likeQuery = "%" + query + "%";
+        Criteria criteria =
+            (Criteria(drogon_model::TlIdentity::Users::Cols::_username, CompareOperator::EQ, signin_dto.getUsernameOrEmail()) || 
+             Criteria(drogon_model::TlIdentity::Users::Cols::_phone_number, CompareOperator::EQ, signin_dto.getUsernameOrEmail()) ||
+             Criteria(drogon_model::TlIdentity::Users::Cols::_email, CompareOperator::EQ, signin_dto.getUsernameOrEmail())) &&
+            Criteria(drogon_model::TlIdentity::Users::Cols::_is_active, CompareOperator::EQ, true) &&
+            Criteria(drogon_model::TlIdentity::Users::Cols::_is_locked_out, CompareOperator::EQ, false);
 
-            Criteria searchCriteria =
-                Criteria(Users::Cols::_username, CompareOperator::Like, likeQuery) ||
-                Criteria(Users::Cols::_first_name, CompareOperator::Like, likeQuery) ||
-                Criteria(Users::Cols::_last_name, CompareOperator::Like, likeQuery) ||
-                Criteria(Users::Cols::_email, CompareOperator::Like, likeQuery);
-
-            criteria = criteria && searchCriteria;
+        if (signin_dto.getAccountId().empty()) {
+            // Host signin: business_id should be null
+            criteria = criteria && Criteria(drogon_model::TlIdentity::Users::Cols::_business_id, CompareOperator::IsNull);
+        } else {
+            // Tenant signin: lookup business account by account_id
+            CoroMapper<drogon_model::TlIdentity::BusinessAccounts> businessMapper(dbClient);
+            auto businessAccounts = co_await businessMapper.findBy(Criteria(drogon_model::TlIdentity::BusinessAccounts::Cols::_account_id, CompareOperator::EQ, signin_dto.getAccountId()));
+            
+            if (businessAccounts.empty()) {
+                dto::BaseApiResponse response;
+                response.success = false;
+                response.message = "Invalid credentials";
+                response.error["code"] = constants::ERR_AUTH_INVALID_CREDENTIALS;
+                response.error["message"] = "Invalid account ID";
+                co_return response;
+            }
+            
+            std::string targetBusinessId = businessAccounts.front().getValueOfId();
+            criteria = criteria && Criteria(drogon_model::TlIdentity::Users::Cols::_business_id, CompareOperator::EQ, targetBusinessId);
         }
 
-        // 2. Asynchronously get the total count matching the criteria
-        mp->count(criteria, 
-            [=](const size_t totalCount) {
-                if (totalCount == 0)
-                {
-                    dto::BaseApiResponse response;
-                    response.success = true;
-                    response.result["data"] = Json::arrayValue;
-                    response.result["totalCount"] = 0;
-                    callback(response);
-                    return;
-                }
+        dto::BaseApiResponse response;
 
-                // 3. Asynchronously find the paginated data
-                int offset = (pageNo - 1) * pageSize;
-                mp->limit(pageSize).offset(offset).findBy(criteria,
-                    [=](const std::vector<Users>& users) {
-                        // 4. Build the final response inside the callback
-                        dto::BaseApiResponse response;
-                        response.success = true;
-                        response.result["totalCount"] = (Json::UInt64)totalCount;
-                        response.result["pageNo"] = pageNo;
-                        response.result["pageSize"] = pageSize;
-                        response.result["totalPages"] = (int)((totalCount + pageSize - 1) / pageSize);
+        try {
+            drogon_model::TlIdentity::Users user = co_await mapper.findOne(criteria);
 
-                        Json::Value data = Json::arrayValue;
-                        for (const auto& user : users)
-                        {
-                            Json::Value userJson = user.toJson();
-                            userJson.removeMember("password_hash");
+            std::string storedHash = utils::PasswordUtils::normalizeBcryptHash(user.getValueOfPasswordHash());
 
-                            // Convert snake_case to camelCase
-                            Json::Value camelCaseUser;
-                            camelCaseUser["id"] = userJson["id"];
-                            camelCaseUser["username"] = userJson["username"];
-                            camelCaseUser["firstName"] = userJson["first_name"];
-                            camelCaseUser["lastName"] = userJson["last_name"];
-                            camelCaseUser["email"] = userJson["email"];
-                            camelCaseUser["phoneNumber"] = userJson["phone_number"];
-                            camelCaseUser["isActive"] = userJson["is_active"];
-                            camelCaseUser["isLockedOut"] = userJson["is_locked_out"];
-                            camelCaseUser["tenantIdentifier"] = userJson["tenant_identifier"];
-                            camelCaseUser["createdAt"] = userJson["created_at"];
-                            camelCaseUser["updatedAt"] = userJson["updated_at"];
+            bool passwordMatches = bcrypt::validatePassword(signin_dto.getPassword(), storedHash);
 
-                            data.append(camelCaseUser);
-                        }
-                        response.result["data"] = data;
-                        callback(response);
-                    },
-                    [callback](const DrogonDbException& e) {
-                        // Handle find error
-                        dto::BaseApiResponse errorResponse;
-                        errorResponse.success = false;
-                        errorResponse.error["message"] = "Database error while fetching users.";
-                        errorResponse.error["detail"] = e.base().what();
-                        callback(errorResponse);
-                    }
-                );
-            },
-            [callback](const DrogonDbException& e) {
-                // Handle count error
-                dto::BaseApiResponse errorResponse;
-                errorResponse.success = false;
-                errorResponse.error["code"] = constants::ERR_DB_QUERY;
-                errorResponse.error["message"] = "Database error while fetching users.";
-                errorResponse.error["detail"] = e.base().what();
-                callback(errorResponse);
-            }
-        );
-    }
-
-
-    void UserService::createUser(
-        const dto::CreateUserDto& userData,
-        const std::string& tenantId,
-        const std::function<void(const turbo_ledger_identity::dto::BaseApiResponse&)>& callback)
-    {
-        auto dbClient = drogon::app().getDbClient();
-        Mapper<Users> mp(dbClient);
-
-        Users newUser;
-
-        newUser.setFirstName(userData.getFirstName());
-        newUser.setLastName(userData.getLastName());
-        newUser.setUsername(userData.getUsername());
-        newUser.setPasswordHash(bcrypt::generateHash(userData.getPassword()));
-        newUser.setTenantIdentifier(tenantId);
-        newUser.setEmail(userData.getEmail());
-        newUser.setPhoneNumber(userData.getPhoneNumber());
-        newUser.setIsLockedOut(false); // Default to not locked out
-        newUser.setIsActive(true); // Default to active
-
-
-        mp.insert(newUser, [callback](const drogon_model::TurboLedgerIdentity::Users& user) {
-            // 5. Prepare success response
-            turbo_ledger_identity::dto::BaseApiResponse successResponse;
-            successResponse.success = true;
-            successResponse.message = "User created successfully";
-            successResponse.result["id"] = user.getValueOfId();
-
-            callback(successResponse);
-
-        }, [callback](const drogon::orm::DrogonDbException& e) {
-            // 6. Handle database errors
-            // C++
-            turbo_ledger_identity::dto::BaseApiResponse errorResponse;
-            errorResponse.success = false;
-            errorResponse.message = "Database error while creating user";
-            errorResponse.error["code"] = constants::ERR_DB_QUERY;
-            callback(errorResponse);
-
-        });
-
-    }
-
-
-    void UserService::updateUser(
-        const dto::UpdateUserDto& userData,
-        const std::string& tenantId,
-        const std::function<void(const dto::BaseApiResponse&)>& callback)
-    {
-        auto dbClient = drogon::app().getDbClient();
-        auto mp = std::make_shared<Mapper<Users>>(dbClient);
-
-        Criteria criteria = Criteria(Users::Cols::_id, CompareOperator::EQ, userData.getId()) && Criteria(Users::Cols::_tenant_identifier, CompareOperator::EQ, tenantId);
-
-        mp->findOne(criteria,
-            [mp, userData, callback](Users user) { 
-                if (!userData.getFirstName().empty()) user.setFirstName(userData.getFirstName());
-                if (!userData.getLastName().empty()) user.setLastName(userData.getLastName());
-                if (!userData.getEmail().empty()) user.setEmail(userData.getEmail());
-                if (!userData.getPhoneNumber().empty()) user.setPhoneNumber(userData.getPhoneNumber());
-                if (!userData.getPassword().empty()) user.setPasswordHash(bcrypt::generateHash(userData.getPassword()));
-                user.setIsActive(userData.getIsActive());
-                user.setIsLockedOut(userData.getIsLockedOut());
-
-                mp->update(user, [callback](const size_t count) {
-                    turbo_ledger_identity::dto::BaseApiResponse response;
-                    response.success = true;
-                    response.message = "User updated successfully";
-                    callback(response);
-                },
-                [callback](const DrogonDbException& e) {
-                    turbo_ledger_identity::dto::BaseApiResponse errorResponse;
-                    errorResponse.success = false;
-                    errorResponse.message = "Failed to update user";
-                    errorResponse.error["code"] = constants::ERR_DB_QUERY;
-                    errorResponse.error["detail"] = e.base().what();
-                    callback(errorResponse);
-                });
-            },
-            [callback](const DrogonDbException& e) {
-                turbo_ledger_identity::dto::BaseApiResponse errorResponse;
-                errorResponse.success = false;
-                errorResponse.message = "User not found";
-                errorResponse.error["code"] = constants::ERR_RESOURCE_NOT_FOUND;
-                errorResponse.error["detail"] = e.base().what();
-                callback(errorResponse);
-            }
-        );
-    }
-
-
-    void UserService::activateUserAccount(
-        const std::string& userId,
-        const std::string& tenantId,
-        const std::function<void(const turbo_ledger_identity::dto::BaseApiResponse&)>& callback)
-    {
-        auto dbClient = drogon::app().getDbClient();
-        Mapper<Users> mp(dbClient);
-
-        // Create criteria to find the user with specified ID in the tenant
-        Criteria criteria = Criteria(Users::Cols::_id, CompareOperator::EQ, userId) &&
-                            Criteria(Users::Cols::_tenant_identifier, CompareOperator::EQ, tenantId);
-
-        // Find the user first
-        mp.findOne(criteria,
-            [=](Users user) {
-                // Set the user as active
-                user.setIsActive(true);
-
-                // Update the user in the database
-                Mapper<Users> updateMp(dbClient);
-                updateMp.update(user,
-                    [callback](const size_t count) {
-                        // Successfully updated
-                        turbo_ledger_identity::dto::BaseApiResponse response;
-                        response.success = true;
-                        response.message = "User account activated successfully";
-                        callback(response);
-                    },
-                    [=](const DrogonDbException& e) {
-                        // Error during update
-                        turbo_ledger_identity::dto::BaseApiResponse errorResponse;
-                        errorResponse.success = false;
-                        errorResponse.message = "Failed to activate user account";
-                        errorResponse.error["code"] = constants::ERR_DB_QUERY;
-                        errorResponse.error["detail"] = e.base().what();
-                        callback(errorResponse);
-                    }
-                );
-            },
-            [callback](const DrogonDbException& e) {
-                // User not found
-                turbo_ledger_identity::dto::BaseApiResponse errorResponse;
-                errorResponse.success = false;
-                errorResponse.message = "User not found";
-                errorResponse.error["code"] = constants::ERR_RESOURCE_NOT_FOUND;
-                errorResponse.error["detail"] = e.base().what();
-                callback(errorResponse);
-            }
-        );
-    }
-
-    void UserService::deactivateUserAccount(
-        const std::string& userId,
-        const std::string& tenantId,
-        const std::function<void(const turbo_ledger_identity::dto::BaseApiResponse&)>& callback)
-    {
-        auto dbClient = drogon::app().getDbClient();
-        Mapper<Users> mp(dbClient);
-
-        // Create criteria to find the user with specified ID in the tenant
-        Criteria criteria = Criteria(Users::Cols::_id, CompareOperator::EQ, userId) &&
-                            Criteria(Users::Cols::_tenant_identifier, CompareOperator::EQ, tenantId);
-
-        // Find the user first
-        mp.findOne(criteria,
-            [=](Users user) {
-                // Set the user as inactive
-                user.setIsActive(false);
-
-                // Update the user in the database
-                Mapper<Users> updateMp(dbClient);
-                updateMp.update(user,
-                    [callback](const size_t count) {
-                        // Successfully updated
-                        turbo_ledger_identity::dto::BaseApiResponse response;
-                        response.success = true;
-                        response.message = "User account deactivated successfully";
-                        callback(response);
-                    },
-                    [=](const DrogonDbException& e) {
-                        // Error during update
-                        turbo_ledger_identity::dto::BaseApiResponse errorResponse;
-                        errorResponse.success = false;
-                        errorResponse.message = "Failed to deactivate user account";
-                        errorResponse.error["code"] = constants::ERR_DB_QUERY;
-                        errorResponse.error["detail"] = e.base().what();
-                        callback(errorResponse);
-                    }
-                );
-            },
-            [callback](const DrogonDbException& e) {
-                // User not found
-                turbo_ledger_identity::dto::BaseApiResponse errorResponse;
-                errorResponse.success = false;
-                errorResponse.message = "User not found";
-                errorResponse.error["code"] = constants::ERR_RESOURCE_NOT_FOUND;
-                errorResponse.error["detail"] = e.base().what();
-                callback(errorResponse);
-            }
-        );
-    }
-
-
-    void UserService::deleteUser(
-        const std::string& userId,
-        const std::string& tenantId,
-        const std::function<void(const turbo_ledger_identity::dto::BaseApiResponse&)>& callback)
-    {
-        auto dbClient = drogon::app().getDbClient();
-        Mapper<Users> mp(dbClient);
-
-        // Create criteria to find the user with specified ID in the tenant
-        Criteria criteria = Criteria(Users::Cols::_id, CompareOperator::EQ, userId) &&
-                            Criteria(Users::Cols::_tenant_identifier, CompareOperator::EQ, tenantId);
-
-        // First verify the user exists
-        mp.findOne(criteria,
-            [=](const Users& user) {
-                // User found, proceed with deletion
-                Mapper<Users> deleteMp(dbClient);
-                deleteMp.deleteBy(criteria,
-                    [=](const size_t count) {
-                        if (count > 0) {
-                            // Successfully deleted
-                            turbo_ledger_identity::dto::BaseApiResponse response;
-                            response.success = true;
-                            response.message = "User deleted successfully";
-                            callback(response);
-                        } else {
-                            // No rows were deleted (shouldn't happen if we found the user)
-                            turbo_ledger_identity::dto::BaseApiResponse errorResponse;
-                            errorResponse.success = false;
-                            errorResponse.message = "Failed to delete user";
-                            errorResponse.error["code"] = constants::ERR_DB_QUERY;
-                            callback(errorResponse);
-                        }
-                    },
-                    [=](const DrogonDbException& e) {
-                        // Error during deletion
-                        turbo_ledger_identity::dto::BaseApiResponse errorResponse;
-                        errorResponse.success = false;
-                        errorResponse.message = "Failed to delete user";
-                        errorResponse.error["code"] = constants::ERR_DB_QUERY;
-                        errorResponse.error["detail"] = e.base().what();
-                        callback(errorResponse);
-                    }
-                );
-            },
-            [=](const DrogonDbException& e) {
-                // User not found
-                turbo_ledger_identity::dto::BaseApiResponse errorResponse;
-                errorResponse.success = false;
-                errorResponse.message = "User not found";
-                errorResponse.error["code"] = constants::ERR_RESOURCE_NOT_FOUND;
-                errorResponse.error["detail"] = e.base().what();
-                callback(errorResponse);
-            }
-        );
-    }
-
-
-    void UserService::validateUserCredentials(
-        const dto::SigninDto& signin_dto,
-        const std::string& tenantId,
-        const std::function<void(const turbo_ledger_identity::dto::BaseApiResponse&)>& callback)
-    {
-        auto dbClient = drogon::app().getDbClient();
-
-        Mapper<Users> mapper(dbClient);
-
-        Criteria criteria = (Criteria(Users::Cols::_username, CompareOperator::EQ, signin_dto.getUsernameOrEmail()) ||
-                                 Criteria(Users::Cols::_email, CompareOperator::EQ, signin_dto.getUsernameOrEmail())) &&
-                                     Criteria(Users::Cols::_is_active, CompareOperator::EQ, true) &&
-                                         Criteria(Users::Cols::_is_locked_out, CompareOperator::EQ, false) &&
-                                             Criteria(Users::Cols::_tenant_identifier, CompareOperator::EQ, tenantId);
-
-
-
-        mapper.findOne(criteria,
-        [=](const Users& user) {
-
-            bool passwordMatches = bcrypt::validatePassword(signin_dto.getPassword(), user.getValueOfPasswordHash());
 
             if (passwordMatches) {
+
+                drogon_model::TlIdentity::Users userToUpdate = user;
+                userToUpdate.setLastActive(trantor::Date::now());
+                co_await mapper.update(userToUpdate);
+
                 // Password is correct, generate JWT token
-                auto& app = drogon::app();
+                auto &app = drogon::app();
                 auto customConfig = app.getCustomConfig();
                 std::string jwtSecurityKey = customConfig["JwtBearer"]["JwtSecurityKey"].asString();
                 std::string jwtIssuer = customConfig["JwtBearer"]["JwtIssuer"].asString();
 
                 auto token = jwt::create()
-                    .set_issuer(jwtIssuer)
-                    .set_type("JWT")
-                    .set_issued_at(std::chrono::system_clock::now())
-                    .set_expires_at(std::chrono::system_clock::now() + std::chrono::hours(24))
-                    .set_payload_claim("userId", jwt::claim(user.getValueOfId()))
-                    .set_payload_claim("username", jwt::claim(user.getValueOfUsername()))
-                    .set_payload_claim("email", jwt::claim(user.getValueOfEmail()))
-                    .set_payload_claim("tenantId", jwt::claim(user.getValueOfTenantIdentifier()))
-                    .sign(jwt::algorithm::hs256{jwtSecurityKey});
+                        .set_issuer(jwtIssuer)
+                        .set_type("JWT")
+                        .set_issued_at(std::chrono::system_clock::now())
+                        .set_expires_at(std::chrono::system_clock::now() + std::chrono::hours(24 * 120))
+                        .set_payload_claim("businessId", jwt::claim(user.getValueOfBusinessId()))
+                        .set_payload_claim("userId", jwt::claim(user.getValueOfId()))
+                        .set_payload_claim("username", jwt::claim(user.getValueOfUsername()))
+                        .set_payload_claim("email", jwt::claim(user.getValueOfEmail()))
+                        .sign(jwt::algorithm::hs256{jwtSecurityKey});
 
-                turbo_ledger_identity::dto::BaseApiResponse response;
                 response.success = true;
                 response.message = "Authentication successful";
                 response.result["token"] = token;
@@ -415,134 +377,20 @@ namespace turbo_ledger_identity::services
                 response.result["username"] = user.getValueOfUsername();
                 response.result["fullName"] = user.getValueOfFirstName() + " " + user.getValueOfLastName();
                 response.result["email"] = user.getValueOfEmail();
-
-                callback(response);
             } else {
                 // Password is incorrect
-                turbo_ledger_identity::dto::BaseApiResponse response;
                 response.success = false;
                 response.message = "Invalid credentials";
                 response.error["code"] = constants::ERR_AUTH_INVALID_CREDENTIALS;
-                callback(response);
             }
-        },
-        [callback](const DrogonDbException& e) {
-            // Database error or user not found
-            turbo_ledger_identity::dto::BaseApiResponse response;
+        } catch (const DrogonDbException &e) {
+            // User not found
             response.success = false;
             response.message = "User not found";
             response.error["code"] = constants::ERR_RESOURCE_NOT_FOUND;
             response.error["message"] = "User not found";
-            callback(response);
         }
-    );
-
-
+        co_return response;
     }
-
-
-    void UserService::lockUserAccount(
-        const std::string& userId,
-        const std::string& tenantId,
-        const std::function<void(const turbo_ledger_identity::dto::BaseApiResponse&)>& callback)
-    {
-        auto dbClient = drogon::app().getDbClient();
-        Mapper<Users> mp(dbClient);
-
-        // Create criteria to find the user with specified ID in the tenant
-        Criteria criteria = Criteria(Users::Cols::_id, CompareOperator::EQ, userId) &&
-                            Criteria(Users::Cols::_tenant_identifier, CompareOperator::EQ, tenantId);
-
-        // Find the user first
-        mp.findOne(criteria,
-            [=](Users user) {
-                // Set the user as locked out
-                user.setIsLockedOut(true);
-
-                // Update the user in the database
-                Mapper<Users> updateMp(dbClient);
-                updateMp.update(user,
-                    [callback](const size_t count) {
-                        // Successfully updated
-                        turbo_ledger_identity::dto::BaseApiResponse response;
-                        response.success = true;
-                        response.message = "User account locked successfully";
-                        callback(response);
-                    },
-                    [=](const DrogonDbException& e) {
-                        // Error during update
-                        turbo_ledger_identity::dto::BaseApiResponse errorResponse;
-                        errorResponse.success = false;
-                        errorResponse.message = "Failed to lock user account";
-                        errorResponse.error["code"] = constants::ERR_DB_QUERY;
-                        errorResponse.error["detail"] = e.base().what();
-                        callback(errorResponse);
-                    }
-                );
-            },
-            [callback](const DrogonDbException& e) {
-                // User not found
-                turbo_ledger_identity::dto::BaseApiResponse errorResponse;
-                errorResponse.success = false;
-                errorResponse.message = "User not found";
-                errorResponse.error["code"] = constants::ERR_RESOURCE_NOT_FOUND;
-                errorResponse.error["detail"] = e.base().what();
-                callback(errorResponse);
-            }
-        );
-    }
-
-
-    void UserService::unlockUserAccount(
-        const std::string& userId,
-        const std::string& tenantId,
-        const std::function<void(const turbo_ledger_identity::dto::BaseApiResponse&)>& callback)
-    {
-        auto dbClient = drogon::app().getDbClient();
-        Mapper<Users> mp(dbClient);
-
-        // Create criteria to find the user with specified ID in the tenant
-        Criteria criteria = Criteria(Users::Cols::_id, CompareOperator::EQ, userId) &&
-                            Criteria(Users::Cols::_tenant_identifier, CompareOperator::EQ, tenantId);
-
-        // Find the user first
-        mp.findOne(criteria,
-            [=](Users user) {
-                // Set the user as not locked out
-                user.setIsLockedOut(false);
-
-                // Update the user in the database
-                Mapper<Users> updateMp(dbClient);
-                updateMp.update(user,
-                    [callback](const size_t count) {
-                        // Successfully updated
-                        turbo_ledger_identity::dto::BaseApiResponse response;
-                        response.success = true;
-                        response.message = "User account unlocked successfully";
-                        callback(response);
-                    },
-                    [=](const DrogonDbException& e) {
-                        // Error during update
-                        turbo_ledger_identity::dto::BaseApiResponse errorResponse;
-                        errorResponse.success = false;
-                        errorResponse.message = "Failed to unlock user account";
-                        errorResponse.error["code"] = constants::ERR_DB_QUERY;
-                        errorResponse.error["detail"] = e.base().what();
-                        callback(errorResponse);
-                    }
-                );
-            },
-            [callback](const DrogonDbException& e) {
-                // User not found
-                turbo_ledger_identity::dto::BaseApiResponse errorResponse;
-                errorResponse.success = false;
-                errorResponse.message = "User not found";
-                errorResponse.error["code"] = constants::ERR_RESOURCE_NOT_FOUND;
-                errorResponse.error["detail"] = e.base().what();
-                callback(errorResponse);
-            }
-        );
-    }
-
 
 }

@@ -30,7 +30,7 @@ const std::string ClientAddress::tableName = "\"client_address\"";
 
 const std::vector<typename ClientAddress::MetaData> ClientAddress::metaData_={
 {"id","std::string","uuid",0,0,1,1},
-{"client_id","std::string","uuid",0,0,0,1},
+{"client_id","std::string","uuid",0,0,0,0},
 {"street","std::string","character varying",150,0,0,0},
 {"address_line_1","std::string","character varying",150,0,0,0},
 {"address_line_2","std::string","character varying",150,0,0,0},
@@ -38,7 +38,7 @@ const std::vector<typename ClientAddress::MetaData> ClientAddress::metaData_={
 {"state_or_province","std::string","character varying",150,0,0,0},
 {"country","std::string","character varying",150,0,0,0},
 {"country_code","std::string","character varying",150,0,0,0},
-{"address_type_id","std::string","uuid",0,0,0,1},
+{"address_type_id","std::string","uuid",0,0,0,0},
 {"is_active","bool","boolean",1,0,0,1}
 };
 const std::string &ClientAddress::getColumnName(size_t index) noexcept(false)
@@ -588,6 +588,11 @@ void ClientAddress::setClientId(std::string &&pClientId) noexcept
     clientId_ = std::make_shared<std::string>(std::move(pClientId));
     dirtyFlag_[1] = true;
 }
+void ClientAddress::setClientIdToNull() noexcept
+{
+    clientId_.reset();
+    dirtyFlag_[1] = true;
+}
 
 const std::string &ClientAddress::getValueOfStreet() const noexcept
 {
@@ -797,6 +802,11 @@ void ClientAddress::setAddressTypeId(const std::string &pAddressTypeId) noexcept
 void ClientAddress::setAddressTypeId(std::string &&pAddressTypeId) noexcept
 {
     addressTypeId_ = std::make_shared<std::string>(std::move(pAddressTypeId));
+    dirtyFlag_[9] = true;
+}
+void ClientAddress::setAddressTypeIdToNull() noexcept
+{
+    addressTypeId_.reset();
     dirtyFlag_[9] = true;
 }
 
@@ -1788,8 +1798,7 @@ bool ClientAddress::validJsonOfField(size_t index,
         case 1:
             if(pJson.isNull())
             {
-                err="The " + fieldName + " column cannot be null";
-                return false;
+                return true;
             }
             if(!pJson.isString())
             {
@@ -1807,14 +1816,14 @@ bool ClientAddress::validJsonOfField(size_t index,
                 err="Type error in the "+fieldName+" field";
                 return false;
             }
-            if(pJson.isString() && std::strlen(pJson.asCString()) > 150)
+            if(pJson.isString() && std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>{}
+                .from_bytes(pJson.asCString()).size() > 150)
             {
                 err="String length exceeds limit for the " +
                     fieldName +
                     " field (the maximum value is 150)";
                 return false;
             }
-
             break;
         case 3:
             if(pJson.isNull())
@@ -1826,14 +1835,14 @@ bool ClientAddress::validJsonOfField(size_t index,
                 err="Type error in the "+fieldName+" field";
                 return false;
             }
-            if(pJson.isString() && std::strlen(pJson.asCString()) > 150)
+            if(pJson.isString() && std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>{}
+                .from_bytes(pJson.asCString()).size() > 150)
             {
                 err="String length exceeds limit for the " +
                     fieldName +
                     " field (the maximum value is 150)";
                 return false;
             }
-
             break;
         case 4:
             if(pJson.isNull())
@@ -1845,14 +1854,14 @@ bool ClientAddress::validJsonOfField(size_t index,
                 err="Type error in the "+fieldName+" field";
                 return false;
             }
-            if(pJson.isString() && std::strlen(pJson.asCString()) > 150)
+            if(pJson.isString() && std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>{}
+                .from_bytes(pJson.asCString()).size() > 150)
             {
                 err="String length exceeds limit for the " +
                     fieldName +
                     " field (the maximum value is 150)";
                 return false;
             }
-
             break;
         case 5:
             if(pJson.isNull())
@@ -1864,14 +1873,14 @@ bool ClientAddress::validJsonOfField(size_t index,
                 err="Type error in the "+fieldName+" field";
                 return false;
             }
-            if(pJson.isString() && std::strlen(pJson.asCString()) > 150)
+            if(pJson.isString() && std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>{}
+                .from_bytes(pJson.asCString()).size() > 150)
             {
                 err="String length exceeds limit for the " +
                     fieldName +
                     " field (the maximum value is 150)";
                 return false;
             }
-
             break;
         case 6:
             if(pJson.isNull())
@@ -1883,14 +1892,14 @@ bool ClientAddress::validJsonOfField(size_t index,
                 err="Type error in the "+fieldName+" field";
                 return false;
             }
-            if(pJson.isString() && std::strlen(pJson.asCString()) > 150)
+            if(pJson.isString() && std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>{}
+                .from_bytes(pJson.asCString()).size() > 150)
             {
                 err="String length exceeds limit for the " +
                     fieldName +
                     " field (the maximum value is 150)";
                 return false;
             }
-
             break;
         case 7:
             if(pJson.isNull())
@@ -1902,14 +1911,14 @@ bool ClientAddress::validJsonOfField(size_t index,
                 err="Type error in the "+fieldName+" field";
                 return false;
             }
-            if(pJson.isString() && std::strlen(pJson.asCString()) > 150)
+            if(pJson.isString() && std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>{}
+                .from_bytes(pJson.asCString()).size() > 150)
             {
                 err="String length exceeds limit for the " +
                     fieldName +
                     " field (the maximum value is 150)";
                 return false;
             }
-
             break;
         case 8:
             if(pJson.isNull())
@@ -1921,20 +1930,19 @@ bool ClientAddress::validJsonOfField(size_t index,
                 err="Type error in the "+fieldName+" field";
                 return false;
             }
-            if(pJson.isString() && std::strlen(pJson.asCString()) > 150)
+            if(pJson.isString() && std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>{}
+                .from_bytes(pJson.asCString()).size() > 150)
             {
                 err="String length exceeds limit for the " +
                     fieldName +
                     " field (the maximum value is 150)";
                 return false;
             }
-
             break;
         case 9:
             if(pJson.isNull())
             {
-                err="The " + fieldName + " column cannot be null";
-                return false;
+                return true;
             }
             if(!pJson.isString())
             {

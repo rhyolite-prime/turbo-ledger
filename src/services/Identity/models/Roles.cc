@@ -11,27 +11,31 @@
 
 using namespace drogon;
 using namespace drogon::orm;
-using namespace drogon_model::TurboLedgerIdentity;
+using namespace drogon_model::TlIdentity;
 
 const std::string Roles::Cols::_id = "\"id\"";
-const std::string Roles::Cols::_tenant_identifier = "\"tenant_identifier\"";
+const std::string Roles::Cols::_business_id = "\"business_id\"";
 const std::string Roles::Cols::_name = "\"name\"";
 const std::string Roles::Cols::_description = "\"description\"";
-const std::string Roles::Cols::_created_at = "\"created_at\"";
-const std::string Roles::Cols::_updated_at = "\"updated_at\"";
 const std::string Roles::Cols::_permissions = "\"permissions\"";
+const std::string Roles::Cols::_created_by = "\"created_by\"";
+const std::string Roles::Cols::_created_at = "\"created_at\"";
+const std::string Roles::Cols::_modified_by = "\"modified_by\"";
+const std::string Roles::Cols::_modified_at = "\"modified_at\"";
 const std::string Roles::primaryKeyName = "id";
 const bool Roles::hasPrimaryKey = true;
 const std::string Roles::tableName = "\"roles\"";
 
 const std::vector<typename Roles::MetaData> Roles::metaData_={
 {"id","std::string","uuid",0,0,1,1},
-{"tenant_identifier","std::string","character varying",32,0,0,1},
+{"business_id","std::string","uuid",0,0,0,0},
 {"name","std::string","character varying",100,0,0,1},
-{"description","std::string","text",0,0,0,0},
-{"created_at","::trantor::Date","timestamp with time zone",0,0,0,1},
-{"updated_at","::trantor::Date","timestamp with time zone",0,0,0,1},
-{"permissions","std::string","jsonb",0,0,0,0}
+{"description","std::string","character varying",250,0,0,0},
+{"permissions","std::string","jsonb",0,0,0,1},
+{"created_by","std::string","uuid",0,0,0,0},
+{"created_at","::trantor::Date","timestamp with time zone",0,0,0,0},
+{"modified_by","std::string","uuid",0,0,0,0},
+{"modified_at","::trantor::Date","timestamp with time zone",0,0,0,0}
 };
 const std::string &Roles::getColumnName(size_t index) noexcept(false)
 {
@@ -46,9 +50,9 @@ Roles::Roles(const Row &r, const ssize_t indexOffset) noexcept
         {
             id_=std::make_shared<std::string>(r["id"].as<std::string>());
         }
-        if(!r["tenant_identifier"].isNull())
+        if(!r["business_id"].isNull())
         {
-            tenantIdentifier_=std::make_shared<std::string>(r["tenant_identifier"].as<std::string>());
+            businessId_=std::make_shared<std::string>(r["business_id"].as<std::string>());
         }
         if(!r["name"].isNull())
         {
@@ -57,6 +61,14 @@ Roles::Roles(const Row &r, const ssize_t indexOffset) noexcept
         if(!r["description"].isNull())
         {
             description_=std::make_shared<std::string>(r["description"].as<std::string>());
+        }
+        if(!r["permissions"].isNull())
+        {
+            permissions_=std::make_shared<std::string>(r["permissions"].as<std::string>());
+        }
+        if(!r["created_by"].isNull())
+        {
+            createdBy_=std::make_shared<std::string>(r["created_by"].as<std::string>());
         }
         if(!r["created_at"].isNull())
         {
@@ -80,9 +92,13 @@ Roles::Roles(const Row &r, const ssize_t indexOffset) noexcept
                 createdAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
         }
-        if(!r["updated_at"].isNull())
+        if(!r["modified_by"].isNull())
         {
-            auto timeStr = r["updated_at"].as<std::string>();
+            modifiedBy_=std::make_shared<std::string>(r["modified_by"].as<std::string>());
+        }
+        if(!r["modified_at"].isNull())
+        {
+            auto timeStr = r["modified_at"].as<std::string>();
             struct tm stm;
             memset(&stm,0,sizeof(stm));
             auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
@@ -99,18 +115,14 @@ Roles::Roles(const Row &r, const ssize_t indexOffset) noexcept
                     }
                     decimalNum = (size_t)atol(decimals.c_str());
                 }
-                updatedAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+                modifiedAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
-        }
-        if(!r["permissions"].isNull())
-        {
-            permissions_=std::make_shared<std::string>(r["permissions"].as<std::string>());
         }
     }
     else
     {
         size_t offset = (size_t)indexOffset;
-        if(offset + 7 > r.size())
+        if(offset + 9 > r.size())
         {
             LOG_FATAL << "Invalid SQL result for this model";
             return;
@@ -124,7 +136,7 @@ Roles::Roles(const Row &r, const ssize_t indexOffset) noexcept
         index = offset + 1;
         if(!r[index].isNull())
         {
-            tenantIdentifier_=std::make_shared<std::string>(r[index].as<std::string>());
+            businessId_=std::make_shared<std::string>(r[index].as<std::string>());
         }
         index = offset + 2;
         if(!r[index].isNull())
@@ -137,6 +149,16 @@ Roles::Roles(const Row &r, const ssize_t indexOffset) noexcept
             description_=std::make_shared<std::string>(r[index].as<std::string>());
         }
         index = offset + 4;
+        if(!r[index].isNull())
+        {
+            permissions_=std::make_shared<std::string>(r[index].as<std::string>());
+        }
+        index = offset + 5;
+        if(!r[index].isNull())
+        {
+            createdBy_=std::make_shared<std::string>(r[index].as<std::string>());
+        }
+        index = offset + 6;
         if(!r[index].isNull())
         {
             auto timeStr = r[index].as<std::string>();
@@ -159,7 +181,12 @@ Roles::Roles(const Row &r, const ssize_t indexOffset) noexcept
                 createdAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
         }
-        index = offset + 5;
+        index = offset + 7;
+        if(!r[index].isNull())
+        {
+            modifiedBy_=std::make_shared<std::string>(r[index].as<std::string>());
+        }
+        index = offset + 8;
         if(!r[index].isNull())
         {
             auto timeStr = r[index].as<std::string>();
@@ -179,13 +206,8 @@ Roles::Roles(const Row &r, const ssize_t indexOffset) noexcept
                     }
                     decimalNum = (size_t)atol(decimals.c_str());
                 }
-                updatedAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+                modifiedAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
-        }
-        index = offset + 6;
-        if(!r[index].isNull())
-        {
-            permissions_=std::make_shared<std::string>(r[index].as<std::string>());
         }
     }
 
@@ -193,7 +215,7 @@ Roles::Roles(const Row &r, const ssize_t indexOffset) noexcept
 
 Roles::Roles(const Json::Value &pJson, const std::vector<std::string> &pMasqueradingVector) noexcept(false)
 {
-    if(pMasqueradingVector.size() != 7)
+    if(pMasqueradingVector.size() != 9)
     {
         LOG_ERROR << "Bad masquerading vector";
         return;
@@ -211,7 +233,7 @@ Roles::Roles(const Json::Value &pJson, const std::vector<std::string> &pMasquera
         dirtyFlag_[1] = true;
         if(!pJson[pMasqueradingVector[1]].isNull())
         {
-            tenantIdentifier_=std::make_shared<std::string>(pJson[pMasqueradingVector[1]].asString());
+            businessId_=std::make_shared<std::string>(pJson[pMasqueradingVector[1]].asString());
         }
     }
     if(!pMasqueradingVector[2].empty() && pJson.isMember(pMasqueradingVector[2]))
@@ -235,7 +257,23 @@ Roles::Roles(const Json::Value &pJson, const std::vector<std::string> &pMasquera
         dirtyFlag_[4] = true;
         if(!pJson[pMasqueradingVector[4]].isNull())
         {
-            auto timeStr = pJson[pMasqueradingVector[4]].asString();
+            permissions_=std::make_shared<std::string>(pJson[pMasqueradingVector[4]].asString());
+        }
+    }
+    if(!pMasqueradingVector[5].empty() && pJson.isMember(pMasqueradingVector[5]))
+    {
+        dirtyFlag_[5] = true;
+        if(!pJson[pMasqueradingVector[5]].isNull())
+        {
+            createdBy_=std::make_shared<std::string>(pJson[pMasqueradingVector[5]].asString());
+        }
+    }
+    if(!pMasqueradingVector[6].empty() && pJson.isMember(pMasqueradingVector[6]))
+    {
+        dirtyFlag_[6] = true;
+        if(!pJson[pMasqueradingVector[6]].isNull())
+        {
+            auto timeStr = pJson[pMasqueradingVector[6]].asString();
             struct tm stm;
             memset(&stm,0,sizeof(stm));
             auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
@@ -256,12 +294,20 @@ Roles::Roles(const Json::Value &pJson, const std::vector<std::string> &pMasquera
             }
         }
     }
-    if(!pMasqueradingVector[5].empty() && pJson.isMember(pMasqueradingVector[5]))
+    if(!pMasqueradingVector[7].empty() && pJson.isMember(pMasqueradingVector[7]))
     {
-        dirtyFlag_[5] = true;
-        if(!pJson[pMasqueradingVector[5]].isNull())
+        dirtyFlag_[7] = true;
+        if(!pJson[pMasqueradingVector[7]].isNull())
         {
-            auto timeStr = pJson[pMasqueradingVector[5]].asString();
+            modifiedBy_=std::make_shared<std::string>(pJson[pMasqueradingVector[7]].asString());
+        }
+    }
+    if(!pMasqueradingVector[8].empty() && pJson.isMember(pMasqueradingVector[8]))
+    {
+        dirtyFlag_[8] = true;
+        if(!pJson[pMasqueradingVector[8]].isNull())
+        {
+            auto timeStr = pJson[pMasqueradingVector[8]].asString();
             struct tm stm;
             memset(&stm,0,sizeof(stm));
             auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
@@ -278,16 +324,8 @@ Roles::Roles(const Json::Value &pJson, const std::vector<std::string> &pMasquera
                     }
                     decimalNum = (size_t)atol(decimals.c_str());
                 }
-                updatedAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+                modifiedAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
-        }
-    }
-    if(!pMasqueradingVector[6].empty() && pJson.isMember(pMasqueradingVector[6]))
-    {
-        dirtyFlag_[6] = true;
-        if(!pJson[pMasqueradingVector[6]].isNull())
-        {
-            permissions_=std::make_shared<std::string>(pJson[pMasqueradingVector[6]].asString());
         }
     }
 }
@@ -302,12 +340,12 @@ Roles::Roles(const Json::Value &pJson) noexcept(false)
             id_=std::make_shared<std::string>(pJson["id"].asString());
         }
     }
-    if(pJson.isMember("tenant_identifier"))
+    if(pJson.isMember("business_id"))
     {
         dirtyFlag_[1]=true;
-        if(!pJson["tenant_identifier"].isNull())
+        if(!pJson["business_id"].isNull())
         {
-            tenantIdentifier_=std::make_shared<std::string>(pJson["tenant_identifier"].asString());
+            businessId_=std::make_shared<std::string>(pJson["business_id"].asString());
         }
     }
     if(pJson.isMember("name"))
@@ -326,9 +364,25 @@ Roles::Roles(const Json::Value &pJson) noexcept(false)
             description_=std::make_shared<std::string>(pJson["description"].asString());
         }
     }
-    if(pJson.isMember("created_at"))
+    if(pJson.isMember("permissions"))
     {
         dirtyFlag_[4]=true;
+        if(!pJson["permissions"].isNull())
+        {
+            permissions_=std::make_shared<std::string>(pJson["permissions"].asString());
+        }
+    }
+    if(pJson.isMember("created_by"))
+    {
+        dirtyFlag_[5]=true;
+        if(!pJson["created_by"].isNull())
+        {
+            createdBy_=std::make_shared<std::string>(pJson["created_by"].asString());
+        }
+    }
+    if(pJson.isMember("created_at"))
+    {
+        dirtyFlag_[6]=true;
         if(!pJson["created_at"].isNull())
         {
             auto timeStr = pJson["created_at"].asString();
@@ -352,12 +406,20 @@ Roles::Roles(const Json::Value &pJson) noexcept(false)
             }
         }
     }
-    if(pJson.isMember("updated_at"))
+    if(pJson.isMember("modified_by"))
     {
-        dirtyFlag_[5]=true;
-        if(!pJson["updated_at"].isNull())
+        dirtyFlag_[7]=true;
+        if(!pJson["modified_by"].isNull())
         {
-            auto timeStr = pJson["updated_at"].asString();
+            modifiedBy_=std::make_shared<std::string>(pJson["modified_by"].asString());
+        }
+    }
+    if(pJson.isMember("modified_at"))
+    {
+        dirtyFlag_[8]=true;
+        if(!pJson["modified_at"].isNull())
+        {
+            auto timeStr = pJson["modified_at"].asString();
             struct tm stm;
             memset(&stm,0,sizeof(stm));
             auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
@@ -374,16 +436,8 @@ Roles::Roles(const Json::Value &pJson) noexcept(false)
                     }
                     decimalNum = (size_t)atol(decimals.c_str());
                 }
-                updatedAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+                modifiedAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
-        }
-    }
-    if(pJson.isMember("permissions"))
-    {
-        dirtyFlag_[6]=true;
-        if(!pJson["permissions"].isNull())
-        {
-            permissions_=std::make_shared<std::string>(pJson["permissions"].asString());
         }
     }
 }
@@ -391,7 +445,7 @@ Roles::Roles(const Json::Value &pJson) noexcept(false)
 void Roles::updateByMasqueradedJson(const Json::Value &pJson,
                                             const std::vector<std::string> &pMasqueradingVector) noexcept(false)
 {
-    if(pMasqueradingVector.size() != 7)
+    if(pMasqueradingVector.size() != 9)
     {
         LOG_ERROR << "Bad masquerading vector";
         return;
@@ -408,7 +462,7 @@ void Roles::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[1] = true;
         if(!pJson[pMasqueradingVector[1]].isNull())
         {
-            tenantIdentifier_=std::make_shared<std::string>(pJson[pMasqueradingVector[1]].asString());
+            businessId_=std::make_shared<std::string>(pJson[pMasqueradingVector[1]].asString());
         }
     }
     if(!pMasqueradingVector[2].empty() && pJson.isMember(pMasqueradingVector[2]))
@@ -432,7 +486,23 @@ void Roles::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[4] = true;
         if(!pJson[pMasqueradingVector[4]].isNull())
         {
-            auto timeStr = pJson[pMasqueradingVector[4]].asString();
+            permissions_=std::make_shared<std::string>(pJson[pMasqueradingVector[4]].asString());
+        }
+    }
+    if(!pMasqueradingVector[5].empty() && pJson.isMember(pMasqueradingVector[5]))
+    {
+        dirtyFlag_[5] = true;
+        if(!pJson[pMasqueradingVector[5]].isNull())
+        {
+            createdBy_=std::make_shared<std::string>(pJson[pMasqueradingVector[5]].asString());
+        }
+    }
+    if(!pMasqueradingVector[6].empty() && pJson.isMember(pMasqueradingVector[6]))
+    {
+        dirtyFlag_[6] = true;
+        if(!pJson[pMasqueradingVector[6]].isNull())
+        {
+            auto timeStr = pJson[pMasqueradingVector[6]].asString();
             struct tm stm;
             memset(&stm,0,sizeof(stm));
             auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
@@ -453,12 +523,20 @@ void Roles::updateByMasqueradedJson(const Json::Value &pJson,
             }
         }
     }
-    if(!pMasqueradingVector[5].empty() && pJson.isMember(pMasqueradingVector[5]))
+    if(!pMasqueradingVector[7].empty() && pJson.isMember(pMasqueradingVector[7]))
     {
-        dirtyFlag_[5] = true;
-        if(!pJson[pMasqueradingVector[5]].isNull())
+        dirtyFlag_[7] = true;
+        if(!pJson[pMasqueradingVector[7]].isNull())
         {
-            auto timeStr = pJson[pMasqueradingVector[5]].asString();
+            modifiedBy_=std::make_shared<std::string>(pJson[pMasqueradingVector[7]].asString());
+        }
+    }
+    if(!pMasqueradingVector[8].empty() && pJson.isMember(pMasqueradingVector[8]))
+    {
+        dirtyFlag_[8] = true;
+        if(!pJson[pMasqueradingVector[8]].isNull())
+        {
+            auto timeStr = pJson[pMasqueradingVector[8]].asString();
             struct tm stm;
             memset(&stm,0,sizeof(stm));
             auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
@@ -475,16 +553,8 @@ void Roles::updateByMasqueradedJson(const Json::Value &pJson,
                     }
                     decimalNum = (size_t)atol(decimals.c_str());
                 }
-                updatedAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+                modifiedAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
-        }
-    }
-    if(!pMasqueradingVector[6].empty() && pJson.isMember(pMasqueradingVector[6]))
-    {
-        dirtyFlag_[6] = true;
-        if(!pJson[pMasqueradingVector[6]].isNull())
-        {
-            permissions_=std::make_shared<std::string>(pJson[pMasqueradingVector[6]].asString());
         }
     }
 }
@@ -498,12 +568,12 @@ void Roles::updateByJson(const Json::Value &pJson) noexcept(false)
             id_=std::make_shared<std::string>(pJson["id"].asString());
         }
     }
-    if(pJson.isMember("tenant_identifier"))
+    if(pJson.isMember("business_id"))
     {
         dirtyFlag_[1] = true;
-        if(!pJson["tenant_identifier"].isNull())
+        if(!pJson["business_id"].isNull())
         {
-            tenantIdentifier_=std::make_shared<std::string>(pJson["tenant_identifier"].asString());
+            businessId_=std::make_shared<std::string>(pJson["business_id"].asString());
         }
     }
     if(pJson.isMember("name"))
@@ -522,9 +592,25 @@ void Roles::updateByJson(const Json::Value &pJson) noexcept(false)
             description_=std::make_shared<std::string>(pJson["description"].asString());
         }
     }
-    if(pJson.isMember("created_at"))
+    if(pJson.isMember("permissions"))
     {
         dirtyFlag_[4] = true;
+        if(!pJson["permissions"].isNull())
+        {
+            permissions_=std::make_shared<std::string>(pJson["permissions"].asString());
+        }
+    }
+    if(pJson.isMember("created_by"))
+    {
+        dirtyFlag_[5] = true;
+        if(!pJson["created_by"].isNull())
+        {
+            createdBy_=std::make_shared<std::string>(pJson["created_by"].asString());
+        }
+    }
+    if(pJson.isMember("created_at"))
+    {
+        dirtyFlag_[6] = true;
         if(!pJson["created_at"].isNull())
         {
             auto timeStr = pJson["created_at"].asString();
@@ -548,12 +634,20 @@ void Roles::updateByJson(const Json::Value &pJson) noexcept(false)
             }
         }
     }
-    if(pJson.isMember("updated_at"))
+    if(pJson.isMember("modified_by"))
     {
-        dirtyFlag_[5] = true;
-        if(!pJson["updated_at"].isNull())
+        dirtyFlag_[7] = true;
+        if(!pJson["modified_by"].isNull())
         {
-            auto timeStr = pJson["updated_at"].asString();
+            modifiedBy_=std::make_shared<std::string>(pJson["modified_by"].asString());
+        }
+    }
+    if(pJson.isMember("modified_at"))
+    {
+        dirtyFlag_[8] = true;
+        if(!pJson["modified_at"].isNull())
+        {
+            auto timeStr = pJson["modified_at"].asString();
             struct tm stm;
             memset(&stm,0,sizeof(stm));
             auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
@@ -570,16 +664,8 @@ void Roles::updateByJson(const Json::Value &pJson) noexcept(false)
                     }
                     decimalNum = (size_t)atol(decimals.c_str());
                 }
-                updatedAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+                modifiedAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
-        }
-    }
-    if(pJson.isMember("permissions"))
-    {
-        dirtyFlag_[6] = true;
-        if(!pJson["permissions"].isNull())
-        {
-            permissions_=std::make_shared<std::string>(pJson["permissions"].asString());
         }
     }
 }
@@ -611,25 +697,30 @@ const typename Roles::PrimaryKeyType & Roles::getPrimaryKey() const
     return *id_;
 }
 
-const std::string &Roles::getValueOfTenantIdentifier() const noexcept
+const std::string &Roles::getValueOfBusinessId() const noexcept
 {
     static const std::string defaultValue = std::string();
-    if(tenantIdentifier_)
-        return *tenantIdentifier_;
+    if(businessId_)
+        return *businessId_;
     return defaultValue;
 }
-const std::shared_ptr<std::string> &Roles::getTenantIdentifier() const noexcept
+const std::shared_ptr<std::string> &Roles::getBusinessId() const noexcept
 {
-    return tenantIdentifier_;
+    return businessId_;
 }
-void Roles::setTenantIdentifier(const std::string &pTenantIdentifier) noexcept
+void Roles::setBusinessId(const std::string &pBusinessId) noexcept
 {
-    tenantIdentifier_ = std::make_shared<std::string>(pTenantIdentifier);
+    businessId_ = std::make_shared<std::string>(pBusinessId);
     dirtyFlag_[1] = true;
 }
-void Roles::setTenantIdentifier(std::string &&pTenantIdentifier) noexcept
+void Roles::setBusinessId(std::string &&pBusinessId) noexcept
 {
-    tenantIdentifier_ = std::make_shared<std::string>(std::move(pTenantIdentifier));
+    businessId_ = std::make_shared<std::string>(std::move(pBusinessId));
+    dirtyFlag_[1] = true;
+}
+void Roles::setBusinessIdToNull() noexcept
+{
+    businessId_.reset();
     dirtyFlag_[1] = true;
 }
 
@@ -682,40 +773,6 @@ void Roles::setDescriptionToNull() noexcept
     dirtyFlag_[3] = true;
 }
 
-const ::trantor::Date &Roles::getValueOfCreatedAt() const noexcept
-{
-    static const ::trantor::Date defaultValue = ::trantor::Date();
-    if(createdAt_)
-        return *createdAt_;
-    return defaultValue;
-}
-const std::shared_ptr<::trantor::Date> &Roles::getCreatedAt() const noexcept
-{
-    return createdAt_;
-}
-void Roles::setCreatedAt(const ::trantor::Date &pCreatedAt) noexcept
-{
-    createdAt_ = std::make_shared<::trantor::Date>(pCreatedAt);
-    dirtyFlag_[4] = true;
-}
-
-const ::trantor::Date &Roles::getValueOfUpdatedAt() const noexcept
-{
-    static const ::trantor::Date defaultValue = ::trantor::Date();
-    if(updatedAt_)
-        return *updatedAt_;
-    return defaultValue;
-}
-const std::shared_ptr<::trantor::Date> &Roles::getUpdatedAt() const noexcept
-{
-    return updatedAt_;
-}
-void Roles::setUpdatedAt(const ::trantor::Date &pUpdatedAt) noexcept
-{
-    updatedAt_ = std::make_shared<::trantor::Date>(pUpdatedAt);
-    dirtyFlag_[5] = true;
-}
-
 const std::string &Roles::getValueOfPermissions() const noexcept
 {
     static const std::string defaultValue = std::string();
@@ -730,17 +787,110 @@ const std::shared_ptr<std::string> &Roles::getPermissions() const noexcept
 void Roles::setPermissions(const std::string &pPermissions) noexcept
 {
     permissions_ = std::make_shared<std::string>(pPermissions);
-    dirtyFlag_[6] = true;
+    dirtyFlag_[4] = true;
 }
 void Roles::setPermissions(std::string &&pPermissions) noexcept
 {
     permissions_ = std::make_shared<std::string>(std::move(pPermissions));
+    dirtyFlag_[4] = true;
+}
+
+const std::string &Roles::getValueOfCreatedBy() const noexcept
+{
+    static const std::string defaultValue = std::string();
+    if(createdBy_)
+        return *createdBy_;
+    return defaultValue;
+}
+const std::shared_ptr<std::string> &Roles::getCreatedBy() const noexcept
+{
+    return createdBy_;
+}
+void Roles::setCreatedBy(const std::string &pCreatedBy) noexcept
+{
+    createdBy_ = std::make_shared<std::string>(pCreatedBy);
+    dirtyFlag_[5] = true;
+}
+void Roles::setCreatedBy(std::string &&pCreatedBy) noexcept
+{
+    createdBy_ = std::make_shared<std::string>(std::move(pCreatedBy));
+    dirtyFlag_[5] = true;
+}
+void Roles::setCreatedByToNull() noexcept
+{
+    createdBy_.reset();
+    dirtyFlag_[5] = true;
+}
+
+const ::trantor::Date &Roles::getValueOfCreatedAt() const noexcept
+{
+    static const ::trantor::Date defaultValue = ::trantor::Date();
+    if(createdAt_)
+        return *createdAt_;
+    return defaultValue;
+}
+const std::shared_ptr<::trantor::Date> &Roles::getCreatedAt() const noexcept
+{
+    return createdAt_;
+}
+void Roles::setCreatedAt(const ::trantor::Date &pCreatedAt) noexcept
+{
+    createdAt_ = std::make_shared<::trantor::Date>(pCreatedAt);
     dirtyFlag_[6] = true;
 }
-void Roles::setPermissionsToNull() noexcept
+void Roles::setCreatedAtToNull() noexcept
 {
-    permissions_.reset();
+    createdAt_.reset();
     dirtyFlag_[6] = true;
+}
+
+const std::string &Roles::getValueOfModifiedBy() const noexcept
+{
+    static const std::string defaultValue = std::string();
+    if(modifiedBy_)
+        return *modifiedBy_;
+    return defaultValue;
+}
+const std::shared_ptr<std::string> &Roles::getModifiedBy() const noexcept
+{
+    return modifiedBy_;
+}
+void Roles::setModifiedBy(const std::string &pModifiedBy) noexcept
+{
+    modifiedBy_ = std::make_shared<std::string>(pModifiedBy);
+    dirtyFlag_[7] = true;
+}
+void Roles::setModifiedBy(std::string &&pModifiedBy) noexcept
+{
+    modifiedBy_ = std::make_shared<std::string>(std::move(pModifiedBy));
+    dirtyFlag_[7] = true;
+}
+void Roles::setModifiedByToNull() noexcept
+{
+    modifiedBy_.reset();
+    dirtyFlag_[7] = true;
+}
+
+const ::trantor::Date &Roles::getValueOfModifiedAt() const noexcept
+{
+    static const ::trantor::Date defaultValue = ::trantor::Date();
+    if(modifiedAt_)
+        return *modifiedAt_;
+    return defaultValue;
+}
+const std::shared_ptr<::trantor::Date> &Roles::getModifiedAt() const noexcept
+{
+    return modifiedAt_;
+}
+void Roles::setModifiedAt(const ::trantor::Date &pModifiedAt) noexcept
+{
+    modifiedAt_ = std::make_shared<::trantor::Date>(pModifiedAt);
+    dirtyFlag_[8] = true;
+}
+void Roles::setModifiedAtToNull() noexcept
+{
+    modifiedAt_.reset();
+    dirtyFlag_[8] = true;
 }
 
 void Roles::updateId(const uint64_t id)
@@ -751,12 +901,14 @@ const std::vector<std::string> &Roles::insertColumns() noexcept
 {
     static const std::vector<std::string> inCols={
         "id",
-        "tenant_identifier",
+        "business_id",
         "name",
         "description",
+        "permissions",
+        "created_by",
         "created_at",
-        "updated_at",
-        "permissions"
+        "modified_by",
+        "modified_at"
     };
     return inCols;
 }
@@ -776,9 +928,9 @@ void Roles::outputArgs(drogon::orm::internal::SqlBinder &binder) const
     }
     if(dirtyFlag_[1])
     {
-        if(getTenantIdentifier())
+        if(getBusinessId())
         {
-            binder << getValueOfTenantIdentifier();
+            binder << getValueOfBusinessId();
         }
         else
         {
@@ -809,6 +961,28 @@ void Roles::outputArgs(drogon::orm::internal::SqlBinder &binder) const
     }
     if(dirtyFlag_[4])
     {
+        if(getPermissions())
+        {
+            binder << getValueOfPermissions();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[5])
+    {
+        if(getCreatedBy())
+        {
+            binder << getValueOfCreatedBy();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[6])
+    {
         if(getCreatedAt())
         {
             binder << getValueOfCreatedAt();
@@ -818,22 +992,22 @@ void Roles::outputArgs(drogon::orm::internal::SqlBinder &binder) const
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[5])
+    if(dirtyFlag_[7])
     {
-        if(getUpdatedAt())
+        if(getModifiedBy())
         {
-            binder << getValueOfUpdatedAt();
+            binder << getValueOfModifiedBy();
         }
         else
         {
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[6])
+    if(dirtyFlag_[8])
     {
-        if(getPermissions())
+        if(getModifiedAt())
         {
-            binder << getValueOfPermissions();
+            binder << getValueOfModifiedAt();
         }
         else
         {
@@ -873,6 +1047,14 @@ const std::vector<std::string> Roles::updateColumns() const
     {
         ret.push_back(getColumnName(6));
     }
+    if(dirtyFlag_[7])
+    {
+        ret.push_back(getColumnName(7));
+    }
+    if(dirtyFlag_[8])
+    {
+        ret.push_back(getColumnName(8));
+    }
     return ret;
 }
 
@@ -891,9 +1073,9 @@ void Roles::updateArgs(drogon::orm::internal::SqlBinder &binder) const
     }
     if(dirtyFlag_[1])
     {
-        if(getTenantIdentifier())
+        if(getBusinessId())
         {
-            binder << getValueOfTenantIdentifier();
+            binder << getValueOfBusinessId();
         }
         else
         {
@@ -924,6 +1106,28 @@ void Roles::updateArgs(drogon::orm::internal::SqlBinder &binder) const
     }
     if(dirtyFlag_[4])
     {
+        if(getPermissions())
+        {
+            binder << getValueOfPermissions();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[5])
+    {
+        if(getCreatedBy())
+        {
+            binder << getValueOfCreatedBy();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[6])
+    {
         if(getCreatedAt())
         {
             binder << getValueOfCreatedAt();
@@ -933,22 +1137,22 @@ void Roles::updateArgs(drogon::orm::internal::SqlBinder &binder) const
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[5])
+    if(dirtyFlag_[7])
     {
-        if(getUpdatedAt())
+        if(getModifiedBy())
         {
-            binder << getValueOfUpdatedAt();
+            binder << getValueOfModifiedBy();
         }
         else
         {
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[6])
+    if(dirtyFlag_[8])
     {
-        if(getPermissions())
+        if(getModifiedAt())
         {
-            binder << getValueOfPermissions();
+            binder << getValueOfModifiedAt();
         }
         else
         {
@@ -967,13 +1171,13 @@ Json::Value Roles::toJson() const
     {
         ret["id"]=Json::Value();
     }
-    if(getTenantIdentifier())
+    if(getBusinessId())
     {
-        ret["tenant_identifier"]=getValueOfTenantIdentifier();
+        ret["business_id"]=getValueOfBusinessId();
     }
     else
     {
-        ret["tenant_identifier"]=Json::Value();
+        ret["business_id"]=Json::Value();
     }
     if(getName())
     {
@@ -991,6 +1195,22 @@ Json::Value Roles::toJson() const
     {
         ret["description"]=Json::Value();
     }
+    if(getPermissions())
+    {
+        ret["permissions"]=getValueOfPermissions();
+    }
+    else
+    {
+        ret["permissions"]=Json::Value();
+    }
+    if(getCreatedBy())
+    {
+        ret["created_by"]=getValueOfCreatedBy();
+    }
+    else
+    {
+        ret["created_by"]=Json::Value();
+    }
     if(getCreatedAt())
     {
         ret["created_at"]=getCreatedAt()->toDbStringLocal();
@@ -999,21 +1219,21 @@ Json::Value Roles::toJson() const
     {
         ret["created_at"]=Json::Value();
     }
-    if(getUpdatedAt())
+    if(getModifiedBy())
     {
-        ret["updated_at"]=getUpdatedAt()->toDbStringLocal();
+        ret["modified_by"]=getValueOfModifiedBy();
     }
     else
     {
-        ret["updated_at"]=Json::Value();
+        ret["modified_by"]=Json::Value();
     }
-    if(getPermissions())
+    if(getModifiedAt())
     {
-        ret["permissions"]=getValueOfPermissions();
+        ret["modified_at"]=getModifiedAt()->toDbStringLocal();
     }
     else
     {
-        ret["permissions"]=Json::Value();
+        ret["modified_at"]=Json::Value();
     }
     return ret;
 }
@@ -1027,7 +1247,7 @@ Json::Value Roles::toMasqueradedJson(
     const std::vector<std::string> &pMasqueradingVector) const
 {
     Json::Value ret;
-    if(pMasqueradingVector.size() == 7)
+    if(pMasqueradingVector.size() == 9)
     {
         if(!pMasqueradingVector[0].empty())
         {
@@ -1042,9 +1262,9 @@ Json::Value Roles::toMasqueradedJson(
         }
         if(!pMasqueradingVector[1].empty())
         {
-            if(getTenantIdentifier())
+            if(getBusinessId())
             {
-                ret[pMasqueradingVector[1]]=getValueOfTenantIdentifier();
+                ret[pMasqueradingVector[1]]=getValueOfBusinessId();
             }
             else
             {
@@ -1075,9 +1295,9 @@ Json::Value Roles::toMasqueradedJson(
         }
         if(!pMasqueradingVector[4].empty())
         {
-            if(getCreatedAt())
+            if(getPermissions())
             {
-                ret[pMasqueradingVector[4]]=getCreatedAt()->toDbStringLocal();
+                ret[pMasqueradingVector[4]]=getValueOfPermissions();
             }
             else
             {
@@ -1086,9 +1306,9 @@ Json::Value Roles::toMasqueradedJson(
         }
         if(!pMasqueradingVector[5].empty())
         {
-            if(getUpdatedAt())
+            if(getCreatedBy())
             {
-                ret[pMasqueradingVector[5]]=getUpdatedAt()->toDbStringLocal();
+                ret[pMasqueradingVector[5]]=getValueOfCreatedBy();
             }
             else
             {
@@ -1097,13 +1317,35 @@ Json::Value Roles::toMasqueradedJson(
         }
         if(!pMasqueradingVector[6].empty())
         {
-            if(getPermissions())
+            if(getCreatedAt())
             {
-                ret[pMasqueradingVector[6]]=getValueOfPermissions();
+                ret[pMasqueradingVector[6]]=getCreatedAt()->toDbStringLocal();
             }
             else
             {
                 ret[pMasqueradingVector[6]]=Json::Value();
+            }
+        }
+        if(!pMasqueradingVector[7].empty())
+        {
+            if(getModifiedBy())
+            {
+                ret[pMasqueradingVector[7]]=getValueOfModifiedBy();
+            }
+            else
+            {
+                ret[pMasqueradingVector[7]]=Json::Value();
+            }
+        }
+        if(!pMasqueradingVector[8].empty())
+        {
+            if(getModifiedAt())
+            {
+                ret[pMasqueradingVector[8]]=getModifiedAt()->toDbStringLocal();
+            }
+            else
+            {
+                ret[pMasqueradingVector[8]]=Json::Value();
             }
         }
         return ret;
@@ -1117,13 +1359,13 @@ Json::Value Roles::toMasqueradedJson(
     {
         ret["id"]=Json::Value();
     }
-    if(getTenantIdentifier())
+    if(getBusinessId())
     {
-        ret["tenant_identifier"]=getValueOfTenantIdentifier();
+        ret["business_id"]=getValueOfBusinessId();
     }
     else
     {
-        ret["tenant_identifier"]=Json::Value();
+        ret["business_id"]=Json::Value();
     }
     if(getName())
     {
@@ -1141,6 +1383,22 @@ Json::Value Roles::toMasqueradedJson(
     {
         ret["description"]=Json::Value();
     }
+    if(getPermissions())
+    {
+        ret["permissions"]=getValueOfPermissions();
+    }
+    else
+    {
+        ret["permissions"]=Json::Value();
+    }
+    if(getCreatedBy())
+    {
+        ret["created_by"]=getValueOfCreatedBy();
+    }
+    else
+    {
+        ret["created_by"]=Json::Value();
+    }
     if(getCreatedAt())
     {
         ret["created_at"]=getCreatedAt()->toDbStringLocal();
@@ -1149,21 +1407,21 @@ Json::Value Roles::toMasqueradedJson(
     {
         ret["created_at"]=Json::Value();
     }
-    if(getUpdatedAt())
+    if(getModifiedBy())
     {
-        ret["updated_at"]=getUpdatedAt()->toDbStringLocal();
+        ret["modified_by"]=getValueOfModifiedBy();
     }
     else
     {
-        ret["updated_at"]=Json::Value();
+        ret["modified_by"]=Json::Value();
     }
-    if(getPermissions())
+    if(getModifiedAt())
     {
-        ret["permissions"]=getValueOfPermissions();
+        ret["modified_at"]=getModifiedAt()->toDbStringLocal();
     }
     else
     {
-        ret["permissions"]=Json::Value();
+        ret["modified_at"]=Json::Value();
     }
     return ret;
 }
@@ -1175,15 +1433,10 @@ bool Roles::validateJsonForCreation(const Json::Value &pJson, std::string &err)
         if(!validJsonOfField(0, "id", pJson["id"], err, true))
             return false;
     }
-    if(pJson.isMember("tenant_identifier"))
+    if(pJson.isMember("business_id"))
     {
-        if(!validJsonOfField(1, "tenant_identifier", pJson["tenant_identifier"], err, true))
+        if(!validJsonOfField(1, "business_id", pJson["business_id"], err, true))
             return false;
-    }
-    else
-    {
-        err="The tenant_identifier column cannot be null";
-        return false;
     }
     if(pJson.isMember("name"))
     {
@@ -1200,19 +1453,34 @@ bool Roles::validateJsonForCreation(const Json::Value &pJson, std::string &err)
         if(!validJsonOfField(3, "description", pJson["description"], err, true))
             return false;
     }
-    if(pJson.isMember("created_at"))
-    {
-        if(!validJsonOfField(4, "created_at", pJson["created_at"], err, true))
-            return false;
-    }
-    if(pJson.isMember("updated_at"))
-    {
-        if(!validJsonOfField(5, "updated_at", pJson["updated_at"], err, true))
-            return false;
-    }
     if(pJson.isMember("permissions"))
     {
-        if(!validJsonOfField(6, "permissions", pJson["permissions"], err, true))
+        if(!validJsonOfField(4, "permissions", pJson["permissions"], err, true))
+            return false;
+    }
+    else
+    {
+        err="The permissions column cannot be null";
+        return false;
+    }
+    if(pJson.isMember("created_by"))
+    {
+        if(!validJsonOfField(5, "created_by", pJson["created_by"], err, true))
+            return false;
+    }
+    if(pJson.isMember("created_at"))
+    {
+        if(!validJsonOfField(6, "created_at", pJson["created_at"], err, true))
+            return false;
+    }
+    if(pJson.isMember("modified_by"))
+    {
+        if(!validJsonOfField(7, "modified_by", pJson["modified_by"], err, true))
+            return false;
+    }
+    if(pJson.isMember("modified_at"))
+    {
+        if(!validJsonOfField(8, "modified_at", pJson["modified_at"], err, true))
             return false;
     }
     return true;
@@ -1221,7 +1489,7 @@ bool Roles::validateMasqueradedJsonForCreation(const Json::Value &pJson,
                                                const std::vector<std::string> &pMasqueradingVector,
                                                std::string &err)
 {
-    if(pMasqueradingVector.size() != 7)
+    if(pMasqueradingVector.size() != 9)
     {
         err = "Bad masquerading vector";
         return false;
@@ -1242,11 +1510,6 @@ bool Roles::validateMasqueradedJsonForCreation(const Json::Value &pJson,
               if(!validJsonOfField(1, pMasqueradingVector[1], pJson[pMasqueradingVector[1]], err, true))
                   return false;
           }
-        else
-        {
-            err="The " + pMasqueradingVector[1] + " column cannot be null";
-            return false;
-        }
       }
       if(!pMasqueradingVector[2].empty())
       {
@@ -1276,6 +1539,11 @@ bool Roles::validateMasqueradedJsonForCreation(const Json::Value &pJson,
               if(!validJsonOfField(4, pMasqueradingVector[4], pJson[pMasqueradingVector[4]], err, true))
                   return false;
           }
+        else
+        {
+            err="The " + pMasqueradingVector[4] + " column cannot be null";
+            return false;
+        }
       }
       if(!pMasqueradingVector[5].empty())
       {
@@ -1290,6 +1558,22 @@ bool Roles::validateMasqueradedJsonForCreation(const Json::Value &pJson,
           if(pJson.isMember(pMasqueradingVector[6]))
           {
               if(!validJsonOfField(6, pMasqueradingVector[6], pJson[pMasqueradingVector[6]], err, true))
+                  return false;
+          }
+      }
+      if(!pMasqueradingVector[7].empty())
+      {
+          if(pJson.isMember(pMasqueradingVector[7]))
+          {
+              if(!validJsonOfField(7, pMasqueradingVector[7], pJson[pMasqueradingVector[7]], err, true))
+                  return false;
+          }
+      }
+      if(!pMasqueradingVector[8].empty())
+      {
+          if(pJson.isMember(pMasqueradingVector[8]))
+          {
+              if(!validJsonOfField(8, pMasqueradingVector[8], pJson[pMasqueradingVector[8]], err, true))
                   return false;
           }
       }
@@ -1313,9 +1597,9 @@ bool Roles::validateJsonForUpdate(const Json::Value &pJson, std::string &err)
         err = "The value of primary key must be set in the json object for update";
         return false;
     }
-    if(pJson.isMember("tenant_identifier"))
+    if(pJson.isMember("business_id"))
     {
-        if(!validJsonOfField(1, "tenant_identifier", pJson["tenant_identifier"], err, false))
+        if(!validJsonOfField(1, "business_id", pJson["business_id"], err, false))
             return false;
     }
     if(pJson.isMember("name"))
@@ -1328,19 +1612,29 @@ bool Roles::validateJsonForUpdate(const Json::Value &pJson, std::string &err)
         if(!validJsonOfField(3, "description", pJson["description"], err, false))
             return false;
     }
-    if(pJson.isMember("created_at"))
-    {
-        if(!validJsonOfField(4, "created_at", pJson["created_at"], err, false))
-            return false;
-    }
-    if(pJson.isMember("updated_at"))
-    {
-        if(!validJsonOfField(5, "updated_at", pJson["updated_at"], err, false))
-            return false;
-    }
     if(pJson.isMember("permissions"))
     {
-        if(!validJsonOfField(6, "permissions", pJson["permissions"], err, false))
+        if(!validJsonOfField(4, "permissions", pJson["permissions"], err, false))
+            return false;
+    }
+    if(pJson.isMember("created_by"))
+    {
+        if(!validJsonOfField(5, "created_by", pJson["created_by"], err, false))
+            return false;
+    }
+    if(pJson.isMember("created_at"))
+    {
+        if(!validJsonOfField(6, "created_at", pJson["created_at"], err, false))
+            return false;
+    }
+    if(pJson.isMember("modified_by"))
+    {
+        if(!validJsonOfField(7, "modified_by", pJson["modified_by"], err, false))
+            return false;
+    }
+    if(pJson.isMember("modified_at"))
+    {
+        if(!validJsonOfField(8, "modified_at", pJson["modified_at"], err, false))
             return false;
     }
     return true;
@@ -1349,7 +1643,7 @@ bool Roles::validateMasqueradedJsonForUpdate(const Json::Value &pJson,
                                              const std::vector<std::string> &pMasqueradingVector,
                                              std::string &err)
 {
-    if(pMasqueradingVector.size() != 7)
+    if(pMasqueradingVector.size() != 9)
     {
         err = "Bad masquerading vector";
         return false;
@@ -1395,6 +1689,16 @@ bool Roles::validateMasqueradedJsonForUpdate(const Json::Value &pJson,
           if(!validJsonOfField(6, pMasqueradingVector[6], pJson[pMasqueradingVector[6]], err, false))
               return false;
       }
+      if(!pMasqueradingVector[7].empty() && pJson.isMember(pMasqueradingVector[7]))
+      {
+          if(!validJsonOfField(7, pMasqueradingVector[7], pJson[pMasqueradingVector[7]], err, false))
+              return false;
+      }
+      if(!pMasqueradingVector[8].empty() && pJson.isMember(pMasqueradingVector[8]))
+      {
+          if(!validJsonOfField(8, pMasqueradingVector[8], pJson[pMasqueradingVector[8]], err, false))
+              return false;
+      }
     }
     catch(const Json::LogicError &e)
     {
@@ -1426,22 +1730,13 @@ bool Roles::validJsonOfField(size_t index,
         case 1:
             if(pJson.isNull())
             {
-                err="The " + fieldName + " column cannot be null";
-                return false;
+                return true;
             }
             if(!pJson.isString())
             {
                 err="Type error in the "+fieldName+" field";
                 return false;
             }
-            if(pJson.isString() && std::strlen(pJson.asCString()) > 32)
-            {
-                err="String length exceeds limit for the " +
-                    fieldName +
-                    " field (the maximum value is 32)";
-                return false;
-            }
-
             break;
         case 2:
             if(pJson.isNull())
@@ -1454,14 +1749,14 @@ bool Roles::validJsonOfField(size_t index,
                 err="Type error in the "+fieldName+" field";
                 return false;
             }
-            if(pJson.isString() && std::strlen(pJson.asCString()) > 100)
+            if(pJson.isString() && std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>{}
+                .from_bytes(pJson.asCString()).size() > 100)
             {
                 err="String length exceeds limit for the " +
                     fieldName +
                     " field (the maximum value is 100)";
                 return false;
             }
-
             break;
         case 3:
             if(pJson.isNull())
@@ -1471,6 +1766,14 @@ bool Roles::validJsonOfField(size_t index,
             if(!pJson.isString())
             {
                 err="Type error in the "+fieldName+" field";
+                return false;
+            }
+            if(pJson.isString() && std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>{}
+                .from_bytes(pJson.asCString()).size() > 250)
+            {
+                err="String length exceeds limit for the " +
+                    fieldName +
+                    " field (the maximum value is 250)";
                 return false;
             }
             break;
@@ -1489,8 +1792,7 @@ bool Roles::validJsonOfField(size_t index,
         case 5:
             if(pJson.isNull())
             {
-                err="The " + fieldName + " column cannot be null";
-                return false;
+                return true;
             }
             if(!pJson.isString())
             {
@@ -1499,6 +1801,28 @@ bool Roles::validJsonOfField(size_t index,
             }
             break;
         case 6:
+            if(pJson.isNull())
+            {
+                return true;
+            }
+            if(!pJson.isString())
+            {
+                err="Type error in the "+fieldName+" field";
+                return false;
+            }
+            break;
+        case 7:
+            if(pJson.isNull())
+            {
+                return true;
+            }
+            if(!pJson.isString())
+            {
+                err="Type error in the "+fieldName+" field";
+                return false;
+            }
+            break;
+        case 8:
             if(pJson.isNull())
             {
                 return true;
