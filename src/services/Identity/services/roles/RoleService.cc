@@ -4,6 +4,7 @@
 #include "Roles.h"
 #include "dto/BaseApiResponse.h"
 #include "constants/ErrorCodes.h"
+#include "services/audit_logs/AuditScope.h"
 
 using namespace drogon::orm;
 
@@ -51,13 +52,13 @@ namespace turbo_ledger_identity::services {
         co_return response;
     }
 
-    drogon::Task<dto::BaseApiResponse> RoleService::getAll(const std::string &businessId, int pageNo, int pageSize, const std::string &query) {
+    drogon::Task<dto::BaseApiResponse> RoleService::getAll(const dto::UserIdentityDto &identity, int pageNo, int pageSize, const std::string &query) {
         dto::BaseApiResponse response;
         try {
             auto dbClient = drogon::app().getDbClient();
             CoroMapper<drogon_model::TlIdentity::Roles> mapper(dbClient);
             
-            auto criteria = Criteria(drogon_model::TlIdentity::Roles::Cols::_business_id, CompareOperator::EQ, businessId);
+            auto criteria = Criteria(drogon_model::TlIdentity::Roles::Cols::_business_id, CompareOperator::EQ, identity.business_id);
             
             if (!query.empty()) {
                 criteria = criteria && (Criteria(drogon_model::TlIdentity::Roles::Cols::_name, CompareOperator::Like, "%" + query + "%") || 
@@ -108,14 +109,14 @@ namespace turbo_ledger_identity::services {
         co_return response;
     }
 
-    drogon::Task<dto::BaseApiResponse> RoleService::create(const std::string &businessId, const dto::RoleDto &dto) {
+    drogon::Task<dto::BaseApiResponse> RoleService::create(const dto::UserIdentityDto &identity, const dto::RoleDto &dto) {
         dto::BaseApiResponse response;
         try {
             auto dbClient = drogon::app().getDbClient();
             drogon::orm::CoroMapper<drogon_model::TlIdentity::Roles> mapper(dbClient);
             
             drogon_model::TlIdentity::Roles newRole;
-            newRole.setBusinessId(businessId);
+            newRole.setBusinessId(identity.business_id);
             newRole.setName(dto.getName());
             if (!dto.getDescription().empty()) {
                 newRole.setDescription(dto.getDescription());
@@ -127,7 +128,14 @@ namespace turbo_ledger_identity::services {
             }
             newRole.setPermissions(permJson.toStyledString());
 
+            services::AuditScope auditScope(identity.user_id, identity.business_id, "Role", "", "CREATE");
+
             auto savedRole = co_await mapper.insert(newRole);
+            
+            auditScope.setEntityId(savedRole.toJson()["id"].asString());
+            auditScope.setNewValues(savedRole.toJson());
+            auditScope.commit();
+
             response.success = true;
             response.result = savedRole.toJson();
 
@@ -143,14 +151,14 @@ namespace turbo_ledger_identity::services {
         co_return response;
     }
 
-    drogon::Task<dto::BaseApiResponse> RoleService::update(const std::string &businessId, const dto::RoleDto &dto, const std::string &roleId) {
+    drogon::Task<dto::BaseApiResponse> RoleService::update(const dto::UserIdentityDto &identity, const dto::RoleDto &dto, const std::string &roleId) {
         dto::BaseApiResponse response;
         try {
             auto dbClient = drogon::app().getDbClient();
             drogon::orm::CoroMapper<drogon_model::TlIdentity::Roles> mapper(dbClient);
             
             auto criteria = Criteria(drogon_model::TlIdentity::Roles::Cols::_id, CompareOperator::EQ, roleId) &&
-                            Criteria(drogon_model::TlIdentity::Roles::Cols::_business_id, CompareOperator::EQ, businessId);
+                            Criteria(drogon_model::TlIdentity::Roles::Cols::_business_id, CompareOperator::EQ, identity.business_id);
 
             auto roles = co_await mapper.findBy(criteria);
             if (roles.empty()) {
@@ -160,6 +168,9 @@ namespace turbo_ledger_identity::services {
             }
 
             auto role = roles.front();
+            
+            services::AuditScope auditScope(identity.user_id, identity.business_id, "Role", role.toJson()["id"].asString(), "UPDATE");
+            auditScope.setOldValues(role.toJson());
             
             if (!dto.getName().empty()) {
                 role.setName(dto.getName());
@@ -178,6 +189,9 @@ namespace turbo_ledger_identity::services {
 
             auto updatedCount = co_await mapper.update(role);
             if (updatedCount > 0) {
+                auditScope.setNewValues(role.toJson());
+                auditScope.commit();
+
                 response.success = true;
                 response.result = role.toJson();
             } else {
@@ -197,17 +211,28 @@ namespace turbo_ledger_identity::services {
         co_return response;
     }
 
-    drogon::Task<dto::BaseApiResponse> RoleService::deleteRole(const std::string &businessId, const std::string &roleId) {
+    drogon::Task<dto::BaseApiResponse> RoleService::deleteRole(const dto::UserIdentityDto &identity, const std::string &roleId) {
         dto::BaseApiResponse response;
         try {
             auto dbClient = drogon::app().getDbClient();
             drogon::orm::CoroMapper<drogon_model::TlIdentity::Roles> mapper(dbClient);
             
             auto criteria = Criteria(drogon_model::TlIdentity::Roles::Cols::_id, CompareOperator::EQ, roleId) &&
-                            Criteria(drogon_model::TlIdentity::Roles::Cols::_business_id, CompareOperator::EQ, businessId);
+                            Criteria(drogon_model::TlIdentity::Roles::Cols::_business_id, CompareOperator::EQ, identity.business_id);
+            auto roles = co_await mapper.findBy(criteria);
+            if (roles.empty()) {
+                response.success = false;
+                response.error["message"] = "Role not found or you don't have access.";
+                co_return response;
+            }
+            auto role = roles.front();
+
+            services::AuditScope auditScope(identity.user_id, identity.business_id, "Role", roleId, "DELETE");
+            auditScope.setOldValues(role.toJson());
 
             auto deletedCount = co_await mapper.deleteBy(criteria);
             if (deletedCount > 0) {
+                auditScope.commit();
                 response.success = true;
                 response.message = "Role deleted successfully.";
             } else {

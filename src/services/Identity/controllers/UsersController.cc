@@ -3,6 +3,7 @@
 #include "dto/SigninDto.h"
 #include "dto/UserDto.h"
 #include "plugins/IdentityServicePlugin.h"
+#include "dto/UserIdentityDto.h"
 
 using namespace turbo_ledger_identity::plugins;
 
@@ -18,27 +19,25 @@ Task<HttpResponsePtr> UsersController::getAllUsers(HttpRequestPtr req) {
         try { pageNo = std::max(1, std::stoi(req->getParameter("pageNo"))); } catch (...) {}
     }
 
-    std::string businessId;
-    try { businessId = req->attributes()->get<std::string>("businessId"); } catch (...) {}
+    auto identity = turbo_ledger_identity::dto::UserIdentityDto::fromRequest(req);
 
     std::string query = req->getParameter("query");
 
     auto plugin = drogon::app().getPlugin<IdentityServicePlugin>();
     auto& userService = plugin->getUserService();
 
-    auto result = co_await userService.getAll(businessId, pageNo, pageSize, query);
+    auto result = co_await userService.getAll(identity, pageNo, pageSize, query);
     auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
     co_return resp;
 }
 
 Task<HttpResponsePtr> UsersController::getDetails(HttpRequestPtr req, std::string id) {
-    std::string businessId;
-    try { businessId = req->attributes()->get<std::string>("businessId"); } catch (...) {}
+    auto identity = turbo_ledger_identity::dto::UserIdentityDto::fromRequest(req);
 
     auto plugin = drogon::app().getPlugin<IdentityServicePlugin>();
     auto& userService = plugin->getUserService();
 
-    auto result = co_await userService.getDetails(businessId, id);
+    auto result = co_await userService.getDetails(identity, id);
     auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
     co_return resp;
 }
@@ -80,52 +79,48 @@ Task<HttpResponsePtr> UsersController::signIn(HttpRequestPtr req) {
 
 Task<HttpResponsePtr> UsersController::lockUserAccount(HttpRequestPtr req, std::string id) {
 
-    std::string businessId;
-    try { businessId = req->attributes()->get<std::string>("businessId"); } catch (...) {}
+    auto identity = turbo_ledger_identity::dto::UserIdentityDto::fromRequest(req);
 
     auto plugin = drogon::app().getPlugin<IdentityServicePlugin>();
     auto& userService = plugin->getUserService();
 
-    auto result = co_await userService.lockUserAccount(businessId, id);
+    auto result = co_await userService.lockUserAccount(identity, id);
     auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
     co_return resp;
 }
 
 Task<HttpResponsePtr> UsersController::unLockUserAccount(HttpRequestPtr req, std::string id) {
 
-    std::string businessId;
-    try { businessId = req->attributes()->get<std::string>("businessId"); } catch (...) {}
+    auto identity = turbo_ledger_identity::dto::UserIdentityDto::fromRequest(req);
 
     auto plugin = drogon::app().getPlugin<IdentityServicePlugin>();
     auto& userService = plugin->getUserService();
 
-    auto result = co_await userService.unlockUserAccount(businessId, id);
+    auto result = co_await userService.unlockUserAccount(identity, id);
     auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
     co_return resp;
 }
 
 Task<HttpResponsePtr> UsersController::activateAccount(HttpRequestPtr req, std::string id) {
 
-    std::string businessId;
-    try { businessId = req->attributes()->get<std::string>("businessId"); } catch (...) {}
+    auto identity = turbo_ledger_identity::dto::UserIdentityDto::fromRequest(req);
 
     auto plugin = drogon::app().getPlugin<IdentityServicePlugin>();
     auto& userService = plugin->getUserService();
 
-    auto result = co_await userService.activateUserAccount(businessId, id);
+    auto result = co_await userService.activateUserAccount(identity, id);
     auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
     co_return resp;
 }
 
 Task<HttpResponsePtr> UsersController::deActivateAccount(HttpRequestPtr req, std::string id) {
 
-    std::string businessId;
-    try { businessId = req->attributes()->get<std::string>("businessId"); } catch (...) {}
+    auto identity = turbo_ledger_identity::dto::UserIdentityDto::fromRequest(req);
 
     auto plugin = drogon::app().getPlugin<IdentityServicePlugin>();
     auto& userService = plugin->getUserService();
 
-    auto result = co_await userService.deactivateUserAccount(businessId, id);
+    auto result = co_await userService.deactivateUserAccount(identity, id);
     auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
     co_return resp;
 }
@@ -141,8 +136,7 @@ Task<HttpResponsePtr> UsersController::createUser(HttpRequestPtr req) {
         co_return resp;
     }
 
-    std::string businessId;
-    try { businessId = req->attributes()->get<std::string>("businessId"); } catch (...) {}
+    auto identity = turbo_ledger_identity::dto::UserIdentityDto::fromRequest(req);
 
     turbo_ledger_identity::dto::UserDto userData;
     try {
@@ -159,7 +153,7 @@ Task<HttpResponsePtr> UsersController::createUser(HttpRequestPtr req) {
     auto plugin = drogon::app().getPlugin<IdentityServicePlugin>();
     auto& userService = plugin->getUserService();
 
-    auto result = co_await userService.create(businessId, userData);
+    auto result = co_await userService.create(identity, userData);
     auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
     resp->setStatusCode(result.success ? k201Created : k500InternalServerError);
     co_return resp;
@@ -176,8 +170,7 @@ Task<HttpResponsePtr> UsersController::updateUser(HttpRequestPtr req, std::strin
         co_return resp;
     }
 
-    std::string businessId;
-    try { businessId = req->attributes()->get<std::string>("businessId"); } catch (...) {}
+    auto identity = turbo_ledger_identity::dto::UserIdentityDto::fromRequest(req);
 
     turbo_ledger_identity::dto::UserDto userData;
     try {
@@ -194,7 +187,7 @@ Task<HttpResponsePtr> UsersController::updateUser(HttpRequestPtr req, std::strin
     auto plugin = drogon::app().getPlugin<IdentityServicePlugin>();
     auto& userService = plugin->getUserService();
 
-    auto result = co_await userService.update(businessId, userData, id);
+    auto result = co_await userService.update(identity, userData, id);
     auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
     resp->setStatusCode(result.success ? k200OK : k500InternalServerError);
     co_return resp;
@@ -202,13 +195,12 @@ Task<HttpResponsePtr> UsersController::updateUser(HttpRequestPtr req, std::strin
 
 Task<HttpResponsePtr> UsersController::deleteUser(HttpRequestPtr req, std::string id) {
 
-    std::string businessId;
-    try { businessId = req->attributes()->get<std::string>("businessId"); } catch (...) {}
+    auto identity = turbo_ledger_identity::dto::UserIdentityDto::fromRequest(req);
 
     auto plugin = drogon::app().getPlugin<IdentityServicePlugin>();
     auto& userService = plugin->getUserService();
 
-    auto result = co_await userService.deleteUser(businessId, id);
+    auto result = co_await userService.deleteUser(identity, id);
     auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
     co_return resp;
 }

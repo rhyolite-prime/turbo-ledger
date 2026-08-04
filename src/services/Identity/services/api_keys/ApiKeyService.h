@@ -9,6 +9,7 @@
 
 #include "dto/ApiKeyDto.h"
 #include "dto/BaseApiResponse.h"
+#include "dto/UserIdentityDto.h"
 
 namespace turbo_ledger_identity::services {
 
@@ -23,15 +24,15 @@ namespace turbo_ledger_identity::services {
     class ApiKeyService {
 
     public:
-        drogon::Task<dto::BaseApiResponse> getAll(const std::string &businessId, int pageNo, int pageSize, const std::string &query);
+        drogon::Task<dto::BaseApiResponse> getAll(const dto::UserIdentityDto &identity, int pageNo, int pageSize, const std::string &query);
 
-        drogon::Task<dto::BaseApiResponse> create(const dto::ApiKeyDto &dto); //generates an API Key for a tenant
+        drogon::Task<dto::BaseApiResponse> create(const dto::UserIdentityDto &identity, const dto::ApiKeyDto &dto); //generates an API Key for a tenant
 
-        drogon::Task<dto::BaseApiResponse> revoke(const std::string &businessId, const std::string &id);
+        drogon::Task<dto::BaseApiResponse> revoke(const dto::UserIdentityDto &identity, const std::string &id);
 
-        drogon::Task<dto::BaseApiResponse> activate(const std::string &businessId, const std::string &id);
+        drogon::Task<dto::BaseApiResponse> activate(const dto::UserIdentityDto &identity, const std::string &id);
 
-        drogon::Task<dto::BaseApiResponse> deleteApiKey(const std::string &businessId, const std::string &id);
+        drogon::Task<dto::BaseApiResponse> deleteApiKey(const dto::UserIdentityDto &identity, const std::string &id);
 
         drogon::Task<ApiCredentialsValidationResult> validateApiCredentials(const std::string &clientId, const std::string &clientSecret);
     };

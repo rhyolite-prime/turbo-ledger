@@ -54,7 +54,11 @@ class ApiKeys
         static const std::string _allowed_ips;
         static const std::string _is_active;
         static const std::string _last_used_at;
+        static const std::string _api_key_user_id;
+        static const std::string _created_by;
         static const std::string _created_at;
+        static const std::string _modified_by;
+        static const std::string _modified_at;
     };
 
     static const int primaryKeyNumber;
@@ -200,6 +204,26 @@ class ApiKeys
     void setLastUsedAt(const ::trantor::Date &pLastUsedAt) noexcept;
     void setLastUsedAtToNull() noexcept;
 
+    /**  For column api_key_user_id  */
+    ///Get the value of the column api_key_user_id, returns the default value if the column is null
+    const std::string &getValueOfApiKeyUserId() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<std::string> &getApiKeyUserId() const noexcept;
+    ///Set the value of the column api_key_user_id
+    void setApiKeyUserId(const std::string &pApiKeyUserId) noexcept;
+    void setApiKeyUserId(std::string &&pApiKeyUserId) noexcept;
+    void setApiKeyUserIdToNull() noexcept;
+
+    /**  For column created_by  */
+    ///Get the value of the column created_by, returns the default value if the column is null
+    const std::string &getValueOfCreatedBy() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<std::string> &getCreatedBy() const noexcept;
+    ///Set the value of the column created_by
+    void setCreatedBy(const std::string &pCreatedBy) noexcept;
+    void setCreatedBy(std::string &&pCreatedBy) noexcept;
+    void setCreatedByToNull() noexcept;
+
     /**  For column created_at  */
     ///Get the value of the column created_at, returns the default value if the column is null
     const ::trantor::Date &getValueOfCreatedAt() const noexcept;
@@ -209,8 +233,27 @@ class ApiKeys
     void setCreatedAt(const ::trantor::Date &pCreatedAt) noexcept;
     void setCreatedAtToNull() noexcept;
 
+    /**  For column modified_by  */
+    ///Get the value of the column modified_by, returns the default value if the column is null
+    const std::string &getValueOfModifiedBy() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<std::string> &getModifiedBy() const noexcept;
+    ///Set the value of the column modified_by
+    void setModifiedBy(const std::string &pModifiedBy) noexcept;
+    void setModifiedBy(std::string &&pModifiedBy) noexcept;
+    void setModifiedByToNull() noexcept;
 
-    static size_t getColumnNumber() noexcept {  return 11;  }
+    /**  For column modified_at  */
+    ///Get the value of the column modified_at, returns the default value if the column is null
+    const ::trantor::Date &getValueOfModifiedAt() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<::trantor::Date> &getModifiedAt() const noexcept;
+    ///Set the value of the column modified_at
+    void setModifiedAt(const ::trantor::Date &pModifiedAt) noexcept;
+    void setModifiedAtToNull() noexcept;
+
+
+    static size_t getColumnNumber() noexcept {  return 15;  }
     static const std::string &getColumnName(size_t index) noexcept(false);
 
     Json::Value toJson() const;
@@ -242,7 +285,11 @@ class ApiKeys
     std::shared_ptr<std::string> allowedIps_;
     std::shared_ptr<bool> isActive_;
     std::shared_ptr<::trantor::Date> lastUsedAt_;
+    std::shared_ptr<std::string> apiKeyUserId_;
+    std::shared_ptr<std::string> createdBy_;
     std::shared_ptr<::trantor::Date> createdAt_;
+    std::shared_ptr<std::string> modifiedBy_;
+    std::shared_ptr<::trantor::Date> modifiedAt_;
     struct MetaData
     {
         const std::string colName_;
@@ -254,7 +301,7 @@ class ApiKeys
         const bool notNull_;
     };
     static const std::vector<MetaData> metaData_;
-    bool dirtyFlag_[11]={ false };
+    bool dirtyFlag_[15]={ false };
   public:
     static const std::string &sqlForFindingByPrimaryKey()
     {
@@ -326,9 +373,30 @@ class ApiKeys
             sql += "last_used_at,";
             ++parametersCount;
         }
+        if(dirtyFlag_[10])
+        {
+            sql += "api_key_user_id,";
+            ++parametersCount;
+        }
+        if(dirtyFlag_[11])
+        {
+            sql += "created_by,";
+            ++parametersCount;
+        }
         sql += "created_at,";
         ++parametersCount;
-        if(!dirtyFlag_[10])
+        if(!dirtyFlag_[12])
+        {
+            needSelection=true;
+        }
+        if(dirtyFlag_[13])
+        {
+            sql += "modified_by,";
+            ++parametersCount;
+        }
+        sql += "modified_at,";
+        ++parametersCount;
+        if(!dirtyFlag_[14])
         {
             needSelection=true;
         }
@@ -410,6 +478,30 @@ class ApiKeys
             sql.append(placeholderStr, n);
         }
         if(dirtyFlag_[10])
+        {
+            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
+            sql.append(placeholderStr, n);
+        }
+        if(dirtyFlag_[11])
+        {
+            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
+            sql.append(placeholderStr, n);
+        }
+        if(dirtyFlag_[12])
+        {
+            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
+            sql.append(placeholderStr, n);
+        }
+        else
+        {
+            sql +="default,";
+        }
+        if(dirtyFlag_[13])
+        {
+            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
+            sql.append(placeholderStr, n);
+        }
+        if(dirtyFlag_[14])
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);

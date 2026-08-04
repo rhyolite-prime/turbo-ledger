@@ -2,14 +2,14 @@
 #include "dto/BaseApiResponse.h"
 #include "plugins/IdentityServicePlugin.h"
 #include "dto/ApiKeyDto.h"
+#include "dto/UserIdentityDto.h"
 
 using namespace drogon;
 using namespace turbo_ledger_identity::plugins;
 using namespace turbo_ledger_identity::dto;
 
 Task<HttpResponsePtr> ApiKeysController::getAll(HttpRequestPtr req) {
-    std::string businessId;
-    try { businessId = req->attributes()->get<std::string>("businessId"); } catch (...) {}
+    auto identity = turbo_ledger_identity::dto::UserIdentityDto::fromRequest(req);
 
     int pageNo = 1;
     int pageSize = 10;
@@ -28,7 +28,7 @@ Task<HttpResponsePtr> ApiKeysController::getAll(HttpRequestPtr req) {
     auto plugin = drogon::app().getPlugin<IdentityServicePlugin>();
     auto& service = plugin->getApiKeyService();
 
-    auto response = co_await service.getAll(businessId, pageNo, pageSize, query);
+    auto response = co_await service.getAll(identity, pageNo, pageSize, query);
 
     auto resp = HttpResponse::newHttpJsonResponse(response.toJson());
     resp->setStatusCode(response.success ? k200OK : k400BadRequest);
@@ -36,6 +36,7 @@ Task<HttpResponsePtr> ApiKeysController::getAll(HttpRequestPtr req) {
 }
 
 Task<HttpResponsePtr> ApiKeysController::createApiKey(HttpRequestPtr req) {
+
     auto json = req->getJsonObject();
     if (!json) {
         BaseApiResponse apiResponse;
@@ -46,31 +47,77 @@ Task<HttpResponsePtr> ApiKeysController::createApiKey(HttpRequestPtr req) {
         co_return resp;
     }
 
-    std::string businessId;
-    try { businessId = req->attributes()->get<std::string>("businessId"); } catch (...) {}
+    auto identity = turbo_ledger_identity::dto::UserIdentityDto::fromRequest(req);
 
     ApiKeyDto dto;
     dto.fromJson(*json);
-    dto.setBusinessId(businessId); // Ensure the token's business ID is strictly used
+
 
     auto plugin = drogon::app().getPlugin<IdentityServicePlugin>();
     auto& service = plugin->getApiKeyService();
 
-    auto result = co_await service.create(dto);
+    auto result = co_await service.create(identity, dto);
 
     auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
     resp->setStatusCode(result.success ? k200OK : k400BadRequest);
     co_return resp;
 }
 
-Task<HttpResponsePtr> ApiKeysController::revokeApiKey(HttpRequestPtr req, std::string id) {
-    std::string businessId;
-    try { businessId = req->attributes()->get<std::string>("businessId"); } catch (...) {}
+
+Task<HttpResponsePtr> ApiKeysController::validateApiKeys(HttpRequestPtr req) {
+    auto json = req->getJsonObject();
+    if (!json) {
+        BaseApiResponse apiResponse;
+        apiResponse.success = false;
+        apiResponse.message = "Invalid JSON payload";
+        auto resp = HttpResponse::newHttpJsonResponse(apiResponse.toJson());
+        resp->setStatusCode(k400BadRequest);
+        co_return resp;
+    }
+
+    if (!json->isMember("clientId") || !json->isMember("clientSecret")) {
+        BaseApiResponse apiResponse;
+        apiResponse.success = false;
+        apiResponse.message = "clientId and clientSecret are required";
+        auto resp = HttpResponse::newHttpJsonResponse(apiResponse.toJson());
+        resp->setStatusCode(k400BadRequest);
+        co_return resp;
+    }
+
+    std::string clientId = (*json)["clientId"].asString();
+    std::string clientSecret = (*json)["clientSecret"].asString();
 
     auto plugin = drogon::app().getPlugin<IdentityServicePlugin>();
     auto& service = plugin->getApiKeyService();
 
-    auto result = co_await service.revoke(businessId, id);
+    auto result = co_await service.validateApiCredentials(clientId, clientSecret);
+
+    BaseApiResponse apiResponse;
+    if (result.isValid) {
+        apiResponse.success = true;
+        apiResponse.message = "Valid credentials";
+        apiResponse.result["accountId"] = result.accountId;
+        apiResponse.result["businessId"] = result.businessId;
+    } else {
+        apiResponse.success = false;
+        apiResponse.message = result.errorMessage;
+        apiResponse.error["code"] = result.errorCode;
+    }
+
+    auto resp = HttpResponse::newHttpJsonResponse(apiResponse.toJson());
+    resp->setStatusCode(result.isValid ? k200OK : k401Unauthorized);
+    co_return resp;
+}
+
+
+
+Task<HttpResponsePtr> ApiKeysController::revokeApiKey(HttpRequestPtr req, std::string id) {
+    auto identity = turbo_ledger_identity::dto::UserIdentityDto::fromRequest(req);
+
+    auto plugin = drogon::app().getPlugin<IdentityServicePlugin>();
+    auto& service = plugin->getApiKeyService();
+
+    auto result = co_await service.revoke(identity, id);
 
     auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
     resp->setStatusCode(result.success ? k200OK : k400BadRequest);
@@ -78,13 +125,12 @@ Task<HttpResponsePtr> ApiKeysController::revokeApiKey(HttpRequestPtr req, std::s
 }
 
 Task<HttpResponsePtr> ApiKeysController::activateApiKey(HttpRequestPtr req, std::string id) {
-    std::string businessId;
-    try { businessId = req->attributes()->get<std::string>("businessId"); } catch (...) {}
+    auto identity = turbo_ledger_identity::dto::UserIdentityDto::fromRequest(req);
 
     auto plugin = drogon::app().getPlugin<IdentityServicePlugin>();
     auto& service = plugin->getApiKeyService();
 
-    auto result = co_await service.activate(businessId, id);
+    auto result = co_await service.activate(identity, id);
 
     auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
     resp->setStatusCode(result.success ? k200OK : k400BadRequest);
@@ -92,13 +138,12 @@ Task<HttpResponsePtr> ApiKeysController::activateApiKey(HttpRequestPtr req, std:
 }
 
 Task<HttpResponsePtr> ApiKeysController::deleteApiKey(HttpRequestPtr req, std::string id) {
-    std::string businessId;
-    try { businessId = req->attributes()->get<std::string>("businessId"); } catch (...) {}
+    auto identity = turbo_ledger_identity::dto::UserIdentityDto::fromRequest(req);
 
     auto plugin = drogon::app().getPlugin<IdentityServicePlugin>();
     auto& service = plugin->getApiKeyService();
 
-    auto result = co_await service.deleteApiKey(businessId, id);
+    auto result = co_await service.deleteApiKey(identity, id);
 
     auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
     resp->setStatusCode(result.success ? k200OK : k400BadRequest);
