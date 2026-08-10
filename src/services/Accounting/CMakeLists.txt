@@ -1,23 +1,17 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.10)
 project(Accounting CXX)
 
 include(CheckIncludeFileCXX)
 
-check_include_file_cxx(any HAS_ANY)
-check_include_file_cxx(string_view HAS_STRING_VIEW)
-check_include_file_cxx(coroutine HAS_COROUTINE)
-if (NOT "${CMAKE_CXX_STANDARD}" STREQUAL "")
-    # Do nothing
-elseif (HAS_ANY AND HAS_STRING_VIEW AND HAS_COROUTINE)
-    set(CMAKE_CXX_STANDARD 20)
-elseif (HAS_ANY AND HAS_STRING_VIEW)
-    set(CMAKE_CXX_STANDARD 17)
-else ()
-    set(CMAKE_CXX_STANDARD 14)
-endif ()
-
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    add_compile_options(-fcoroutines)
+endif()
+
+add_compile_options("-include" "${CMAKE_CURRENT_SOURCE_DIR}/utils/codecvt_helper.h" "-Wno-deprecated-declarations")
 
 add_executable(${PROJECT_NAME} main.cc
         services/accounts/GlAccountService.h
@@ -27,13 +21,11 @@ add_executable(${PROJECT_NAME} main.cc
         dto/BaseApiResponse.h
         dto/CreateGlAccountDto.h
         dto/UpdateGlAccountDto.h
-        controllers/AccountingRulesController.h
-        controllers/AccountTransfersController.h
-        controllers/GeneralLedgerAccountController.h
-        controllers/AccountingClosureController.h
-        controllers/JournalEntriesController.h
-        controllers/FinancialActivityAccountsController.h
-        controllers/ProvisioningEntriesController.h)
+        utils/codecvt_helper.h
+        services/identity/IdentityApi.h
+        services/identity/IdentityApi.cc
+        services/redis/RedisCacheManager.h
+        services/redis/RedisCacheManager.cc)
 
 # ##############################################################################
 # If you include the drogon source code locally in your project, use this method
@@ -43,7 +35,9 @@ add_executable(${PROJECT_NAME} main.cc
 #
 # and comment out the following lines
 find_package(Drogon CONFIG REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE Drogon::Drogon)
+find_package(OpenSSL REQUIRED)
+add_subdirectory(external_deps/Bcrypt)
+target_link_libraries(${PROJECT_NAME} PRIVATE Drogon::Drogon bcrypt OpenSSL::SSL OpenSSL::Crypto)
 
 # ##############################################################################
 

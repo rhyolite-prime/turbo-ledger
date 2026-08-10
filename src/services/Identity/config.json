@@ -302,6 +302,11 @@
             }
         },
         {
+            "name": "turbo_ledger_identity::plugins::IdentityServicePlugin",
+            "dependencies": [],
+            "config": {}
+        },
+        {
             "name": "drogon::plugin::AccessLogger",
             "dependencies": [],
             "config": {
@@ -326,7 +331,7 @@
             "JwtAudience": "TurboLedgerIdentity",
             "JwtExpirationTime": 3600
         },
-        "PrivateKey": "ca01ca76-3866-4d44-9881-d9e365b81473",
+        "AccountIdFormat": "M{AccountID}",
         "TenantPermissions": [
             {
                 "name": "User Management",

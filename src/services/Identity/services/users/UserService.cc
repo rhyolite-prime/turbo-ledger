@@ -3,25 +3,27 @@
 #include <drogon/orm/Criteria.h>
 #include "models/Users.h"
 #include "models/BusinessAccounts.h"
+#include "models/LoginHistory.h"
 #include "constants/ErrorCodes.h"
 #include "utils/PasswordUtils.h"
 #include <bcrypt.h>
 #include <jwt-cpp/jwt.h>
+#include "services/audit_logs/AuditScope.h"
 
 using namespace drogon::orm;
 
 namespace turbo_ledger_identity::services
 {
 
-    drogon::Task<dto::BaseApiResponse> UserService::getAll(const std::string &businessId, int pageNo, int pageSize, const std::string &query) {
+    drogon::Task<dto::BaseApiResponse> UserService::getAll(const dto::UserIdentityDto &identity, int pageNo, int pageSize, const std::string &query) {
         dto::BaseApiResponse response;
         try {
             auto dbClient = drogon::app().getDbClient();
             drogon::orm::CoroMapper<drogon_model::TlIdentity::Users> mapper(dbClient);
             
             Criteria criteria;
-            if (!businessId.empty()) {
-                criteria = Criteria(drogon_model::TlIdentity::Users::Cols::_business_id, CompareOperator::EQ, businessId);
+            if (!identity.business_id.empty()) {
+                criteria = Criteria(drogon_model::TlIdentity::Users::Cols::_business_id, CompareOperator::EQ, identity.business_id);
             } else {
                 criteria = Criteria(drogon_model::TlIdentity::Users::Cols::_business_id, CompareOperator::IsNull);
             }
@@ -64,6 +66,7 @@ namespace turbo_ledger_identity::services
             for (const auto& user : users) {
                 auto roleJson = user.toJson();
                 Json::Value camelCaseRole;
+
                 camelCaseRole["id"] = roleJson["id"];
                 camelCaseRole["firstName"] = roleJson["first_name"];
                 camelCaseRole["lastName"] = roleJson["last_name"];
@@ -86,7 +89,7 @@ namespace turbo_ledger_identity::services
         co_return response;
     }
 
-    drogon::Task<dto::BaseApiResponse> UserService::getDetails(const std::string &businessId, const std::string &id) {
+    drogon::Task<dto::BaseApiResponse> UserService::getDetails(const dto::UserIdentityDto &identity, const std::string &id) {
         dto::BaseApiResponse response;
         try {
             auto dbClient = drogon::app().getDbClient();
@@ -108,7 +111,7 @@ namespace turbo_ledger_identity::services
         co_return response;
     }
 
-    drogon::Task<dto::BaseApiResponse> UserService::create(const std::string &businessId, const dto::UserDto &dto) {
+    drogon::Task<dto::BaseApiResponse> UserService::create(const dto::UserIdentityDto &identity, const dto::UserDto &dto) {
         dto::BaseApiResponse response;
         try {
             auto dbClient = drogon::app().getDbClient();
@@ -125,9 +128,15 @@ namespace turbo_ledger_identity::services
             newUser.setIsActive(true);
             newUser.setIsLockedOut(false);
             
+            services::AuditScope auditScope(identity.user_id, identity.business_id, "User", "", "CREATE");
+
             auto savedUser = co_await mapper.insert(newUser);
             auto json = savedUser.toJson();
             json.removeMember("password_hash");
+            
+            auditScope.setEntityId(json["id"].asString());
+            auditScope.setNewValues(json);
+            auditScope.commit();
             
             response.success = true;
             response.result = json;
@@ -143,7 +152,7 @@ namespace turbo_ledger_identity::services
         co_return response;
     }
 
-    drogon::Task<dto::BaseApiResponse> UserService::update(const std::string &businessId, const dto::UserDto &dto, const std::string &id) {
+    drogon::Task<dto::BaseApiResponse> UserService::update(const dto::UserIdentityDto &identity, const dto::UserDto &dto, const std::string &id) {
         dto::BaseApiResponse response;
         try {
             auto dbClient = drogon::app().getDbClient();
@@ -157,6 +166,12 @@ namespace turbo_ledger_identity::services
             }
             
             auto user = users.front();
+            
+            services::AuditScope auditScope(identity.user_id, identity.business_id, "User", user.toJson()["id"].asString(), "UPDATE");
+            auto oldJson = user.toJson();
+            oldJson.removeMember("password_hash");
+            auditScope.setOldValues(oldJson);
+            
             if (!dto.getFirstName().empty()) user.setFirstName(dto.getFirstName());
             if (!dto.getLastName().empty()) user.setLastName(dto.getLastName());
             if (!dto.getEmail().empty()) user.setEmail(dto.getEmail());
@@ -169,8 +184,14 @@ namespace turbo_ledger_identity::services
             json.removeMember("password_hash");
             
             response.success = updatedCount > 0;
-            if (response.success) response.result = json;
-            else response.error["message"] = "Failed to update user.";
+            if (response.success) {
+                auditScope.setNewValues(json);
+                auditScope.commit();
+                response.result = json;
+            }
+            else {
+                response.error["message"] = "Failed to update user.";
+            }
         } catch (const std::exception &e) {
             response.success = false;
             response.error["message"] = "Error updating user.";
@@ -179,7 +200,7 @@ namespace turbo_ledger_identity::services
         co_return response;
     }
 
-    drogon::Task<dto::BaseApiResponse> UserService::lockUserAccount(const std::string &businessId, const std::string &userId) {
+    drogon::Task<dto::BaseApiResponse> UserService::lockUserAccount(const dto::UserIdentityDto &identity, const std::string &userId) {
         dto::BaseApiResponse response;
         try {
             auto dbClient = drogon::app().getDbClient();
@@ -193,8 +214,19 @@ namespace turbo_ledger_identity::services
             }
             
             auto user = users.front();
+            
+            services::AuditScope auditScope(identity.user_id, identity.business_id, "User", user.toJson()["id"].asString(), "LOCK");
+            auto oldJson = user.toJson();
+            oldJson.removeMember("password_hash");
+            auditScope.setOldValues(oldJson);
+            
             user.setIsLockedOut(true);
             co_await mapper.update(user);
+            
+            auto newJson = user.toJson();
+            newJson.removeMember("password_hash");
+            auditScope.setNewValues(newJson);
+            auditScope.commit();
             
             response.success = true;
             response.message = "User account locked.";
@@ -205,7 +237,7 @@ namespace turbo_ledger_identity::services
         co_return response;
     }
 
-    drogon::Task<dto::BaseApiResponse> UserService::unlockUserAccount(const std::string &businessId, const std::string &userId) {
+    drogon::Task<dto::BaseApiResponse> UserService::unlockUserAccount(const dto::UserIdentityDto &identity, const std::string &userId) {
         dto::BaseApiResponse response;
         try {
             auto dbClient = drogon::app().getDbClient();
@@ -219,8 +251,19 @@ namespace turbo_ledger_identity::services
             }
             
             auto user = users.front();
+
+            services::AuditScope auditScope(identity.user_id, identity.business_id, "User", user.toJson()["id"].asString(), "UNLOCK");
+            auto oldJson = user.toJson();
+            oldJson.removeMember("password_hash");
+            auditScope.setOldValues(oldJson);
+
             user.setIsLockedOut(false);
             co_await mapper.update(user);
+            
+            auto newJson = user.toJson();
+            newJson.removeMember("password_hash");
+            auditScope.setNewValues(newJson);
+            auditScope.commit();
             
             response.success = true;
             response.message = "User account unlocked.";
@@ -231,7 +274,7 @@ namespace turbo_ledger_identity::services
         co_return response;
     }
 
-    drogon::Task<dto::BaseApiResponse> UserService::activateUserAccount(const std::string &businessId, const std::string &userId) {
+    drogon::Task<dto::BaseApiResponse> UserService::activateUserAccount(const dto::UserIdentityDto &identity, const std::string &userId) {
         dto::BaseApiResponse response;
         try {
             auto dbClient = drogon::app().getDbClient();
@@ -245,8 +288,19 @@ namespace turbo_ledger_identity::services
             }
             
             auto user = users.front();
+
+            services::AuditScope auditScope(identity.user_id, identity.business_id, "User", user.toJson()["id"].asString(), "ACTIVATE");
+            auto oldJson = user.toJson();
+            oldJson.removeMember("password_hash");
+            auditScope.setOldValues(oldJson);
+
             user.setIsActive(true);
             co_await mapper.update(user);
+            
+            auto newJson = user.toJson();
+            newJson.removeMember("password_hash");
+            auditScope.setNewValues(newJson);
+            auditScope.commit();
             
             response.success = true;
             response.message = "User account activated.";
@@ -257,7 +311,7 @@ namespace turbo_ledger_identity::services
         co_return response;
     }
 
-    drogon::Task<dto::BaseApiResponse> UserService::deactivateUserAccount(const std::string &businessId, const std::string &userId) {
+    drogon::Task<dto::BaseApiResponse> UserService::deactivateUserAccount(const dto::UserIdentityDto &identity, const std::string &userId) {
         dto::BaseApiResponse response;
         try {
             auto dbClient = drogon::app().getDbClient();
@@ -271,8 +325,19 @@ namespace turbo_ledger_identity::services
             }
             
             auto user = users.front();
+
+            services::AuditScope auditScope(identity.user_id, identity.business_id, "User", user.toJson()["id"].asString(), "DEACTIVATE");
+            auto oldJson = user.toJson();
+            oldJson.removeMember("password_hash");
+            auditScope.setOldValues(oldJson);
+
             user.setIsActive(false);
             co_await mapper.update(user);
+
+            auto newJson = user.toJson();
+            newJson.removeMember("password_hash");
+            auditScope.setNewValues(newJson);
+            auditScope.commit();
             
             response.success = true;
             response.message = "User account deactivated.";
@@ -283,14 +348,28 @@ namespace turbo_ledger_identity::services
         co_return response;
     }
 
-    drogon::Task<dto::BaseApiResponse> UserService::deleteUser(const std::string &businessId, const std::string &userId) {
+    drogon::Task<dto::BaseApiResponse> UserService::deleteUser(const dto::UserIdentityDto &identity, const std::string &userId) {
         dto::BaseApiResponse response;
         try {
             auto dbClient = drogon::app().getDbClient();
             drogon::orm::CoroMapper<drogon_model::TlIdentity::Users> mapper(dbClient);
             
+            auto users = co_await mapper.findBy(Criteria(drogon_model::TlIdentity::Users::Cols::_id, CompareOperator::EQ, userId));
+            if (users.empty()) {
+                response.success = false;
+                response.error["message"] = "User not found.";
+                co_return response;
+            }
+
+            auto user = users.front();
+            services::AuditScope auditScope(identity.user_id, identity.business_id, "User", userId, "DELETE");
+            auto oldJson = user.toJson();
+            oldJson.removeMember("password_hash");
+            auditScope.setOldValues(oldJson);
+
             auto deletedCount = co_await mapper.deleteBy(Criteria(drogon_model::TlIdentity::Users::Cols::_id, CompareOperator::EQ, userId));
             if (deletedCount > 0) {
+                auditScope.commit();
                 response.success = true;
                 response.message = "User deleted successfully.";
             } else {
@@ -308,6 +387,11 @@ namespace turbo_ledger_identity::services
     drogon::Task<dto::BaseApiResponse> UserService::validateUserCredentials(const dto::SigninDto &signin_dto) {
         auto dbClient = drogon::app().getDbClient();
         CoroMapper<drogon_model::TlIdentity::Users> mapper(dbClient);
+        
+        std::string targetBusinessId = "";
+        std::string targetUserId = "";
+        std::string loginStatus = "";
+        std::string loginFailureReason = "";
 
         Criteria criteria =
             (Criteria(drogon_model::TlIdentity::Users::Cols::_username, CompareOperator::EQ, signin_dto.getUsernameOrEmail()) || 
@@ -319,7 +403,8 @@ namespace turbo_ledger_identity::services
         if (signin_dto.getAccountId().empty()) {
             // Host signin: business_id should be null
             criteria = criteria && Criteria(drogon_model::TlIdentity::Users::Cols::_business_id, CompareOperator::IsNull);
-        } else {
+        }
+        else {
             // Tenant signin: lookup business account by account_id
             CoroMapper<drogon_model::TlIdentity::BusinessAccounts> businessMapper(dbClient);
             auto businessAccounts = co_await businessMapper.findBy(Criteria(drogon_model::TlIdentity::BusinessAccounts::Cols::_account_id, CompareOperator::EQ, signin_dto.getAccountId()));
@@ -330,10 +415,21 @@ namespace turbo_ledger_identity::services
                 response.message = "Invalid credentials";
                 response.error["code"] = constants::ERR_AUTH_INVALID_CREDENTIALS;
                 response.error["message"] = "Invalid account ID";
+                
+                // Record login history
+                drogon_model::TlIdentity::LoginHistory history;
+                history.setStatus("FAILED");
+                history.setFailureReason("Invalid account ID");
+                history.setLoginTime(trantor::Date::now());
+                try {
+                    CoroMapper<drogon_model::TlIdentity::LoginHistory> historyMapper(dbClient);
+                    co_await historyMapper.insert(history);
+                } catch (...) {}
+                
                 co_return response;
             }
             
-            std::string targetBusinessId = businessAccounts.front().getValueOfId();
+            targetBusinessId = businessAccounts.front().getValueOfId();
             criteria = criteria && Criteria(drogon_model::TlIdentity::Users::Cols::_business_id, CompareOperator::EQ, targetBusinessId);
         }
 
@@ -341,14 +437,18 @@ namespace turbo_ledger_identity::services
 
         try {
             drogon_model::TlIdentity::Users user = co_await mapper.findOne(criteria);
+            
+            targetUserId = user.getValueOfId();
+            if (targetBusinessId.empty() && user.getBusinessId()) {
+                targetBusinessId = user.getValueOfBusinessId();
+            }
 
             std::string storedHash = utils::PasswordUtils::normalizeBcryptHash(user.getValueOfPasswordHash());
-
             bool passwordMatches = bcrypt::validatePassword(signin_dto.getPassword(), storedHash);
 
-
             if (passwordMatches) {
-
+                loginStatus = "SUCCESS";
+            
                 drogon_model::TlIdentity::Users userToUpdate = user;
                 userToUpdate.setLastActive(trantor::Date::now());
                 co_await mapper.update(userToUpdate);
@@ -378,18 +478,44 @@ namespace turbo_ledger_identity::services
                 response.result["fullName"] = user.getValueOfFirstName() + " " + user.getValueOfLastName();
                 response.result["email"] = user.getValueOfEmail();
             } else {
-                // Password is incorrect
+                loginStatus = "FAILED";
+                loginFailureReason = "Invalid password";
+                
                 response.success = false;
                 response.message = "Invalid credentials";
                 response.error["code"] = constants::ERR_AUTH_INVALID_CREDENTIALS;
             }
         } catch (const DrogonDbException &e) {
-            // User not found
+            loginStatus = "FAILED";
+            loginFailureReason = "User not found";
+            
             response.success = false;
             response.message = "User not found";
             response.error["code"] = constants::ERR_RESOURCE_NOT_FOUND;
             response.error["message"] = "User not found";
         }
+        
+        // Log LoginHistory
+        try {
+            drogon_model::TlIdentity::LoginHistory history;
+            if (!targetBusinessId.empty()) {
+                history.setBusinessId(targetBusinessId);
+            }
+            if (!targetUserId.empty()) {
+                history.setUserId(targetUserId);
+            }
+            history.setStatus(loginStatus);
+            if (!loginFailureReason.empty()) {
+                history.setFailureReason(loginFailureReason);
+            }
+            history.setLoginTime(trantor::Date::now());
+            
+            CoroMapper<drogon_model::TlIdentity::LoginHistory> historyMapper(dbClient);
+            co_await historyMapper.insert(history);
+        } catch (...) {
+            // Ignore history insertion errors to not fail the login request
+        }
+        
         co_return response;
     }
 

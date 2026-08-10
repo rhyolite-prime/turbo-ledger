@@ -3,6 +3,7 @@
 #include "dto/BaseApiResponse.h"
 #include "plugins/IdentityServicePlugin.h"
 #include "dto/RoleDto.h"
+#include "dto/UserIdentityDto.h"
 
 using namespace drogon;
 using namespace turbo_ledger_identity::plugins;
@@ -10,8 +11,7 @@ using namespace turbo_ledger_identity::dto;
 
 Task<HttpResponsePtr> RolesController::getRoles(HttpRequestPtr req) {
 
-    std::string businessId;
-    try { businessId = req->attributes()->get<std::string>("businessId"); } catch (...) {}
+    auto identity = UserIdentityDto::fromRequest(req);
     
     int pageNo = 1;
     int pageSize = 10;
@@ -30,7 +30,7 @@ Task<HttpResponsePtr> RolesController::getRoles(HttpRequestPtr req) {
     auto plugin = app().getPlugin<IdentityServicePlugin>();
     auto& roleService = plugin->getRoleService();
 
-    auto response = co_await roleService.getAll(businessId, pageNo, pageSize, query);
+    auto response = co_await roleService.getAll(identity, pageNo, pageSize, query);
 
     auto resp = HttpResponse::newHttpJsonResponse(response.toJson());
     resp->setStatusCode(response.success ? k200OK : k400BadRequest);
@@ -53,11 +53,10 @@ Task<HttpResponsePtr> RolesController::getTenantPermissions(HttpRequestPtr req) 
 
 
 Task<HttpResponsePtr> RolesController::getHostPermissions(HttpRequestPtr req) {
-    std::string businessId;
-    try { businessId = req->attributes()->get<std::string>("businessId"); } catch (...) {}
+    auto identity = UserIdentityDto::fromRequest(req);
 
 
-    if (!businessId.empty()) {
+    if (!identity.business_id.empty()) {
         BaseApiResponse apiResponse;
         apiResponse.success = false;
         apiResponse.message = "Forbidden: Tenant tokens cannot access host endpoints";
@@ -89,8 +88,7 @@ Task<HttpResponsePtr> RolesController::createRole(HttpRequestPtr req) {
         co_return resp;
     }
     
-    std::string businessId;
-    try { businessId = req->attributes()->get<std::string>("businessId"); } catch (...) {}
+    auto identity = UserIdentityDto::fromRequest(req);
 
     RoleDto dto;
     dto.fromJson(*json);
@@ -98,7 +96,7 @@ Task<HttpResponsePtr> RolesController::createRole(HttpRequestPtr req) {
     auto plugin = drogon::app().getPlugin<IdentityServicePlugin>();
     auto& roleService = plugin->getRoleService();
 
-    auto result = co_await roleService.create(businessId, dto);
+    auto result = co_await roleService.create(identity, dto);
 
     auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
     resp->setStatusCode(result.success ? k200OK : k400BadRequest);
@@ -117,8 +115,7 @@ Task<HttpResponsePtr> RolesController::updateRole(HttpRequestPtr req, std::strin
         co_return resp;
     }
     
-    std::string businessId;
-    try { businessId = req->attributes()->get<std::string>("businessId"); } catch (...) {}
+    auto identity = UserIdentityDto::fromRequest(req);
 
     RoleDto dto;
     dto.fromJson(*json);
@@ -126,7 +123,7 @@ Task<HttpResponsePtr> RolesController::updateRole(HttpRequestPtr req, std::strin
     auto plugin = app().getPlugin<IdentityServicePlugin>();
     auto& roleService = plugin->getRoleService();
 
-    auto result = co_await roleService.update(businessId, dto, roleId);
+    auto result = co_await roleService.update(identity, dto, roleId);
 
     auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
     resp->setStatusCode(result.success ? k200OK : k400BadRequest);
@@ -135,13 +132,12 @@ Task<HttpResponsePtr> RolesController::updateRole(HttpRequestPtr req, std::strin
 
 Task<HttpResponsePtr> RolesController::deleteRole(HttpRequestPtr req, std::string roleId) {
 
-    std::string businessId;
-    try { businessId = req->attributes()->get<std::string>("businessId"); } catch (...) {}
+    auto identity = UserIdentityDto::fromRequest(req);
 
     auto plugin = app().getPlugin<IdentityServicePlugin>();
     auto& roleService = plugin->getRoleService();
 
-    auto result = co_await roleService.deleteRole(businessId, roleId);
+    auto result = co_await roleService.deleteRole(identity, roleId);
 
     auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
     resp->setStatusCode(result.success ? k200OK : k400BadRequest);

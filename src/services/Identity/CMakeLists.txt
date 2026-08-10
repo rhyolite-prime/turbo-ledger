@@ -28,6 +28,8 @@ add_executable(${PROJECT_NAME} main.cc
         utils/JsonUtils.h
         services/audit_logs/AuditLogService.h
         services/audit_logs/AuditLogService.cc
+        services/audit_logs/AuditScope.h
+        services/audit_logs/AuditScope.cc
         dto/ApiKeyDto.h
         services/api_keys/ApiKeyService.cc
         utils/IdGeneratorUtils.h
@@ -38,6 +40,9 @@ add_executable(${PROJECT_NAME} main.cc
         utils/PasswordUtils.h
         utils/PasswordUtils.cc
         utils/codecvt_helper.h
+        dto/UserIdentityDto.h
+        services/redis/RedisCacheManager.h
+        services/redis/RedisCacheManager.cc
 )
 
 # ##############################################################################

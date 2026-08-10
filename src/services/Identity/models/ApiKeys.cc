@@ -23,7 +23,11 @@ const std::string ApiKeys::Cols::_scopes = "\"scopes\"";
 const std::string ApiKeys::Cols::_allowed_ips = "\"allowed_ips\"";
 const std::string ApiKeys::Cols::_is_active = "\"is_active\"";
 const std::string ApiKeys::Cols::_last_used_at = "\"last_used_at\"";
+const std::string ApiKeys::Cols::_api_key_user_id = "\"api_key_user_id\"";
+const std::string ApiKeys::Cols::_created_by = "\"created_by\"";
 const std::string ApiKeys::Cols::_created_at = "\"created_at\"";
+const std::string ApiKeys::Cols::_modified_by = "\"modified_by\"";
+const std::string ApiKeys::Cols::_modified_at = "\"modified_at\"";
 const std::string ApiKeys::primaryKeyName = "id";
 const bool ApiKeys::hasPrimaryKey = true;
 const std::string ApiKeys::tableName = "\"api_keys\"";
@@ -39,7 +43,11 @@ const std::vector<typename ApiKeys::MetaData> ApiKeys::metaData_={
 {"allowed_ips","std::string","ARRAY",0,0,0,0},
 {"is_active","bool","boolean",1,0,0,0},
 {"last_used_at","::trantor::Date","timestamp with time zone",0,0,0,0},
-{"created_at","::trantor::Date","timestamp with time zone",0,0,0,0}
+{"api_key_user_id","std::string","uuid",0,0,0,0},
+{"created_by","std::string","uuid",0,0,0,0},
+{"created_at","::trantor::Date","timestamp with time zone",0,0,0,0},
+{"modified_by","std::string","uuid",0,0,0,0},
+{"modified_at","::trantor::Date","timestamp with time zone",0,0,0,0}
 };
 const std::string &ApiKeys::getColumnName(size_t index) noexcept(false)
 {
@@ -108,6 +116,14 @@ ApiKeys::ApiKeys(const Row &r, const ssize_t indexOffset) noexcept
                 lastUsedAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
         }
+        if(!r["api_key_user_id"].isNull())
+        {
+            apiKeyUserId_=std::make_shared<std::string>(r["api_key_user_id"].as<std::string>());
+        }
+        if(!r["created_by"].isNull())
+        {
+            createdBy_=std::make_shared<std::string>(r["created_by"].as<std::string>());
+        }
         if(!r["created_at"].isNull())
         {
             auto timeStr = r["created_at"].as<std::string>();
@@ -130,11 +146,37 @@ ApiKeys::ApiKeys(const Row &r, const ssize_t indexOffset) noexcept
                 createdAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
         }
+        if(!r["modified_by"].isNull())
+        {
+            modifiedBy_=std::make_shared<std::string>(r["modified_by"].as<std::string>());
+        }
+        if(!r["modified_at"].isNull())
+        {
+            auto timeStr = r["modified_at"].as<std::string>();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
+            time_t t = mktime(&stm);
+            size_t decimalNum = 0;
+            if(p)
+            {
+                if(*p=='.')
+                {
+                    std::string decimals(p+1,&timeStr[timeStr.length()]);
+                    while(decimals.length()<6)
+                    {
+                        decimals += "0";
+                    }
+                    decimalNum = (size_t)atol(decimals.c_str());
+                }
+                modifiedAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+            }
+        }
     }
     else
     {
         size_t offset = (size_t)indexOffset;
-        if(offset + 11 > r.size())
+        if(offset + 15 > r.size())
         {
             LOG_FATAL << "Invalid SQL result for this model";
             return;
@@ -211,6 +253,16 @@ ApiKeys::ApiKeys(const Row &r, const ssize_t indexOffset) noexcept
         index = offset + 10;
         if(!r[index].isNull())
         {
+            apiKeyUserId_=std::make_shared<std::string>(r[index].as<std::string>());
+        }
+        index = offset + 11;
+        if(!r[index].isNull())
+        {
+            createdBy_=std::make_shared<std::string>(r[index].as<std::string>());
+        }
+        index = offset + 12;
+        if(!r[index].isNull())
+        {
             auto timeStr = r[index].as<std::string>();
             struct tm stm;
             memset(&stm,0,sizeof(stm));
@@ -231,13 +283,41 @@ ApiKeys::ApiKeys(const Row &r, const ssize_t indexOffset) noexcept
                 createdAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
         }
+        index = offset + 13;
+        if(!r[index].isNull())
+        {
+            modifiedBy_=std::make_shared<std::string>(r[index].as<std::string>());
+        }
+        index = offset + 14;
+        if(!r[index].isNull())
+        {
+            auto timeStr = r[index].as<std::string>();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
+            time_t t = mktime(&stm);
+            size_t decimalNum = 0;
+            if(p)
+            {
+                if(*p=='.')
+                {
+                    std::string decimals(p+1,&timeStr[timeStr.length()]);
+                    while(decimals.length()<6)
+                    {
+                        decimals += "0";
+                    }
+                    decimalNum = (size_t)atol(decimals.c_str());
+                }
+                modifiedAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+            }
+        }
     }
 
 }
 
 ApiKeys::ApiKeys(const Json::Value &pJson, const std::vector<std::string> &pMasqueradingVector) noexcept(false)
 {
-    if(pMasqueradingVector.size() != 11)
+    if(pMasqueradingVector.size() != 15)
     {
         LOG_ERROR << "Bad masquerading vector";
         return;
@@ -345,7 +425,23 @@ ApiKeys::ApiKeys(const Json::Value &pJson, const std::vector<std::string> &pMasq
         dirtyFlag_[10] = true;
         if(!pJson[pMasqueradingVector[10]].isNull())
         {
-            auto timeStr = pJson[pMasqueradingVector[10]].asString();
+            apiKeyUserId_=std::make_shared<std::string>(pJson[pMasqueradingVector[10]].asString());
+        }
+    }
+    if(!pMasqueradingVector[11].empty() && pJson.isMember(pMasqueradingVector[11]))
+    {
+        dirtyFlag_[11] = true;
+        if(!pJson[pMasqueradingVector[11]].isNull())
+        {
+            createdBy_=std::make_shared<std::string>(pJson[pMasqueradingVector[11]].asString());
+        }
+    }
+    if(!pMasqueradingVector[12].empty() && pJson.isMember(pMasqueradingVector[12]))
+    {
+        dirtyFlag_[12] = true;
+        if(!pJson[pMasqueradingVector[12]].isNull())
+        {
+            auto timeStr = pJson[pMasqueradingVector[12]].asString();
             struct tm stm;
             memset(&stm,0,sizeof(stm));
             auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
@@ -363,6 +459,40 @@ ApiKeys::ApiKeys(const Json::Value &pJson, const std::vector<std::string> &pMasq
                     decimalNum = (size_t)atol(decimals.c_str());
                 }
                 createdAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+            }
+        }
+    }
+    if(!pMasqueradingVector[13].empty() && pJson.isMember(pMasqueradingVector[13]))
+    {
+        dirtyFlag_[13] = true;
+        if(!pJson[pMasqueradingVector[13]].isNull())
+        {
+            modifiedBy_=std::make_shared<std::string>(pJson[pMasqueradingVector[13]].asString());
+        }
+    }
+    if(!pMasqueradingVector[14].empty() && pJson.isMember(pMasqueradingVector[14]))
+    {
+        dirtyFlag_[14] = true;
+        if(!pJson[pMasqueradingVector[14]].isNull())
+        {
+            auto timeStr = pJson[pMasqueradingVector[14]].asString();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
+            time_t t = mktime(&stm);
+            size_t decimalNum = 0;
+            if(p)
+            {
+                if(*p=='.')
+                {
+                    std::string decimals(p+1,&timeStr[timeStr.length()]);
+                    while(decimals.length()<6)
+                    {
+                        decimals += "0";
+                    }
+                    decimalNum = (size_t)atol(decimals.c_str());
+                }
+                modifiedAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
         }
     }
@@ -468,9 +598,25 @@ ApiKeys::ApiKeys(const Json::Value &pJson) noexcept(false)
             }
         }
     }
-    if(pJson.isMember("created_at"))
+    if(pJson.isMember("api_key_user_id"))
     {
         dirtyFlag_[10]=true;
+        if(!pJson["api_key_user_id"].isNull())
+        {
+            apiKeyUserId_=std::make_shared<std::string>(pJson["api_key_user_id"].asString());
+        }
+    }
+    if(pJson.isMember("created_by"))
+    {
+        dirtyFlag_[11]=true;
+        if(!pJson["created_by"].isNull())
+        {
+            createdBy_=std::make_shared<std::string>(pJson["created_by"].asString());
+        }
+    }
+    if(pJson.isMember("created_at"))
+    {
+        dirtyFlag_[12]=true;
         if(!pJson["created_at"].isNull())
         {
             auto timeStr = pJson["created_at"].asString();
@@ -494,12 +640,46 @@ ApiKeys::ApiKeys(const Json::Value &pJson) noexcept(false)
             }
         }
     }
+    if(pJson.isMember("modified_by"))
+    {
+        dirtyFlag_[13]=true;
+        if(!pJson["modified_by"].isNull())
+        {
+            modifiedBy_=std::make_shared<std::string>(pJson["modified_by"].asString());
+        }
+    }
+    if(pJson.isMember("modified_at"))
+    {
+        dirtyFlag_[14]=true;
+        if(!pJson["modified_at"].isNull())
+        {
+            auto timeStr = pJson["modified_at"].asString();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
+            time_t t = mktime(&stm);
+            size_t decimalNum = 0;
+            if(p)
+            {
+                if(*p=='.')
+                {
+                    std::string decimals(p+1,&timeStr[timeStr.length()]);
+                    while(decimals.length()<6)
+                    {
+                        decimals += "0";
+                    }
+                    decimalNum = (size_t)atol(decimals.c_str());
+                }
+                modifiedAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+            }
+        }
+    }
 }
 
 void ApiKeys::updateByMasqueradedJson(const Json::Value &pJson,
                                             const std::vector<std::string> &pMasqueradingVector) noexcept(false)
 {
-    if(pMasqueradingVector.size() != 11)
+    if(pMasqueradingVector.size() != 15)
     {
         LOG_ERROR << "Bad masquerading vector";
         return;
@@ -606,7 +786,23 @@ void ApiKeys::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[10] = true;
         if(!pJson[pMasqueradingVector[10]].isNull())
         {
-            auto timeStr = pJson[pMasqueradingVector[10]].asString();
+            apiKeyUserId_=std::make_shared<std::string>(pJson[pMasqueradingVector[10]].asString());
+        }
+    }
+    if(!pMasqueradingVector[11].empty() && pJson.isMember(pMasqueradingVector[11]))
+    {
+        dirtyFlag_[11] = true;
+        if(!pJson[pMasqueradingVector[11]].isNull())
+        {
+            createdBy_=std::make_shared<std::string>(pJson[pMasqueradingVector[11]].asString());
+        }
+    }
+    if(!pMasqueradingVector[12].empty() && pJson.isMember(pMasqueradingVector[12]))
+    {
+        dirtyFlag_[12] = true;
+        if(!pJson[pMasqueradingVector[12]].isNull())
+        {
+            auto timeStr = pJson[pMasqueradingVector[12]].asString();
             struct tm stm;
             memset(&stm,0,sizeof(stm));
             auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
@@ -624,6 +820,40 @@ void ApiKeys::updateByMasqueradedJson(const Json::Value &pJson,
                     decimalNum = (size_t)atol(decimals.c_str());
                 }
                 createdAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+            }
+        }
+    }
+    if(!pMasqueradingVector[13].empty() && pJson.isMember(pMasqueradingVector[13]))
+    {
+        dirtyFlag_[13] = true;
+        if(!pJson[pMasqueradingVector[13]].isNull())
+        {
+            modifiedBy_=std::make_shared<std::string>(pJson[pMasqueradingVector[13]].asString());
+        }
+    }
+    if(!pMasqueradingVector[14].empty() && pJson.isMember(pMasqueradingVector[14]))
+    {
+        dirtyFlag_[14] = true;
+        if(!pJson[pMasqueradingVector[14]].isNull())
+        {
+            auto timeStr = pJson[pMasqueradingVector[14]].asString();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
+            time_t t = mktime(&stm);
+            size_t decimalNum = 0;
+            if(p)
+            {
+                if(*p=='.')
+                {
+                    std::string decimals(p+1,&timeStr[timeStr.length()]);
+                    while(decimals.length()<6)
+                    {
+                        decimals += "0";
+                    }
+                    decimalNum = (size_t)atol(decimals.c_str());
+                }
+                modifiedAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
         }
     }
@@ -728,9 +958,25 @@ void ApiKeys::updateByJson(const Json::Value &pJson) noexcept(false)
             }
         }
     }
-    if(pJson.isMember("created_at"))
+    if(pJson.isMember("api_key_user_id"))
     {
         dirtyFlag_[10] = true;
+        if(!pJson["api_key_user_id"].isNull())
+        {
+            apiKeyUserId_=std::make_shared<std::string>(pJson["api_key_user_id"].asString());
+        }
+    }
+    if(pJson.isMember("created_by"))
+    {
+        dirtyFlag_[11] = true;
+        if(!pJson["created_by"].isNull())
+        {
+            createdBy_=std::make_shared<std::string>(pJson["created_by"].asString());
+        }
+    }
+    if(pJson.isMember("created_at"))
+    {
+        dirtyFlag_[12] = true;
         if(!pJson["created_at"].isNull())
         {
             auto timeStr = pJson["created_at"].asString();
@@ -751,6 +997,40 @@ void ApiKeys::updateByJson(const Json::Value &pJson) noexcept(false)
                     decimalNum = (size_t)atol(decimals.c_str());
                 }
                 createdAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+            }
+        }
+    }
+    if(pJson.isMember("modified_by"))
+    {
+        dirtyFlag_[13] = true;
+        if(!pJson["modified_by"].isNull())
+        {
+            modifiedBy_=std::make_shared<std::string>(pJson["modified_by"].asString());
+        }
+    }
+    if(pJson.isMember("modified_at"))
+    {
+        dirtyFlag_[14] = true;
+        if(!pJson["modified_at"].isNull())
+        {
+            auto timeStr = pJson["modified_at"].asString();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
+            time_t t = mktime(&stm);
+            size_t decimalNum = 0;
+            if(p)
+            {
+                if(*p=='.')
+                {
+                    std::string decimals(p+1,&timeStr[timeStr.length()]);
+                    while(decimals.length()<6)
+                    {
+                        decimals += "0";
+                    }
+                    decimalNum = (size_t)atol(decimals.c_str());
+                }
+                modifiedAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
         }
     }
@@ -1001,6 +1281,60 @@ void ApiKeys::setLastUsedAtToNull() noexcept
     dirtyFlag_[9] = true;
 }
 
+const std::string &ApiKeys::getValueOfApiKeyUserId() const noexcept
+{
+    static const std::string defaultValue = std::string();
+    if(apiKeyUserId_)
+        return *apiKeyUserId_;
+    return defaultValue;
+}
+const std::shared_ptr<std::string> &ApiKeys::getApiKeyUserId() const noexcept
+{
+    return apiKeyUserId_;
+}
+void ApiKeys::setApiKeyUserId(const std::string &pApiKeyUserId) noexcept
+{
+    apiKeyUserId_ = std::make_shared<std::string>(pApiKeyUserId);
+    dirtyFlag_[10] = true;
+}
+void ApiKeys::setApiKeyUserId(std::string &&pApiKeyUserId) noexcept
+{
+    apiKeyUserId_ = std::make_shared<std::string>(std::move(pApiKeyUserId));
+    dirtyFlag_[10] = true;
+}
+void ApiKeys::setApiKeyUserIdToNull() noexcept
+{
+    apiKeyUserId_.reset();
+    dirtyFlag_[10] = true;
+}
+
+const std::string &ApiKeys::getValueOfCreatedBy() const noexcept
+{
+    static const std::string defaultValue = std::string();
+    if(createdBy_)
+        return *createdBy_;
+    return defaultValue;
+}
+const std::shared_ptr<std::string> &ApiKeys::getCreatedBy() const noexcept
+{
+    return createdBy_;
+}
+void ApiKeys::setCreatedBy(const std::string &pCreatedBy) noexcept
+{
+    createdBy_ = std::make_shared<std::string>(pCreatedBy);
+    dirtyFlag_[11] = true;
+}
+void ApiKeys::setCreatedBy(std::string &&pCreatedBy) noexcept
+{
+    createdBy_ = std::make_shared<std::string>(std::move(pCreatedBy));
+    dirtyFlag_[11] = true;
+}
+void ApiKeys::setCreatedByToNull() noexcept
+{
+    createdBy_.reset();
+    dirtyFlag_[11] = true;
+}
+
 const ::trantor::Date &ApiKeys::getValueOfCreatedAt() const noexcept
 {
     static const ::trantor::Date defaultValue = ::trantor::Date();
@@ -1015,12 +1349,61 @@ const std::shared_ptr<::trantor::Date> &ApiKeys::getCreatedAt() const noexcept
 void ApiKeys::setCreatedAt(const ::trantor::Date &pCreatedAt) noexcept
 {
     createdAt_ = std::make_shared<::trantor::Date>(pCreatedAt);
-    dirtyFlag_[10] = true;
+    dirtyFlag_[12] = true;
 }
 void ApiKeys::setCreatedAtToNull() noexcept
 {
     createdAt_.reset();
-    dirtyFlag_[10] = true;
+    dirtyFlag_[12] = true;
+}
+
+const std::string &ApiKeys::getValueOfModifiedBy() const noexcept
+{
+    static const std::string defaultValue = std::string();
+    if(modifiedBy_)
+        return *modifiedBy_;
+    return defaultValue;
+}
+const std::shared_ptr<std::string> &ApiKeys::getModifiedBy() const noexcept
+{
+    return modifiedBy_;
+}
+void ApiKeys::setModifiedBy(const std::string &pModifiedBy) noexcept
+{
+    modifiedBy_ = std::make_shared<std::string>(pModifiedBy);
+    dirtyFlag_[13] = true;
+}
+void ApiKeys::setModifiedBy(std::string &&pModifiedBy) noexcept
+{
+    modifiedBy_ = std::make_shared<std::string>(std::move(pModifiedBy));
+    dirtyFlag_[13] = true;
+}
+void ApiKeys::setModifiedByToNull() noexcept
+{
+    modifiedBy_.reset();
+    dirtyFlag_[13] = true;
+}
+
+const ::trantor::Date &ApiKeys::getValueOfModifiedAt() const noexcept
+{
+    static const ::trantor::Date defaultValue = ::trantor::Date();
+    if(modifiedAt_)
+        return *modifiedAt_;
+    return defaultValue;
+}
+const std::shared_ptr<::trantor::Date> &ApiKeys::getModifiedAt() const noexcept
+{
+    return modifiedAt_;
+}
+void ApiKeys::setModifiedAt(const ::trantor::Date &pModifiedAt) noexcept
+{
+    modifiedAt_ = std::make_shared<::trantor::Date>(pModifiedAt);
+    dirtyFlag_[14] = true;
+}
+void ApiKeys::setModifiedAtToNull() noexcept
+{
+    modifiedAt_.reset();
+    dirtyFlag_[14] = true;
 }
 
 void ApiKeys::updateId(const uint64_t id)
@@ -1040,7 +1423,11 @@ const std::vector<std::string> &ApiKeys::insertColumns() noexcept
         "allowed_ips",
         "is_active",
         "last_used_at",
-        "created_at"
+        "api_key_user_id",
+        "created_by",
+        "created_at",
+        "modified_by",
+        "modified_at"
     };
     return inCols;
 }
@@ -1159,9 +1546,53 @@ void ApiKeys::outputArgs(drogon::orm::internal::SqlBinder &binder) const
     }
     if(dirtyFlag_[10])
     {
+        if(getApiKeyUserId())
+        {
+            binder << getValueOfApiKeyUserId();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[11])
+    {
+        if(getCreatedBy())
+        {
+            binder << getValueOfCreatedBy();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[12])
+    {
         if(getCreatedAt())
         {
             binder << getValueOfCreatedAt();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[13])
+    {
+        if(getModifiedBy())
+        {
+            binder << getValueOfModifiedBy();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[14])
+    {
+        if(getModifiedAt())
+        {
+            binder << getValueOfModifiedAt();
         }
         else
         {
@@ -1216,6 +1647,22 @@ const std::vector<std::string> ApiKeys::updateColumns() const
     if(dirtyFlag_[10])
     {
         ret.push_back(getColumnName(10));
+    }
+    if(dirtyFlag_[11])
+    {
+        ret.push_back(getColumnName(11));
+    }
+    if(dirtyFlag_[12])
+    {
+        ret.push_back(getColumnName(12));
+    }
+    if(dirtyFlag_[13])
+    {
+        ret.push_back(getColumnName(13));
+    }
+    if(dirtyFlag_[14])
+    {
+        ret.push_back(getColumnName(14));
     }
     return ret;
 }
@@ -1334,9 +1781,53 @@ void ApiKeys::updateArgs(drogon::orm::internal::SqlBinder &binder) const
     }
     if(dirtyFlag_[10])
     {
+        if(getApiKeyUserId())
+        {
+            binder << getValueOfApiKeyUserId();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[11])
+    {
+        if(getCreatedBy())
+        {
+            binder << getValueOfCreatedBy();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[12])
+    {
         if(getCreatedAt())
         {
             binder << getValueOfCreatedAt();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[13])
+    {
+        if(getModifiedBy())
+        {
+            binder << getValueOfModifiedBy();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[14])
+    {
+        if(getModifiedAt())
+        {
+            binder << getValueOfModifiedAt();
         }
         else
         {
@@ -1427,6 +1918,22 @@ Json::Value ApiKeys::toJson() const
     {
         ret["last_used_at"]=Json::Value();
     }
+    if(getApiKeyUserId())
+    {
+        ret["api_key_user_id"]=getValueOfApiKeyUserId();
+    }
+    else
+    {
+        ret["api_key_user_id"]=Json::Value();
+    }
+    if(getCreatedBy())
+    {
+        ret["created_by"]=getValueOfCreatedBy();
+    }
+    else
+    {
+        ret["created_by"]=Json::Value();
+    }
     if(getCreatedAt())
     {
         ret["created_at"]=getCreatedAt()->toDbStringLocal();
@@ -1434,6 +1941,22 @@ Json::Value ApiKeys::toJson() const
     else
     {
         ret["created_at"]=Json::Value();
+    }
+    if(getModifiedBy())
+    {
+        ret["modified_by"]=getValueOfModifiedBy();
+    }
+    else
+    {
+        ret["modified_by"]=Json::Value();
+    }
+    if(getModifiedAt())
+    {
+        ret["modified_at"]=getModifiedAt()->toDbStringLocal();
+    }
+    else
+    {
+        ret["modified_at"]=Json::Value();
     }
     return ret;
 }
@@ -1447,7 +1970,7 @@ Json::Value ApiKeys::toMasqueradedJson(
     const std::vector<std::string> &pMasqueradingVector) const
 {
     Json::Value ret;
-    if(pMasqueradingVector.size() == 11)
+    if(pMasqueradingVector.size() == 15)
     {
         if(!pMasqueradingVector[0].empty())
         {
@@ -1561,13 +2084,57 @@ Json::Value ApiKeys::toMasqueradedJson(
         }
         if(!pMasqueradingVector[10].empty())
         {
-            if(getCreatedAt())
+            if(getApiKeyUserId())
             {
-                ret[pMasqueradingVector[10]]=getCreatedAt()->toDbStringLocal();
+                ret[pMasqueradingVector[10]]=getValueOfApiKeyUserId();
             }
             else
             {
                 ret[pMasqueradingVector[10]]=Json::Value();
+            }
+        }
+        if(!pMasqueradingVector[11].empty())
+        {
+            if(getCreatedBy())
+            {
+                ret[pMasqueradingVector[11]]=getValueOfCreatedBy();
+            }
+            else
+            {
+                ret[pMasqueradingVector[11]]=Json::Value();
+            }
+        }
+        if(!pMasqueradingVector[12].empty())
+        {
+            if(getCreatedAt())
+            {
+                ret[pMasqueradingVector[12]]=getCreatedAt()->toDbStringLocal();
+            }
+            else
+            {
+                ret[pMasqueradingVector[12]]=Json::Value();
+            }
+        }
+        if(!pMasqueradingVector[13].empty())
+        {
+            if(getModifiedBy())
+            {
+                ret[pMasqueradingVector[13]]=getValueOfModifiedBy();
+            }
+            else
+            {
+                ret[pMasqueradingVector[13]]=Json::Value();
+            }
+        }
+        if(!pMasqueradingVector[14].empty())
+        {
+            if(getModifiedAt())
+            {
+                ret[pMasqueradingVector[14]]=getModifiedAt()->toDbStringLocal();
+            }
+            else
+            {
+                ret[pMasqueradingVector[14]]=Json::Value();
             }
         }
         return ret;
@@ -1653,6 +2220,22 @@ Json::Value ApiKeys::toMasqueradedJson(
     {
         ret["last_used_at"]=Json::Value();
     }
+    if(getApiKeyUserId())
+    {
+        ret["api_key_user_id"]=getValueOfApiKeyUserId();
+    }
+    else
+    {
+        ret["api_key_user_id"]=Json::Value();
+    }
+    if(getCreatedBy())
+    {
+        ret["created_by"]=getValueOfCreatedBy();
+    }
+    else
+    {
+        ret["created_by"]=Json::Value();
+    }
     if(getCreatedAt())
     {
         ret["created_at"]=getCreatedAt()->toDbStringLocal();
@@ -1660,6 +2243,22 @@ Json::Value ApiKeys::toMasqueradedJson(
     else
     {
         ret["created_at"]=Json::Value();
+    }
+    if(getModifiedBy())
+    {
+        ret["modified_by"]=getValueOfModifiedBy();
+    }
+    else
+    {
+        ret["modified_by"]=Json::Value();
+    }
+    if(getModifiedAt())
+    {
+        ret["modified_at"]=getModifiedAt()->toDbStringLocal();
+    }
+    else
+    {
+        ret["modified_at"]=Json::Value();
     }
     return ret;
 }
@@ -1731,9 +2330,29 @@ bool ApiKeys::validateJsonForCreation(const Json::Value &pJson, std::string &err
         if(!validJsonOfField(9, "last_used_at", pJson["last_used_at"], err, true))
             return false;
     }
+    if(pJson.isMember("api_key_user_id"))
+    {
+        if(!validJsonOfField(10, "api_key_user_id", pJson["api_key_user_id"], err, true))
+            return false;
+    }
+    if(pJson.isMember("created_by"))
+    {
+        if(!validJsonOfField(11, "created_by", pJson["created_by"], err, true))
+            return false;
+    }
     if(pJson.isMember("created_at"))
     {
-        if(!validJsonOfField(10, "created_at", pJson["created_at"], err, true))
+        if(!validJsonOfField(12, "created_at", pJson["created_at"], err, true))
+            return false;
+    }
+    if(pJson.isMember("modified_by"))
+    {
+        if(!validJsonOfField(13, "modified_by", pJson["modified_by"], err, true))
+            return false;
+    }
+    if(pJson.isMember("modified_at"))
+    {
+        if(!validJsonOfField(14, "modified_at", pJson["modified_at"], err, true))
             return false;
     }
     return true;
@@ -1742,7 +2361,7 @@ bool ApiKeys::validateMasqueradedJsonForCreation(const Json::Value &pJson,
                                                  const std::vector<std::string> &pMasqueradingVector,
                                                  std::string &err)
 {
-    if(pMasqueradingVector.size() != 11)
+    if(pMasqueradingVector.size() != 15)
     {
         err = "Bad masquerading vector";
         return false;
@@ -1851,6 +2470,38 @@ bool ApiKeys::validateMasqueradedJsonForCreation(const Json::Value &pJson,
                   return false;
           }
       }
+      if(!pMasqueradingVector[11].empty())
+      {
+          if(pJson.isMember(pMasqueradingVector[11]))
+          {
+              if(!validJsonOfField(11, pMasqueradingVector[11], pJson[pMasqueradingVector[11]], err, true))
+                  return false;
+          }
+      }
+      if(!pMasqueradingVector[12].empty())
+      {
+          if(pJson.isMember(pMasqueradingVector[12]))
+          {
+              if(!validJsonOfField(12, pMasqueradingVector[12], pJson[pMasqueradingVector[12]], err, true))
+                  return false;
+          }
+      }
+      if(!pMasqueradingVector[13].empty())
+      {
+          if(pJson.isMember(pMasqueradingVector[13]))
+          {
+              if(!validJsonOfField(13, pMasqueradingVector[13], pJson[pMasqueradingVector[13]], err, true))
+                  return false;
+          }
+      }
+      if(!pMasqueradingVector[14].empty())
+      {
+          if(pJson.isMember(pMasqueradingVector[14]))
+          {
+              if(!validJsonOfField(14, pMasqueradingVector[14], pJson[pMasqueradingVector[14]], err, true))
+                  return false;
+          }
+      }
     }
     catch(const Json::LogicError &e)
     {
@@ -1916,9 +2567,29 @@ bool ApiKeys::validateJsonForUpdate(const Json::Value &pJson, std::string &err)
         if(!validJsonOfField(9, "last_used_at", pJson["last_used_at"], err, false))
             return false;
     }
+    if(pJson.isMember("api_key_user_id"))
+    {
+        if(!validJsonOfField(10, "api_key_user_id", pJson["api_key_user_id"], err, false))
+            return false;
+    }
+    if(pJson.isMember("created_by"))
+    {
+        if(!validJsonOfField(11, "created_by", pJson["created_by"], err, false))
+            return false;
+    }
     if(pJson.isMember("created_at"))
     {
-        if(!validJsonOfField(10, "created_at", pJson["created_at"], err, false))
+        if(!validJsonOfField(12, "created_at", pJson["created_at"], err, false))
+            return false;
+    }
+    if(pJson.isMember("modified_by"))
+    {
+        if(!validJsonOfField(13, "modified_by", pJson["modified_by"], err, false))
+            return false;
+    }
+    if(pJson.isMember("modified_at"))
+    {
+        if(!validJsonOfField(14, "modified_at", pJson["modified_at"], err, false))
             return false;
     }
     return true;
@@ -1927,7 +2598,7 @@ bool ApiKeys::validateMasqueradedJsonForUpdate(const Json::Value &pJson,
                                                const std::vector<std::string> &pMasqueradingVector,
                                                std::string &err)
 {
-    if(pMasqueradingVector.size() != 11)
+    if(pMasqueradingVector.size() != 15)
     {
         err = "Bad masquerading vector";
         return false;
@@ -1991,6 +2662,26 @@ bool ApiKeys::validateMasqueradedJsonForUpdate(const Json::Value &pJson,
       if(!pMasqueradingVector[10].empty() && pJson.isMember(pMasqueradingVector[10]))
       {
           if(!validJsonOfField(10, pMasqueradingVector[10], pJson[pMasqueradingVector[10]], err, false))
+              return false;
+      }
+      if(!pMasqueradingVector[11].empty() && pJson.isMember(pMasqueradingVector[11]))
+      {
+          if(!validJsonOfField(11, pMasqueradingVector[11], pJson[pMasqueradingVector[11]], err, false))
+              return false;
+      }
+      if(!pMasqueradingVector[12].empty() && pJson.isMember(pMasqueradingVector[12]))
+      {
+          if(!validJsonOfField(12, pMasqueradingVector[12], pJson[pMasqueradingVector[12]], err, false))
+              return false;
+      }
+      if(!pMasqueradingVector[13].empty() && pJson.isMember(pMasqueradingVector[13]))
+      {
+          if(!validJsonOfField(13, pMasqueradingVector[13], pJson[pMasqueradingVector[13]], err, false))
+              return false;
+      }
+      if(!pMasqueradingVector[14].empty() && pJson.isMember(pMasqueradingVector[14]))
+      {
+          if(!validJsonOfField(14, pMasqueradingVector[14], pJson[pMasqueradingVector[14]], err, false))
               return false;
       }
     }
@@ -2148,6 +2839,50 @@ bool ApiKeys::validJsonOfField(size_t index,
             }
             break;
         case 10:
+            if(pJson.isNull())
+            {
+                return true;
+            }
+            if(!pJson.isString())
+            {
+                err="Type error in the "+fieldName+" field";
+                return false;
+            }
+            break;
+        case 11:
+            if(pJson.isNull())
+            {
+                return true;
+            }
+            if(!pJson.isString())
+            {
+                err="Type error in the "+fieldName+" field";
+                return false;
+            }
+            break;
+        case 12:
+            if(pJson.isNull())
+            {
+                return true;
+            }
+            if(!pJson.isString())
+            {
+                err="Type error in the "+fieldName+" field";
+                return false;
+            }
+            break;
+        case 13:
+            if(pJson.isNull())
+            {
+                return true;
+            }
+            if(!pJson.isString())
+            {
+                err="Type error in the "+fieldName+" field";
+                return false;
+            }
+            break;
+        case 14:
             if(pJson.isNull())
             {
                 return true;
