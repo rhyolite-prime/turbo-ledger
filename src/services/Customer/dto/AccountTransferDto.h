@@ -1,0 +1,8 @@
+//
+// Created by Emmanuel Addo-Odame on 10/08/2026.
+//
+
+#ifndef CUSTOMER_ACCOUNTTRANSFERDTO_H
+#define CUSTOMER_ACCOUNTTRANSFERDTO_H
+
+#endif //CUSTOMER_ACCOUNTTRANSFERDTO_H

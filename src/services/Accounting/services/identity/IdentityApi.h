@@ -13,6 +13,11 @@ namespace turbo_ledger_accounting::services {
         bool isValid = false;
         std::string accountId;
         std::string businessId;
+        std::string userId;
+        std::string username;
+        std::string userEmail;
+        std::string firstName;
+        std::string lastName;
         std::string errorMessage;
         int errorCode = 0;
     };
@@ -22,6 +27,8 @@ namespace turbo_ledger_accounting::services {
         drogon::Task<ApiCredentialsValidationResult> validateApiCredentials(const std::string &clientId, const std::string &clientSecret);
 
         drogon::Task<ApiCredentialsValidationResult> validateAndCacheApiCredentials(const std::string &clientId, const std::string &clientSecret);
+
+        drogon::Task<ApiCredentialsValidationResult> validateJwtToken(const std::string &jwtToken);
     };
 
 }

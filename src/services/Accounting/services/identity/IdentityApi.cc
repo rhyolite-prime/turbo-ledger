@@ -5,7 +5,7 @@
 #include "IdentityApi.h"
 
 #include <json/json.h>
-
+#include <jwt-cpp/jwt.h>
 #include "plugins/AccountingServicePlugin.h"
 #include <bcrypt.h>
 
@@ -135,5 +135,74 @@ drogon::Task<ApiCredentialsValidationResult> IdentityApi::validateAndCacheApiCre
 
   co_return result;
 }
+
+
+
+
+drogon::Task<ApiCredentialsValidationResult> IdentityApi::validateJwtToken(const std::string &jwtToken) {
+  ApiCredentialsValidationResult result;
+
+  try {
+    // --- Read JWT configuration ---
+    auto customConfig = drogon::app().getCustomConfig();
+    const std::string jwtSecurityKey = customConfig["JwtBearer"]["JwtSecurityKey"].asString();
+    const std::string jwtIssuer      = customConfig["JwtBearer"]["JwtIssuer"].asString();
+    const std::string jwtAudience    = customConfig["JwtBearer"]["JwtAudience"].asString();
+
+    LOG_DEBUG << "[IdentityApi::validateJwtToken] Verifying token — issuer: " << jwtIssuer
+              << ", audience: " << jwtAudience;
+
+    // --- Decode & verify (signature, issuer, audience, expiry) ---
+    auto decoded = jwt::decode(jwtToken);
+
+    auto verifier = jwt::verify()
+                        .allow_algorithm(jwt::algorithm::hs256{jwtSecurityKey})
+                        .with_issuer(jwtIssuer)
+                        .with_audience(jwtAudience)
+                        .leeway(60UL); // allow 60-second clock skew
+
+    verifier.verify(decoded); // throws jwt::error::* on any failure
+
+    LOG_DEBUG << "[IdentityApi::validateJwtToken] Token signature and claims verified.";
+
+    // --- Extract payload claims into result struct ---
+    auto extractClaim = [&decoded](const std::string &name) -> std::string {
+      if (decoded.has_payload_claim(name)) {
+        try { return decoded.get_payload_claim(name).as_string(); }
+        catch (...) { /* claim exists but is not a string — skip */ }
+      }
+      return {};
+    };
+
+    result.userId    = extractClaim("userId");
+    result.userEmail = extractClaim("email");
+    result.username  = extractClaim("username");
+    result.firstName = extractClaim("firstName");
+    result.lastName  = extractClaim("surName"); // map surName → lastName field
+    result.accountId = extractClaim("accountId");
+    result.businessId = extractClaim("businessId");
+
+    LOG_DEBUG << "[IdentityApi::validateJwtToken] userId=" << result.userId
+              << " email=" << result.userEmail
+              << " username=" << result.username;
+
+    result.isValid = true;
+
+  } catch (const jwt::error::token_verification_exception &e) {
+    LOG_WARN << "[IdentityApi::validateJwtToken] Verification failed: " << e.what();
+    result.isValid      = false;
+    result.errorMessage = std::string("Token verification failed: ") + e.what();
+    result.errorCode    = 401;
+
+  } catch (const std::exception &e) {
+    LOG_ERROR << "[IdentityApi::validateJwtToken] Unexpected error: " << e.what();
+    result.isValid      = false;
+    result.errorMessage = std::string("JWT validation error: ") + e.what();
+    result.errorCode    = 500;
+  }
+
+  co_return result;
+}
+
 
 }
