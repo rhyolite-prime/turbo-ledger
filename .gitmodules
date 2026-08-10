@@ -1,0 +1,3 @@
+[submodule "src/services/Accounting/external_deps/Bcrypt"]
+	path = src/services/Accounting/external_deps/Bcrypt
+	url = https://github.com/hilch/Bcrypt.cpp
