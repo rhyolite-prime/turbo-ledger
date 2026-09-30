@@ -9,7 +9,7 @@
 #include <string>
 #include <json/json.h>
 
-namespace customer::dto {
+namespace turbo_ledger_customer::dto {
 
     class AssignStaffToClientDto {
     public:

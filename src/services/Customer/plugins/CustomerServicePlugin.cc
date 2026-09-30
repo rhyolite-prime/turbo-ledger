@@ -6,7 +6,7 @@
 
 #include "CustomerServicePlugin.h"
 
-using namespace customer::plugins;
+using namespace turbo_ledger_customer::plugins;
 
 using namespace drogon;
 

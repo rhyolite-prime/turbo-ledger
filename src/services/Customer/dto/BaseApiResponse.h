@@ -7,7 +7,7 @@
 #include <json/json.h>
 #include <string>
 
-namespace customer::dto {
+namespace turbo_ledger_customer::dto {
 
     class BaseApiResponse {
     public:

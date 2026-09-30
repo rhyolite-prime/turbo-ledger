@@ -4,7 +4,7 @@
 
 #ifndef CUSTOMER_CLIENTSTATUS_H
 #define CUSTOMER_CLIENTSTATUS_H
-namespace customer::constants {
+namespace turbo_ledger_customer::constants {
 
     enum ClientStatus {
         INVALID         = 0,

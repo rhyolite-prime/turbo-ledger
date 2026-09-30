@@ -21,7 +21,17 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_executable(${PROJECT_NAME} main.cc
         controllers/OfficeController.h
-        controllers/OfficeTransactionsController.h)
+        controllers/OfficeTransactionsController.h
+        plugins/OrganizationServicePlugin.h
+        services/office/OfficeService.h
+        dto/BaseApiResponse.h
+        dto/OfficeDto.h
+        services/office/OfficeService.cc
+        constants/ErrorCodes.h
+        utils/DateUtils.cc
+        services/loan_products/LoanProductService.h
+        dto/LoanProductDto.h
+        services/loan_products/LoanProductService.cc)
 
 # ##############################################################################
 # If you include the drogon source code locally in your project, use this method

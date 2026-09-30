@@ -20,7 +20,32 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_executable(${PROJECT_NAME} main.cc
-        controllers/GroupsController.h)
+        controllers/GroupsController.h
+        services/center/CenterService.h
+        services/group/GroupService.h
+        services/collection_sheet/CollectionSheetService.h
+        services/group/GroupService.cc
+        services/collection_sheet/CollectionSheetService.cc
+        services/center/CenterService.cc
+        constants/ErrorCode.h
+        dto/BaseApiResponse.h
+        dto/GroupDto.h
+        dto/ActivateGroupDto.h
+        dto/AssociateClientsDto.h
+        dto/TransferClientsDto.h
+        dto/CollectionSheetDto.h
+        dto/AssignStaffDto.h
+        dto/CloseGroupDto.h
+        dto/AssignRoleDto.h
+        controllers/CollectionSheetController.h
+        dto/IndividualCollectionSheetDto.h
+        controllers/CentersController.h
+        dto/CenterDto.h
+        exceptions/JsonException.h
+        dto/ActivateCenterDto.h
+        dto/CenterAssociationDto.h
+        plugins/GroupServicePlugin.h
+)
 
 # ##############################################################################
 # If you include the drogon source code locally in your project, use this method

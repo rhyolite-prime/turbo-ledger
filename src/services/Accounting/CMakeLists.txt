@@ -27,7 +27,9 @@ add_executable(${PROJECT_NAME} main.cc
         services/redis/RedisCacheManager.h
         services/redis/RedisCacheManager.cc
         services/accounting_rules/AccountingRuleService.h
-        services/accounting_rules/AccountingRuleService.cc)
+        services/accounting_rules/AccountingRuleService.cc
+        services/gl_closure/GlClosureService.h
+        services/financial_activity_accounts/FinancialActivityAccountService.h)
 
 # ##############################################################################
 # If you include the drogon source code locally in your project, use this method

@@ -5,7 +5,7 @@
 #ifndef CUSTOMER_ERRORCODES_H
 #define CUSTOMER_ERRORCODES_H
 
-namespace customer::constants {
+namespace turbo_ledger_customer::constants {
 
     enum ErrorCode {
         ERR_DB_CONNECTION = 1001,         // Database connection error

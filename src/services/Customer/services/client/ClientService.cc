@@ -6,18 +6,20 @@
 #include "dto/BaseApiResponse.h"
 #include "dto/ClientDto.h"
 #include "ClientService.h"
+#include "AccountTransferStandingInstructions.h"
 #include "Client.h"
 #include "ClientAddress.h"
 #include "ClientCharge.h"
 #include "ClientIdentifier.h"
 #include "ClientTransaction.h"
+#include "ClientTransferDetails.h"
 #include "constants/ClientStatus.h"
 #include "dto/ReactivateClientDto.h"
 #include "dto/ActivateClientDto.h"
 
 using namespace drogon::orm;
 
-namespace customer::services {
+namespace turbo_ledger_customer::services {
 
   drogon::Task<dto::BaseApiResponse> ClientService::getAll(int pageNo, int pageSize, const std::string &query) {
 
@@ -47,7 +49,7 @@ namespace customer::services {
 
         int offset = (pageNo - 1) * pageSize;
         auto result =
-            co_await mapper.orderBy(drogon_model::TlCustomerDb::Client::Cols::_created_on_utc, SortOrder::DESC)
+            co_await mapper.orderBy(drogon_model::TlCustomerDb::Client::Cols::_created_at, SortOrder::DESC)
                 .limit(pageSize)
                 .offset(offset)
                 .findBy(searchCriteria);
@@ -99,8 +101,21 @@ namespace customer::services {
 
   drogon::Task<dto::BaseApiResponse> ClientService::createAsync(const dto::ClientDto &dto) {
 
+        LOG_DEBUG << "[ClientService::createAsync] START";
+        LOG_DEBUG << "[ClientService::createAsync] firstname='" << dto.getFirstname() << "'"
+                  << " lastname='" << dto.getLastname() << "'"
+                  << " officeId='" << dto.getOfficeId() << "'"
+                  << " legalFormEnum=" << dto.getLegalStructure()
+                  << " mobileNo='" << dto.getMobileNo() << "'";
+
         dto::BaseApiResponse response;
         auto dbClient = drogon::app().getDbClient();
+        if (!dbClient) {
+            LOG_ERROR << "[ClientService::createAsync] DB client is null — check db config in config.json";
+            response.success = false;
+            response.message = "Database client unavailable";
+            co_return response;
+        }
         drogon::orm::CoroMapper<drogon_model::TlCustomerDb::Client> mapper(dbClient);
 
         try {
@@ -110,42 +125,64 @@ namespace customer::services {
             client.setStatus(dto.getStatusEnum());
             client.setSubStatus(dto.getSubStatus());
 
-            if (!dto.getActivationDate().empty())
+            if (!dto.getActivationDate().empty()) {
+                LOG_DEBUG << "[ClientService::createAsync] Parsing activationDate: " << dto.getActivationDate();
                 client.setActivationDate(trantor::Date::fromDbString(dto.getActivationDate()));
-            if (!dto.getOfficeJoiningDate().empty())
+            }
+            if (!dto.getOfficeJoiningDate().empty()) {
+                LOG_DEBUG << "[ClientService::createAsync] Parsing officeJoiningDate: " << dto.getOfficeJoiningDate();
                 client.setOfficeJoiningDate(trantor::Date::fromDbString(dto.getOfficeJoiningDate()));
+            }
 
-            client.setOfficeId(dto.getOfficeId());
-            client.setTransferToOfficeId(dto.getTransferToOfficeId());
-            client.setStaffId(dto.getStaffId());
-            client.setFirstname(dto.getFirstname());
-            client.setMiddlename(dto.getMiddlename());
-            client.setLastname(dto.getLastname());
-            client.setFullname(dto.getFullname());
-            client.setDisplayName(dto.getDisplayName());
-            client.setMobileNo(dto.getMobileNo());
+            if (!dto.getOfficeId().empty())
+                client.setOfficeId(dto.getOfficeId());
+            if (!dto.getTransferToOfficeId().empty())
+                client.setTransferToOfficeId(dto.getTransferToOfficeId());
+            if (!dto.getStaffId().empty())
+                client.setStaffId(dto.getStaffId());
+            if (!dto.getFirstname().empty())
+                client.setFirstname(dto.getFirstname());
+            if (!dto.getMiddlename().empty())
+                client.setMiddlename(dto.getMiddlename());
+            if (!dto.getLastname().empty())
+                client.setLastname(dto.getLastname());
+            if (!dto.getFullname().empty())
+                client.setFullname(dto.getFullname());
+            if (!dto.getDisplayName().empty())
+                client.setDisplayName(dto.getDisplayName());
+            if (!dto.getMobileNo().empty())
+                client.setMobileNo(dto.getMobileNo());
             client.setIsStaff(dto.getIsStaff());
-            client.setGenderCvId(dto.getGenderCvId());
+            if (!dto.getGenderCvId().empty())
+                client.setGenderCvId(dto.getGenderCvId());
 
-            if (!dto.getDateOfBirth().empty())
+            if (!dto.getDateOfBirth().empty()) {
+                LOG_DEBUG << "[ClientService::createAsync] Parsing dateOfBirth: " << dto.getDateOfBirth();
                 client.setDateOfBirth(trantor::Date::fromDbString(dto.getDateOfBirth()));
+            }
 
-            client.setLegalFormEnum(dto.getLegalFormEnum());
             client.setEmailAddress(dto.getEmailAddress());
+            client.setLegalStructure(dto.getLegalStructure());
 
+
+            LOG_DEBUG << "[ClientService::createAsync] Calling mapper.insert()";
             auto savedClient = co_await mapper.insert(client);
+            LOG_DEBUG << "[ClientService::createAsync] INSERT succeeded. id=" << savedClient.getValueOfId();
 
             response.success = true;
-            response.result = savedClient.toJson();
+            response.result["id"] = savedClient.getValueOfId();
             response.message = "Client created successfully";
         } catch (const drogon::orm::DrogonDbException &e) {
+            LOG_ERROR << "[ClientService::createAsync] DrogonDbException: " << e.base().what();
             response.success = false;
             response.message = "Database error: " + std::string(e.base().what());
         } catch (const std::exception &e) {
+            LOG_ERROR << "[ClientService::createAsync] std::exception: " << e.what();
             response.success = false;
             response.message = "An error occurred: " + std::string(e.what());
         }
 
+        LOG_DEBUG << "[ClientService::createAsync] END success=" << response.success << " message='" << response.message << "'";
         co_return response;
 
     }
@@ -186,7 +223,7 @@ namespace customer::services {
             if (!dto.getDateOfBirth().empty())
                 client.setDateOfBirth(trantor::Date::fromDbString(dto.getDateOfBirth()));
 
-            client.setLegalFormEnum(dto.getLegalFormEnum());
+            client.setLegalStructure(dto.getLegalStructure());
             client.setEmailAddress(dto.getEmailAddress());
 
             auto updatedRows = co_await mapper.update(client);
@@ -1267,12 +1304,7 @@ namespace customer::services {
       }
   }
 
-  drogon::Task<dto::BaseApiResponse> ClientService::getClientAccountsOverview(const std::string &id) {
-      // call portfolio and deposit account management services to return account overview from each service
-      dto::BaseApiResponse response;
-      response.success = true;
-      co_return response;
-  }
+
 
   drogon::Task<dto::BaseApiResponse> ClientService::getClientAddresses(const std::string &id) {
         auto dbClient = drogon::app().getDbClient();
@@ -1479,6 +1511,7 @@ namespace customer::services {
         CoroMapper<drogon_model::TlCustomerDb::ClientAddress> mapper(dbClient);
 
         try {
+
             if (id.empty() || addressId.empty()) {
                 dto::BaseApiResponse errorResponse;
                 errorResponse.success = false;
@@ -1562,6 +1595,54 @@ namespace customer::services {
             response.success = true;
             response.message = "Client identifiers fetched successfully.";
             response.result = jsonArray;
+            co_return response;
+
+        } catch (const DrogonDbException &e) {
+            dto::BaseApiResponse errorResponse;
+            errorResponse.success = false;
+            errorResponse.error["code"] = constants::ERR_DB_QUERY;
+            errorResponse.error["message"] = "Database error while retrieving client identifiers.";
+            errorResponse.error["detail"] = e.base().what();
+            co_return errorResponse;
+        } catch (const std::exception &e) {
+            dto::BaseApiResponse errorResponse;
+            errorResponse.success = false;
+            errorResponse.error["code"] = constants::ERR_INTERNAL;
+            errorResponse.error["message"] = "Internal error.";
+            errorResponse.error["detail"] = e.what();
+            co_return errorResponse;
+        }
+  }
+
+  drogon::Task<dto::BaseApiResponse> ClientService::getClientIdentifierDetails(std::string &clientId, std::string &identifierId) {
+        auto dbClient = drogon::app().getDbClient();
+        CoroMapper<drogon_model::TlCustomerDb::ClientIdentifier> mapper(dbClient);
+
+        try {
+            if (clientId.empty()) {
+                dto::BaseApiResponse errorResponse;
+                errorResponse.success = false;
+                errorResponse.error["code"] = constants::ERR_VALIDATION;
+                errorResponse.error["message"] = "Client ID cannot be empty.";
+                co_return errorResponse;
+            }
+
+            if (identifierId.empty()) {
+                dto::BaseApiResponse errorResponse;
+                errorResponse.success = false;
+                errorResponse.error["code"] = constants::ERR_VALIDATION;
+                errorResponse.error["message"] = "Identifier ID cannot be empty.";
+                co_return errorResponse;
+            }
+
+            Criteria criteria =  Criteria(drogon_model::TlCustomerDb::ClientIdentifier::Cols::_client_id, CompareOperator::EQ, clientId) && Criteria(drogon_model::TlCustomerDb::ClientIdentifier::Cols::_id, CompareOperator::EQ, identifierId);
+
+            auto identifiers = co_await mapper.findBy(criteria);
+
+            dto::BaseApiResponse response;
+            response.success = true;
+            response.message = "Client identifiers fetched successfully.";
+            response.result = "";
             co_return response;
 
         } catch (const DrogonDbException &e) {
@@ -1800,7 +1881,7 @@ namespace customer::services {
                 jsonTxn["paymentDetailId"] = txn.getValueOfPaymentDetailId();
                 jsonTxn["isReversed"] = txn.getValueOfIsReversed();
                 jsonTxn["externalId"] = txn.getValueOfExternalId();
-                jsonTxn["transactionType"] = txn.getValueOfTransactionTypeEnum();
+                jsonTxn["transactionType"] = txn.getValueOfTransactionType();
                 
                 if (txn.getTransactionDate()) {
                     // Safe string deserialization utilizing trantor library
@@ -1873,7 +1954,7 @@ namespace customer::services {
             jsonTxn["paymentDetailId"] = txn.getValueOfPaymentDetailId();
             jsonTxn["isReversed"] = txn.getValueOfIsReversed();
             jsonTxn["externalId"] = txn.getValueOfExternalId();
-            jsonTxn["transactionType"] = txn.getValueOfTransactionTypeEnum();
+            jsonTxn["transactionType"] = txn.getValueOfTransactionType();
             jsonTxn["amount"] = txn.getValueOfAmount();
 
             if (txn.getTransactionDate()) {
@@ -1888,14 +1969,14 @@ namespace customer::services {
                 jsonTxn["submittedOnDate"] = Json::nullValue;
             }
 
-            if (txn.getCreatedDate()) {
-                jsonTxn["createdDate"] = txn.getValueOfCreatedDate().toDbStringLocal();
+            if (txn.getCreatedAt()) {
+                jsonTxn["createdDate"] = txn.getValueOfCreatedAt().toDbStringLocal();
             } else {
                 jsonTxn["createdDate"] = Json::nullValue;
             }
 
             jsonTxn["createdBy"] = txn.getValueOfCreatedBy();
-            jsonTxn["lastModifiedBy"] = txn.getValueOfLastModifiedBy();
+            jsonTxn["lastModifiedBy"] = txn.getValueOfModifiedBy();
 
             dto::BaseApiResponse response;
             response.success = true;
@@ -2314,13 +2395,13 @@ namespace customer::services {
         }
   }
 
-  drogon::Task<dto::BaseApiResponse> ClientService::undoClientTransaction(const std::string &id, std::string transactionId) {
+  drogon::Task<dto::BaseApiResponse> ClientService::undoClientTransaction(const std::string &clientId, std::string transactionId) {
 
       auto dbClient = drogon::app().getDbClient();
       CoroMapper<drogon_model::TlCustomerDb::ClientTransaction> mapper(dbClient);
 
         try {
-            if (id.empty()) {
+            if (clientId.empty()) {
                 dto::BaseApiResponse errorResponse;
                 errorResponse.success = false;
                 errorResponse.error["code"] = constants::ERR_VALIDATION;
@@ -2328,7 +2409,7 @@ namespace customer::services {
                 co_return errorResponse;
             }
 
-            Criteria criteria = Criteria(drogon_model::TlCustomerDb::ClientTransaction::Cols::_client_id, drogon::orm::CompareOperator::EQ, id) && Criteria(drogon_model::TlCustomerDb::ClientTransaction::Cols::_id, drogon::orm::CompareOperator::EQ, transactionId);
+            Criteria criteria = Criteria(drogon_model::TlCustomerDb::ClientTransaction::Cols::_client_id, drogon::orm::CompareOperator::EQ, clientId) && Criteria(drogon_model::TlCustomerDb::ClientTransaction::Cols::_id, drogon::orm::CompareOperator::EQ, transactionId);
 
             auto transaction = co_await mapper.findOne(criteria);
 
@@ -2367,5 +2448,658 @@ namespace customer::services {
         }
 
   }
+
+    // Standing Instructions ...
+
+   drogon::Task<dto::BaseApiResponse> ClientService::getStandingInstructions() {
+      auto dbClient = drogon::app().getDbClient();
+      if (!dbClient) {
+          dto::BaseApiResponse errorResponse;
+          errorResponse.success = false;
+          errorResponse.error["code"] = constants::ERR_DB_QUERY;
+          errorResponse.error["message"] = "Database client unavailable.";
+          co_return errorResponse;
+      }
+
+      try {
+          CoroMapper<drogon_model::TlCustomerDb::AccountTransferStandingInstructions> mapper(dbClient);
+          auto instructions = co_await mapper.orderBy(
+              drogon_model::TlCustomerDb::AccountTransferStandingInstructions::Cols::_name,
+              SortOrder::ASC
+          ).findAll();
+
+          Json::Value jsonArray(Json::arrayValue);
+          for (const auto &inst : instructions) {
+              Json::Value item;
+              item["id"] = inst.getValueOfId();
+              item["name"] = inst.getValueOfName();
+              item["accountTransferDetailsId"] = inst.getValueOfAccountTransferDetailsId();
+              if (inst.getBusinessId()) {
+                  item["businessId"] = inst.getValueOfBusinessId();
+              } else {
+                  item["businessId"] = Json::nullValue;
+              }
+              item["priority"] = inst.getValueOfPriority();
+              item["status"] = inst.getValueOfStatus();
+              item["instructionType"] = inst.getValueOfInstructionType();
+              item["amount"] = inst.getValueOfAmount();
+
+              if (inst.getValidFrom()) {
+                  item["validFrom"] = inst.getValueOfValidFrom().toDbStringLocal();
+              }
+              if (inst.getValidTill()) {
+                  item["validTill"] = inst.getValueOfValidTill().toDbStringLocal();
+              } else {
+                  item["validTill"] = Json::nullValue;
+              }
+
+              item["recurrenceType"] = inst.getValueOfRecurrenceType();
+              item["recurrenceFrequency"] = inst.getValueOfRecurrenceFrequency();
+              item["recurrenceInterval"] = inst.getValueOfRecurrenceInterval();
+              item["recurrenceOnDay"] = inst.getValueOfRecurrenceOnDay();
+              item["recurrenceOnMonth"] = inst.getValueOfRecurrenceOnMonth();
+
+              if (inst.getLastRunDate()) {
+                  item["lastRunDate"] = inst.getValueOfLastRunDate().toDbStringLocal();
+              } else {
+                  item["lastRunDate"] = Json::nullValue;
+              }
+
+              jsonArray.append(item);
+          }
+
+          dto::BaseApiResponse response;
+          response.success = true;
+          response.message = "Standing instructions retrieved successfully.";
+          response.result = jsonArray;
+          co_return response;
+
+      } catch (const DrogonDbException &e) {
+          dto::BaseApiResponse errorResponse;
+          errorResponse.success = false;
+          errorResponse.error["code"] = constants::ERR_DB_QUERY;
+          errorResponse.error["message"] = "Database error while fetching standing instructions.";
+          errorResponse.error["detail"] = e.base().what();
+          co_return errorResponse;
+      } catch (const std::exception &e) {
+          dto::BaseApiResponse errorResponse;
+          errorResponse.success = false;
+          errorResponse.error["code"] = constants::ERR_INTERNAL;
+          errorResponse.error["message"] = "Internal error.";
+          errorResponse.error["detail"] = e.what();
+          co_return errorResponse;
+      }
+  }
+
+   drogon::Task<dto::BaseApiResponse> ClientService::getStandingInstructionDetails(std::string standingInstructionId) {
+      auto dbClient = drogon::app().getDbClient();
+      if (!dbClient) {
+          dto::BaseApiResponse errorResponse;
+          errorResponse.success = false;
+          errorResponse.error["code"] = constants::ERR_DB_QUERY;
+          errorResponse.error["message"] = "Database client unavailable.";
+          co_return errorResponse;
+      }
+
+      try {
+          if (standingInstructionId.empty()) {
+              dto::BaseApiResponse errorResponse;
+              errorResponse.success = false;
+              errorResponse.error["code"] = constants::ERR_VALIDATION;
+              errorResponse.error["message"] = "Standing instruction ID cannot be empty.";
+              co_return errorResponse;
+          }
+
+          CoroMapper<drogon_model::TlCustomerDb::AccountTransferStandingInstructions> mapper(dbClient);
+          auto inst = co_await mapper.findByPrimaryKey(standingInstructionId);
+
+          Json::Value item;
+          item["id"] = inst.getValueOfId();
+          item["name"] = inst.getValueOfName();
+          item["accountTransferDetailsId"] = inst.getValueOfAccountTransferDetailsId();
+          if (inst.getBusinessId()) {
+              item["businessId"] = inst.getValueOfBusinessId();
+          } else {
+              item["businessId"] = Json::nullValue;
+          }
+          item["priority"] = inst.getValueOfPriority();
+          item["status"] = inst.getValueOfStatus();
+          item["instructionType"] = inst.getValueOfInstructionType();
+          item["amount"] = inst.getValueOfAmount();
+
+          if (inst.getValidFrom()) {
+              item["validFrom"] = inst.getValueOfValidFrom().toDbStringLocal();
+          }
+          if (inst.getValidTill()) {
+              item["validTill"] = inst.getValueOfValidTill().toDbStringLocal();
+          } else {
+              item["validTill"] = Json::nullValue;
+          }
+
+          item["recurrenceType"] = inst.getValueOfRecurrenceType();
+          item["recurrenceFrequency"] = inst.getValueOfRecurrenceFrequency();
+          item["recurrenceInterval"] = inst.getValueOfRecurrenceInterval();
+          item["recurrenceOnDay"] = inst.getValueOfRecurrenceOnDay();
+          item["recurrenceOnMonth"] = inst.getValueOfRecurrenceOnMonth();
+
+          if (inst.getLastRunDate()) {
+              item["lastRunDate"] = inst.getValueOfLastRunDate().toDbStringLocal();
+          } else {
+              item["lastRunDate"] = Json::nullValue;
+          }
+
+          dto::BaseApiResponse response;
+          response.success = true;
+          response.message = "Standing instruction details retrieved successfully.";
+          response.result = item;
+          co_return response;
+
+      } catch (const DrogonDbException &e) {
+          dto::BaseApiResponse errorResponse;
+          errorResponse.success = false;
+          errorResponse.error["code"] = constants::ERR_DB_QUERY;
+          errorResponse.error["message"] = "Database error while fetching standing instruction details.";
+          errorResponse.error["detail"] = e.base().what();
+          co_return errorResponse;
+      } catch (const std::exception &e) {
+          dto::BaseApiResponse errorResponse;
+          errorResponse.success = false;
+          errorResponse.error["code"] = constants::ERR_INTERNAL;
+          errorResponse.error["message"] = "Internal error.";
+          errorResponse.error["detail"] = e.what();
+          co_return errorResponse;
+      }
+  }
+
+  drogon::Task<dto::BaseApiResponse> ClientService::createStandingInstruction(const dto::StandingInstructionDto &dto) {
+      auto dbClient = drogon::app().getDbClient();
+      if (!dbClient) {
+          dto::BaseApiResponse errorResponse;
+          errorResponse.success = false;
+          errorResponse.error["code"] = constants::ERR_DB_QUERY;
+          errorResponse.error["message"] = "Database client unavailable.";
+          co_return errorResponse;
+      }
+
+      try {
+          if (dto.getName().empty()) {
+              dto::BaseApiResponse errorResponse;
+              errorResponse.success = false;
+              errorResponse.error["code"] = constants::ERR_VALIDATION;
+              errorResponse.error["message"] = "Instruction name is required.";
+              co_return errorResponse;
+          }
+
+          CoroMapper<drogon_model::TlCustomerDb::AccountTransferStandingInstructions> mapper(dbClient);
+
+          drogon_model::TlCustomerDb::AccountTransferStandingInstructions instruction;
+          instruction.setName(dto.getName());
+          instruction.setPriority(dto.getPriority());
+          instruction.setStatus(dto.getStatus());
+          instruction.setInstructionType(dto.getInstructionType());
+          instruction.setAmount(std::to_string(dto.getAmount()));
+
+          if (dto.getValidFrom().microSecondsSinceEpoch() > 0) {
+              instruction.setValidFrom(dto.getValidFrom());
+          } else {
+              instruction.setValidFrom(trantor::Date::now());
+          }
+
+          instruction.setRecurrenceType(dto.getRecurrenceType());
+          instruction.setRecurrenceFrequency(dto.getRecurrenceFrequency());
+          instruction.setRecurrenceInterval(dto.getRecurrenceInterval());
+
+          auto savedInstruction = co_await mapper.insert(instruction);
+
+          Json::Value result;
+          result["id"] = savedInstruction.getValueOfId();
+          result["name"] = savedInstruction.getValueOfName();
+          result["status"] = savedInstruction.getValueOfStatus();
+
+          dto::BaseApiResponse response;
+          response.success = true;
+          response.message = "Standing instruction created successfully.";
+          response.result = result;
+          co_return response;
+
+      } catch (const DrogonDbException &e) {
+          dto::BaseApiResponse errorResponse;
+          errorResponse.success = false;
+          errorResponse.error["code"] = constants::ERR_DB_QUERY;
+          errorResponse.error["message"] = "Database error while creating standing instruction.";
+          errorResponse.error["detail"] = e.base().what();
+          co_return errorResponse;
+      } catch (const std::exception &e) {
+          dto::BaseApiResponse errorResponse;
+          errorResponse.success = false;
+          errorResponse.error["code"] = constants::ERR_INTERNAL;
+          errorResponse.error["message"] = "Internal error.";
+          errorResponse.error["detail"] = e.what();
+          co_return errorResponse;
+      }
+  }
+
+
+  drogon::Task<dto::BaseApiResponse> ClientService::updateStandingInstruction(std::string standingInstructionId, const dto::StandingInstructionDto &dto) {
+      auto dbClient = drogon::app().getDbClient();
+      if (!dbClient) {
+          dto::BaseApiResponse errorResponse;
+          errorResponse.success = false;
+          errorResponse.error["code"] = constants::ERR_DB_QUERY;
+          errorResponse.error["message"] = "Database client unavailable.";
+          co_return errorResponse;
+      }
+
+      try {
+          if (standingInstructionId.empty()) {
+              dto::BaseApiResponse errorResponse;
+              errorResponse.success = false;
+              errorResponse.error["code"] = constants::ERR_VALIDATION;
+              errorResponse.error["message"] = "Standing instruction ID cannot be empty.";
+              co_return errorResponse;
+          }
+
+          CoroMapper<drogon_model::TlCustomerDb::AccountTransferStandingInstructions> mapper(dbClient);
+          auto existingInstruction = co_await mapper.findByPrimaryKey(standingInstructionId);
+
+          if (!dto.getName().empty()) {
+              existingInstruction.setName(dto.getName());
+          }
+          existingInstruction.setPriority(dto.getPriority());
+          existingInstruction.setStatus(dto.getStatus());
+          existingInstruction.setInstructionType(dto.getInstructionType());
+          existingInstruction.setAmount(std::to_string(dto.getAmount()));
+
+          if (dto.getValidFrom().microSecondsSinceEpoch() > 0) {
+              existingInstruction.setValidFrom(dto.getValidFrom());
+          }
+
+          existingInstruction.setRecurrenceType(dto.getRecurrenceType());
+          existingInstruction.setRecurrenceFrequency(dto.getRecurrenceFrequency());
+          existingInstruction.setRecurrenceInterval(dto.getRecurrenceInterval());
+
+          auto updatedRows = co_await mapper.update(existingInstruction);
+
+          if (updatedRows == 0) {
+              dto::BaseApiResponse errorResponse;
+              errorResponse.success = false;
+              errorResponse.error["code"] = constants::ERR_DB_NOT_FOUND;
+              errorResponse.error["message"] = "Standing instruction not found or no changes made.";
+              co_return errorResponse;
+          }
+
+          dto::BaseApiResponse response;
+          response.success = true;
+          response.message = "Standing instruction updated successfully.";
+          response.result = existingInstruction.toJson();
+          co_return response;
+
+      } catch (const DrogonDbException &e) {
+          dto::BaseApiResponse errorResponse;
+          errorResponse.success = false;
+          errorResponse.error["code"] = constants::ERR_DB_QUERY;
+          errorResponse.error["message"] = "Database error while updating standing instruction.";
+          errorResponse.error["detail"] = e.base().what();
+          co_return errorResponse;
+      } catch (const std::exception &e) {
+          dto::BaseApiResponse errorResponse;
+          errorResponse.success = false;
+          errorResponse.error["code"] = constants::ERR_INTERNAL;
+          errorResponse.error["message"] = "Internal error.";
+          errorResponse.error["detail"] = e.what();
+          co_return errorResponse;
+      }
+  }
+
+
+  drogon::Task<dto::BaseApiResponse> ClientService::deleteStandingInstruction(std::string standingInstructionId) {
+      auto dbClient = drogon::app().getDbClient();
+      if (!dbClient) {
+          dto::BaseApiResponse errorResponse;
+          errorResponse.success = false;
+          errorResponse.error["code"] = constants::ERR_DB_QUERY;
+          errorResponse.error["message"] = "Database client unavailable.";
+          co_return errorResponse;
+      }
+
+      try {
+          if (standingInstructionId.empty()) {
+              dto::BaseApiResponse errorResponse;
+              errorResponse.success = false;
+              errorResponse.error["code"] = constants::ERR_VALIDATION;
+              errorResponse.error["message"] = "Standing instruction ID cannot be empty.";
+              co_return errorResponse;
+          }
+
+          CoroMapper<drogon_model::TlCustomerDb::AccountTransferStandingInstructions> mapper(dbClient);
+          auto deletedRows = co_await mapper.deleteByPrimaryKey(standingInstructionId);
+
+          if (deletedRows == 0) {
+              dto::BaseApiResponse errorResponse;
+              errorResponse.success = false;
+              errorResponse.error["code"] = constants::ERR_DB_NOT_FOUND;
+              errorResponse.error["message"] = "Standing instruction not found or already deleted.";
+              co_return errorResponse;
+          }
+
+          dto::BaseApiResponse response;
+          response.success = true;
+          response.message = "Standing instruction deleted successfully.";
+          co_return response;
+
+      } catch (const DrogonDbException &e) {
+          dto::BaseApiResponse errorResponse;
+          errorResponse.success = false;
+          errorResponse.error["code"] = constants::ERR_DB_QUERY;
+          errorResponse.error["message"] = "Database error while deleting standing instruction.";
+          errorResponse.error["detail"] = e.base().what();
+          co_return errorResponse;
+      } catch (const std::exception &e) {
+          dto::BaseApiResponse errorResponse;
+          errorResponse.success = false;
+          errorResponse.error["code"] = constants::ERR_INTERNAL;
+          errorResponse.error["message"] = "Internal error.";
+          errorResponse.error["detail"] = e.what();
+          co_return errorResponse;
+      }
+  }
+
+
+  drogon::Task<dto::BaseApiResponse> ClientService::runStandingInstructionHistory() {
+      auto dbClient = drogon::app().getDbClient();
+      if (!dbClient) {
+          dto::BaseApiResponse errorResponse;
+          errorResponse.success = false;
+          errorResponse.error["code"] = constants::ERR_DB_QUERY;
+          errorResponse.error["message"] = "Database client unavailable.";
+          co_return errorResponse;
+      }
+
+      try {
+          // Fetch executed standing instruction transactions log / history
+          CoroMapper<drogon_model::TlCustomerDb::AccountTransferStandingInstructions> mapper(dbClient);
+          Criteria criteria = Criteria(drogon_model::TlCustomerDb::AccountTransferStandingInstructions::Cols::_last_run_date, CompareOperator::IsNotNull);
+
+          auto history = co_await mapper.findBy(criteria);
+
+          Json::Value jsonArray(Json::arrayValue);
+          for (const auto &item : history) {
+              Json::Value record;
+              record["id"] = item.getValueOfId();
+              record["name"] = item.getValueOfName();
+              record["lastRunDate"] = item.getValueOfLastRunDate().toDbStringLocal();
+              record["status"] = item.getValueOfStatus();
+              jsonArray.append(record);
+          }
+
+          dto::BaseApiResponse response;
+          response.success = true;
+          response.message = "Standing instruction execution history fetched successfully.";
+          response.result = jsonArray;
+          co_return response;
+
+      } catch (const DrogonDbException &e) {
+          dto::BaseApiResponse errorResponse;
+          errorResponse.success = false;
+          errorResponse.error["code"] = constants::ERR_DB_QUERY;
+          errorResponse.error["message"] = "Database error while retrieving standing instruction history.";
+          errorResponse.error["detail"] = e.base().what();
+          co_return errorResponse;
+      } catch (const std::exception &e) {
+          dto::BaseApiResponse errorResponse;
+          errorResponse.success = false;
+          errorResponse.error["code"] = constants::ERR_INTERNAL;
+          errorResponse.error["message"] = "Internal error.";
+          errorResponse.error["detail"] = e.what();
+          co_return errorResponse;
+      }
+  }
+
+
+ // Account Transfer
+
+drogon::Task<dto::BaseApiResponse> ClientService::getAccountTransfers() {
+    auto dbClient = drogon::app().getDbClient();
+    if (!dbClient) {
+        dto::BaseApiResponse errorResponse;
+        errorResponse.success = false;
+        errorResponse.error["code"] = constants::ERR_DB_QUERY;
+        errorResponse.error["message"] = "Database client unavailable.";
+        co_return errorResponse;
+    }
+
+    try {
+        // Query client transfer history tracking table
+        CoroMapper<drogon_model::TlCustomerDb::ClientTransferDetails> mapper(dbClient);
+        auto transfers = co_await mapper.orderBy(
+            drogon_model::TlCustomerDb::ClientTransferDetails::Cols::_submitted_on,
+            SortOrder::DESC
+        ).findAll();
+
+        Json::Value jsonArray(Json::arrayValue);
+        for (const auto &transfer : transfers) {
+            Json::Value item;
+            item["id"] = transfer.getValueOfId();
+            item["clientId"] = transfer.getValueOfClientId();
+            item["fromOfficeId"] = transfer.getValueOfFromOfficeId();
+            item["toOfficeId"] = transfer.getValueOfToOfficeId();
+            item["transferType"] = transfer.getValueOfTransferType();
+            item["submittedBy"] = transfer.getValueOfSubmittedBy();
+
+            if (transfer.getProposedTransferDate()) {
+                item["proposedTransferDate"] = transfer.getValueOfProposedTransferDate().toDbStringLocal();
+            } else {
+                item["proposedTransferDate"] = Json::nullValue;
+            }
+
+            if (transfer.getSubmittedOn()) {
+                item["submittedOn"] = transfer.getValueOfSubmittedOn().toDbStringLocal();
+            } else {
+                item["submittedOn"] = Json::nullValue;
+            }
+
+            jsonArray.append(item);
+        }
+
+        dto::BaseApiResponse response;
+        response.success = true;
+        response.message = "Account transfers retrieved successfully.";
+        response.result = jsonArray;
+        co_return response;
+
+    } catch (const DrogonDbException &e) {
+        dto::BaseApiResponse errorResponse;
+        errorResponse.success = false;
+        errorResponse.error["code"] = constants::ERR_DB_QUERY;
+        errorResponse.error["message"] = "Database error while fetching account transfers.";
+        errorResponse.error["detail"] = e.base().what();
+        co_return errorResponse;
+    } catch (const std::exception &e) {
+        dto::BaseApiResponse errorResponse;
+        errorResponse.success = false;
+        errorResponse.error["code"] = constants::ERR_INTERNAL;
+        errorResponse.error["message"] = "Internal error.";
+        errorResponse.error["detail"] = e.what();
+        co_return errorResponse;
+    }
+}
+
+drogon::Task<dto::BaseApiResponse> ClientService::createAccountTransfer(const dto::AccountTransferDto &dto) {
+    auto dbClient = drogon::app().getDbClient();
+    if (!dbClient) {
+        dto::BaseApiResponse errorResponse;
+        errorResponse.success = false;
+        errorResponse.error["code"] = constants::ERR_DB_QUERY;
+        errorResponse.error["message"] = "Database client unavailable.";
+        co_return errorResponse;
+    }
+
+    try {
+        // 1. Input Validation using correct DTO getters
+        if (dto.getFromClientId().empty() || dto.getTransferAmount() <= 0.0) {
+            dto::BaseApiResponse errorResponse;
+            errorResponse.success = false;
+            errorResponse.error["code"] = constants::ERR_VALIDATION;
+            errorResponse.error["message"] = "A valid source client ID and positive transfer amount are required.";
+            co_return errorResponse;
+        }
+
+        if (dto.getFromAccountId().empty() || dto.getToAccountId().empty()) {
+            dto::BaseApiResponse errorResponse;
+            errorResponse.success = false;
+            errorResponse.error["code"] = constants::ERR_VALIDATION;
+            errorResponse.error["message"] = "Both source and destination account IDs are required.";
+            co_return errorResponse;
+        }
+
+        // 2. Verify source client exists and is active
+        CoroMapper<drogon_model::TlCustomerDb::Client> clientMapper(dbClient);
+        auto client = co_await clientMapper.findByPrimaryKey(dto.getFromClientId());
+
+        if (client.getValueOfStatus() != constants::ClientStatus::ACTIVE) {
+            dto::BaseApiResponse errorResponse;
+            errorResponse.success = false;
+            errorResponse.error["code"] = constants::ERR_UNSUPPORTED_OPERATION;
+            errorResponse.error["message"] = "Source client must be active to initiate an account transfer.";
+            co_return errorResponse;
+        }
+
+        // 3. Construct transaction audit record
+        drogon_model::TlCustomerDb::ClientTransaction txn;
+        txn.setClientId(dto.getFromClientId());
+        txn.setOfficeId(dto.getFromOfficeId().empty() ? client.getValueOfOfficeId() : dto.getFromOfficeId());
+        txn.setAmount(std::to_string(dto.getTransferAmount())); // Formatted for DB string/numeric columns
+        txn.setTransactionType(3); // 3 = Transfer Transaction
+        txn.setIsReversed(false);
+
+        // Handle trantor::Date directly from DTO
+        if (dto.getTransferDate().microSecondsSinceEpoch() > 0) {
+            txn.setTransactionDate(dto.getTransferDate());
+        } else {
+            txn.setTransactionDate(trantor::Date::now());
+        }
+        txn.setSubmittedOnDate(trantor::Date::now());
+
+        // 4. Persist transaction record
+        CoroMapper<drogon_model::TlCustomerDb::ClientTransaction> txMapper(dbClient);
+        auto savedTxn = co_await txMapper.insert(txn);
+
+        // 5. Build structured payload response
+        Json::Value result;
+        result["transferId"] = savedTxn.getValueOfId();
+        result["fromClientId"] = dto.getFromClientId();
+        result["fromAccountId"] = dto.getFromAccountId();
+        result["toClientId"] = dto.getToClientId();
+        result["toAccountId"] = dto.getToAccountId();
+        result["transferAmount"] = dto.getTransferAmount();
+        result["transferDescription"] = dto.getTransferDescription();
+        result["status"] = "SUCCESS";
+
+        dto::BaseApiResponse response;
+        response.success = true;
+        response.message = "Account transfer completed successfully.";
+        response.result = result;
+        co_return response;
+
+    } catch (const DrogonDbException &e) {
+        dto::BaseApiResponse errorResponse;
+        errorResponse.success = false;
+        errorResponse.error["code"] = constants::ERR_DB_QUERY;
+        errorResponse.error["message"] = "Database error while processing account transfer.";
+        errorResponse.error["detail"] = e.base().what();
+        co_return errorResponse;
+    } catch (const std::exception &e) {
+        dto::BaseApiResponse errorResponse;
+        errorResponse.success = false;
+        errorResponse.error["code"] = constants::ERR_INTERNAL;
+        errorResponse.error["message"] = "Internal error during account transfer.";
+        errorResponse.error["detail"] = e.what();
+        co_return errorResponse;
+    }
+}
+
+drogon::Task<dto::BaseApiResponse> ClientService::getAccountTransferDetails(const std::string accountTransferId) {
+    auto dbClient = drogon::app().getDbClient();
+
+    try {
+        if (accountTransferId.empty()) {
+            dto::BaseApiResponse errorResponse;
+            errorResponse.success = false;
+            errorResponse.error["code"] = constants::ERR_VALIDATION;
+            errorResponse.error["message"] = "Account Transfer ID cannot be empty.";
+            co_return errorResponse;
+        }
+
+        CoroMapper<drogon_model::TlCustomerDb::ClientTransaction> mapper(dbClient);
+        auto txn = co_await mapper.findByPrimaryKey(accountTransferId);
+
+        Json::Value jsonTxn;
+        jsonTxn["id"] = txn.getValueOfId();
+        jsonTxn["clientId"] = txn.getValueOfClientId();
+        jsonTxn["officeId"] = txn.getValueOfOfficeId();
+        jsonTxn["currencyCode"] = txn.getValueOfCurrencyCode();
+        jsonTxn["amount"] = txn.getValueOfAmount();
+        jsonTxn["transactionType"] = txn.getValueOfTransactionType();
+        jsonTxn["isReversed"] = txn.getValueOfIsReversed();
+
+        if (txn.getTransactionDate()) {
+            jsonTxn["transferDate"] = txn.getValueOfTransactionDate().toDbStringLocal();
+        } else {
+            jsonTxn["transferDate"] = Json::nullValue;
+        }
+
+        dto::BaseApiResponse response;
+        response.success = true;
+        response.message = "Account transfer details retrieved successfully.";
+        response.result = jsonTxn;
+        co_return response;
+
+    } catch (const DrogonDbException &e) {
+        dto::BaseApiResponse errorResponse;
+        errorResponse.success = false;
+        errorResponse.error["code"] = constants::ERR_DB_QUERY;
+        errorResponse.error["message"] = "Database error while fetching transfer details.";
+        errorResponse.error["detail"] = e.base().what();
+        co_return errorResponse;
+    } catch (const std::exception &e) {
+        dto::BaseApiResponse errorResponse;
+        errorResponse.success = false;
+        errorResponse.error["code"] = constants::ERR_INTERNAL;
+        errorResponse.error["message"] = "Internal error.";
+        errorResponse.error["detail"] = e.what();
+        co_return errorResponse;
+    }
+}
+
+
+ drogon::Task<dto::BaseApiResponse> ClientService::refundByAccountTransfer() {
+      auto dbClient = drogon::app().getDbClient();
+
+      try {
+          // TODO: Perform account transfer refund workflow
+          // 1. Reverse the debit/credit postings in the savings/loan module
+          // 2. Mark corresponding ClientTransaction as is_reversed = true
+
+          Json::Value result;
+          result["status"] = "pending_service_integration";
+
+          dto::BaseApiResponse response;
+          response.success = true;
+          response.message = "Account transfer refund process initialized.";
+          response.result = result;
+          co_return response;
+
+      } catch (const std::exception &e) {
+          dto::BaseApiResponse errorResponse;
+          errorResponse.success = false;
+          errorResponse.error["code"] = constants::ERR_INTERNAL;
+          errorResponse.error["message"] = "Internal error during refund processing.";
+          errorResponse.error["detail"] = e.what();
+          co_return errorResponse;
+      }
+  }
+
+
+
 
 }

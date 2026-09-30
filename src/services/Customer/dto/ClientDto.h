@@ -7,7 +7,7 @@
 #include <string>
 #include <json/json.h>
 
-namespace customer::dto {
+namespace turbo_ledger_customer::dto {
 
     class ClientDto {
     public:
@@ -35,7 +35,7 @@ namespace customer::dto {
         [[nodiscard]] bool getIsStaff() const { return is_staff_; }
         [[nodiscard]] const std::string& getGenderCvId() const { return gender_cv_id_; }
         [[nodiscard]] const std::string& getDateOfBirth() const { return date_of_birth_; }
-        [[nodiscard]] int getLegalFormEnum() const { return legal_form_enum_; }
+        [[nodiscard]] int getLegalStructure() const { return legal_structure_; }
         [[nodiscard]] const std::string& getEmailAddress() const { return email_address_; }
 
         // Setters
@@ -57,7 +57,7 @@ namespace customer::dto {
         void setIsStaff(bool value) { is_staff_ = value; }
         void setGenderCvId(const std::string& value) { gender_cv_id_ = value; }
         void setDateOfBirth(const std::string& value) { date_of_birth_ = value; }
-        void setLegalFormEnum(int value) { legal_form_enum_ = value; }
+        void setLegalStructure(int value) { legal_structure_ = value; }
         void setEmailAddress(const std::string& value) { email_address_ = value; }
 
 
@@ -81,7 +81,7 @@ namespace customer::dto {
         bool is_staff_ = false;
         std::string date_of_birth_;
         std::string gender_cv_id_;
-        int legal_form_enum_ = 0;
+        int legal_structure_ {0};
         std::string email_address_;
     };
 
@@ -152,15 +152,15 @@ namespace customer::dto {
         }
 
         if (json.isMember("genderCvId") && !json["genderCvId"].isNull()) {
-            gender_cv_id_ = json["genderCvId"].asInt();
+            gender_cv_id_ = json["genderCvId"].asString();
         }
 
         if (json.isMember("dateOfBirth") && !json["dateOfBirth"].isNull()) {
             date_of_birth_ = json["dateOfBirth"].asString();
         }
 
-        if (json.isMember("legalFormEnum") && !json["legalFormEnum"].isNull()) {
-            legal_form_enum_ = json["legalFormEnum"].asInt();
+        if (json.isMember("legalStructure") && !json["legalStructure"].isNull()) {
+            setLegalStructure(json["legalStructure"].asInt());
         }
 
         if (json.isMember("emailAddress") && !json["emailAddress"].isNull()) {

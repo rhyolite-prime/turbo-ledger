@@ -10,9 +10,9 @@
 
 namespace group::dto {
 
-    class GenerateIndividualCollectionSheetDto {
+    class IndividualCollectionSheetDto {
     public:
-        GenerateIndividualCollectionSheetDto() = default;
+        IndividualCollectionSheetDto() = default;
 
         void fromJson(const Json::Value& json);
 
@@ -30,7 +30,7 @@ namespace group::dto {
         std::string transaction_date;
     };
 
-    inline void GenerateIndividualCollectionSheetDto::fromJson(const Json::Value& json) {
+    inline void IndividualCollectionSheetDto::fromJson(const Json::Value& json) {
 
         if (json.isMember("officeId") && !json["officeId"].isNull()) {
             office_id = json["officeId"].asString();

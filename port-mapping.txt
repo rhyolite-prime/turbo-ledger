@@ -1,5 +1,49 @@
 
-7500 - identity
-7501 - office
-7502 - portfolio
-7503 - business configuration
+"TurboLedgerApi": {
+            "Ra": {
+                "ServiceName" : "Identity",
+                "Version" : "0.1",
+                "BaseUrl" : "http://127.0.0.1:7500/api/v1/"
+            },
+            "Thoth": {
+                "ServiceName" : "accounting",
+                "Version" : "0.1",
+                "BaseUrl" : "http://127.0.0.1:7501/api/v1/"
+            },
+            "Khepri": {
+                "ServiceName" : "heart-beat",
+                "Version" : "0.1",
+                "BaseUrl" : "http://127.0.0.1:7502/api/v1/"
+            },
+            "Horus": {
+                "ServiceName" : "office",
+                "Version" : "0.1",
+                "BaseUrl" : "http://127.0.0.1:7503/api/v1/"
+            },
+            "Maat": {
+                "ServiceName" : "customer",
+                "Version" : "0.1",
+                "BaseUrl" : "http://127.0.0.1:7504/api/v1/"
+            },
+            "Shed": {
+                "ServiceName" : "deposit-account-management",
+                "Version" : "0.1",
+                "BaseUrl" : "http://127.0.0.1:7505/api/v1/"
+            },
+            "Tajet": {
+                "ServiceName" : "teller",
+                "Version" : "0.1",
+                "BaseUrl" : "http://127.0.0.1:7506/api/v1/"
+            },
+            "Atum": {
+                "ServiceName" : "teller",
+                "Version" : "0.1",
+                "BaseUrl" : "http://127.0.0.1:7506/api/v1/"
+            },
+            "Ptah": {
+                "ServiceName" : "teller",
+                "Version" : "0.1",
+                "BaseUrl" : "http://127.0.0.1:7507/api/v1/"
+            }
+
+        }

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.10)
 project(Identity CXX)
 
 include(CheckIncludeFileCXX)
@@ -54,10 +54,8 @@ add_executable(${PROJECT_NAME} main.cc
 # and comment out the following lines
 find_package(Drogon CONFIG REQUIRED)
 find_package(OpenSSL REQUIRED)
-add_subdirectory(external_deps/Bcrypt.cpp)
+
 target_link_libraries(${PROJECT_NAME} PRIVATE Drogon::Drogon bcrypt OpenSSL::SSL OpenSSL::Crypto)
-
-
 
 # ##############################################################################
 
@@ -104,4 +102,35 @@ target_sources(${PROJECT_NAME}
 
 # ##############################################################################
 
-add_subdirectory(test)
+#add_subdirectory(test)
+
+
+# Shared external dependencies (services/external_deps/)
+set(SHARED_EXTERNAL_DEPS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../external_deps")
+
+# Your intentional/canonical Bcrypt
+if(NOT TARGET bcrypt)
+    add_subdirectory(
+            ${SHARED_EXTERNAL_DEPS_DIR}/Bcrypt
+            external_deps/Bcrypt
+    )
+endif()
+
+# jwt-cpp
+set(USE_EXTERNAL_BCRYPT ON CACHE BOOL "" FORCE)
+
+if(NOT TARGET jwt-cpp)
+    add_subdirectory(
+            ${SHARED_EXTERNAL_DEPS_DIR}/jwt-cpp
+            external_deps/jwt-cpp
+    )
+endif()
+
+
+# Add the include directory for jwt-cpp
+target_include_directories(${PROJECT_NAME}
+        PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/models
+        ${SHARED_EXTERNAL_DEPS_DIR}/jwt-cpp/include  # Add this line
+)
