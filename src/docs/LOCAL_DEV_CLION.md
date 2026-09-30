@@ -72,15 +72,28 @@ python3 src/tools/migrate.py --service Accounting --tenant default --tenant demo
     --database-url postgresql://postgres@127.0.0.1:5432/TlAccounting
 ```
 
-Seed the demo login (`admin` / `Passw0rd!` — the hash below IS `Passw0rd!`):
+Seed the demo login (`admin` / `Passw0rd!` — the hash below IS `Passw0rd!`).
+Use this exact heredoc form — the quoted `'SQL'` delimiter stops the shell from
+eating the `$` characters in the bcrypt hash. Do **not** paste the INSERT into
+a GUI console with backslashes, and do not use `psql -c "..."` with `\$`:
 
 ```bash
-psql -U postgres -d TlIdentity -c "
+psql -U postgres -d TlIdentity <<'SQL'
+DELETE FROM public.users WHERE username = 'admin';
 INSERT INTO public.users (first_name, last_name, email, username, password_hash,
                           is_active, is_locked_out, business_id)
 VALUES ('Demo','Admin','admin@turboledger.dev','admin',
-        '\$2b\$10\$yGcJpfi3iuRGCispo6.Ca.d97.7j0RnpIkNSSlMRc3smblfAP1m6C',
-        true, false, NULL);"
+        '$2b$10$yGcJpfi3iuRGCispo6.Ca.d97.7j0RnpIkNSSlMRc3smblfAP1m6C',
+        true, false, NULL);
+SQL
+```
+
+Verify the seed — the hash must be exactly 60 chars and start with `$2b$10$`:
+
+```bash
+psql -U postgres -d TlIdentity -Atc \
+  "SELECT username, is_active, is_locked_out, length(password_hash), left(password_hash,7) FROM public.users"
+# expected:  admin|t|f|60|$2b$10$
 ```
 
 If your local Postgres user/password differ from `postgres`/`postgres`, edit
