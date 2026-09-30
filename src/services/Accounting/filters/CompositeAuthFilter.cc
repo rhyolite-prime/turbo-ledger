@@ -10,6 +10,8 @@
 #include <drogon/drogon.h>
 
 #include "plugins/AccountingServicePlugin.h"
+#include "turbo/ContextCodec.h"
+#include "turbo/RequestContext.h"
 
 using namespace drogon;
 
@@ -18,6 +20,28 @@ void CompositeAuthFilter::doFilter(const HttpRequestPtr &req,
                          FilterChainCallback &&fccb)
 {
     LOG_DEBUG << "[CompositeAuthFilter] Incoming request: " << req->getMethodString() << " " << req->getPath();
+
+    // --- CASE 0: signed TL-Context minted by the ApiGateway (preferred) ---
+    // The gateway authenticates the caller once at the edge and forwards a
+    // short-lived HMAC-signed context. When it verifies, no further network
+    // round-trip to Identity is needed.
+    const std::string contextHeader = req->getHeader(turbo::RequestContext::kHeaderName);
+    if (!contextHeader.empty()) {
+        const auto &config = drogon::app().getCustomConfig();
+        const std::string secret = config["turbo"]["context_secret"].asString();
+        std::string ctxError;
+        auto ctx = turbo::ContextCodec::decode(contextHeader, secret, &ctxError);
+        if (ctx) {
+            ctx->attachTo(req);
+            if (!ctx->userId.empty()) req->attributes()->insert("userId", ctx->userId);
+            LOG_DEBUG << "[CompositeAuthFilter] Trusted TL-Context accepted for tenant "
+                      << ctx->tenantId;
+            fccb();
+            return;
+        }
+        LOG_WARN << "[CompositeAuthFilter] TL-Context present but invalid (" << ctxError
+                 << ") - falling back to legacy credentials";
+    }
 
     std::string authHeader = req->getHeader("Authorization");
     if (authHeader.empty()) {

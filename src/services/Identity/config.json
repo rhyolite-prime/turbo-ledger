@@ -325,6 +325,9 @@
     ],
     //custom_config: custom configuration for users. This object can be get by the app().getCustomConfig() method. 
     "custom_config": {
+        "turbo": {
+            "context_secret": "dev-only-context-secret-change-me"
+        },
         "JwtBearer": {
             "JwtSecurityKey": "TurboLedgerIdentity_ca01ca76-3866-4d44-9881-d9e365b81472",
             "JwtIssuer": "TurboLedgerIdentity",

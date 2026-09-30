@@ -1,0 +1,17 @@
+{
+  "name": "turbo-ledger",
+  "version-string": "0.1.0",
+  "description": "Turbo Ledger - multi-tenant core banking platform (C++/Drogon microservices)",
+  "dependencies": [
+    {
+      "name": "drogon",
+      "features": ["postgres", "redis", "ctl"]
+    },
+    "jsoncpp",
+    "openssl",
+    "hiredis",
+    "libpq",
+    "jwt-cpp"
+  ],
+  "builtin-baseline": "b02e341c927f16d991edbd915d8ea43eac52096c"
+}

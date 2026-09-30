@@ -1,4 +1,5 @@
 #include <drogon/drogon.h>
+#include "turbo/Health.h"
 
 
 int main() {
@@ -8,6 +9,9 @@ int main() {
 
     //drogon::app().loadConfigFile("config.json");
     drogon::app().loadConfigFile("../config.json");
+
+    // Standard platform /health endpoint (used by the ApiGateway fan-out).
+    turbo::registerHealthEndpoint("Identity", "0.1");
 
     drogon::app().registerPostHandlingAdvice(
       [](const drogon::HttpRequestPtr &req,

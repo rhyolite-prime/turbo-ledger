@@ -1,10 +1,14 @@
 #include <drogon/drogon.h>
+#include "turbo/Health.h"
 int main() {
     //Set HTTP listener address and port
 
     //Load config file
     drogon::app().loadConfigFile("../config.json");
     //drogon::app().loadConfigFile("config.json");
+
+    // Standard platform /health endpoint (used by the ApiGateway fan-out).
+    turbo::registerHealthEndpoint("Accounting", "0.1");
 
 
     drogon::app().registerPostHandlingAdvice(
