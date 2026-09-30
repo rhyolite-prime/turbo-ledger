@@ -1,8 +1,8 @@
 /**
- *  ClientAddress.h
+ *  CollateralManagement.h
  *
  *  Hand-authored to match drogon_ctl's real generated output for the subset
- *  of the API this codebase's CoroMapper<ClientAddress> usage actually needs
+ *  of the API this codebase's CoroMapper<CollateralManagement> usage actually needs
  *  (row-mapping + CRUD via Mapper/CoroMapper). The Json::Value constructors,
  *  updateByJson/updateByMasqueradedJson, validateJsonFor.../validJsonOfField
  *  and toJson/toString/toMasqueradedJson methods that a live
@@ -47,23 +47,18 @@ namespace drogon_model
 namespace TlCustomerDb
 {
 
-class ClientAddress
+class CollateralManagement
 {
   public:
     struct Cols
     {
         static const std::string _id;
-        static const std::string _business_id;
-        static const std::string _client_id;
-        static const std::string _street;
-        static const std::string _address_line_1;
-        static const std::string _address_line_2;
-        static const std::string _city;
-        static const std::string _state_or_province;
-        static const std::string _country;
-        static const std::string _country_code;
-        static const std::string _address_type_id;
-        static const std::string _is_active;
+        static const std::string _name;
+        static const std::string _quality;
+        static const std::string _base_price;
+        static const std::string _currency_code;
+        static const std::string _pct_to_base;
+        static const std::string _unit_type;
         static const std::string _created_by;
         static const std::string _created_at;
         static const std::string _updated_by;
@@ -77,9 +72,9 @@ class ClientAddress
     using PrimaryKeyType = std::string;
     const PrimaryKeyType &getPrimaryKey() const;
 
-    explicit ClientAddress(const drogon::orm::Row &r, const ssize_t indexOffset = 0) noexcept;
+    explicit CollateralManagement(const drogon::orm::Row &r, const ssize_t indexOffset = 0) noexcept;
 
-    ClientAddress() = default;
+    CollateralManagement() = default;
 
     /**  For column id  */
     const std::string &getValueOfId() const noexcept;
@@ -87,79 +82,46 @@ class ClientAddress
     void setId(const std::string &pId) noexcept;
     void setId(std::string &&pId) noexcept;
 
-    /**  For column business_id  */
-    const std::string &getValueOfBusinessId() const noexcept;
-    const std::shared_ptr<std::string> &getBusinessId() const noexcept;
-    void setBusinessId(const std::string &pBusinessId) noexcept;
-    void setBusinessId(std::string &&pBusinessId) noexcept;
-    void setBusinessIdToNull() noexcept;
+    /**  For column name  */
+    const std::string &getValueOfName() const noexcept;
+    const std::shared_ptr<std::string> &getName() const noexcept;
+    void setName(const std::string &pName) noexcept;
+    void setName(std::string &&pName) noexcept;
 
-    /**  For column client_id  */
-    const std::string &getValueOfClientId() const noexcept;
-    const std::shared_ptr<std::string> &getClientId() const noexcept;
-    void setClientId(const std::string &pClientId) noexcept;
-    void setClientId(std::string &&pClientId) noexcept;
+    /**  For column quality  */
+    const std::string &getValueOfQuality() const noexcept;
+    const std::shared_ptr<std::string> &getQuality() const noexcept;
+    void setQuality(const std::string &pQuality) noexcept;
+    void setQuality(std::string &&pQuality) noexcept;
+    void setQualityToNull() noexcept;
 
-    /**  For column street  */
-    const std::string &getValueOfStreet() const noexcept;
-    const std::shared_ptr<std::string> &getStreet() const noexcept;
-    void setStreet(const std::string &pStreet) noexcept;
-    void setStreet(std::string &&pStreet) noexcept;
-    void setStreetToNull() noexcept;
+    /**  For column base_price  */
+    const std::string &getValueOfBasePrice() const noexcept;
+    const std::shared_ptr<std::string> &getBasePrice() const noexcept;
+    void setBasePrice(const std::string &pBasePrice) noexcept;
+    void setBasePrice(std::string &&pBasePrice) noexcept;
+    void setBasePriceToNull() noexcept;
 
-    /**  For column address_line_1  */
-    const std::string &getValueOfAddressLine1() const noexcept;
-    const std::shared_ptr<std::string> &getAddressLine1() const noexcept;
-    void setAddressLine1(const std::string &pAddressLine1) noexcept;
-    void setAddressLine1(std::string &&pAddressLine1) noexcept;
-    void setAddressLine1ToNull() noexcept;
+    /**  For column currency_code  */
+    const std::string &getValueOfCurrencyCode() const noexcept;
+    const std::shared_ptr<std::string> &getCurrencyCode() const noexcept;
+    void setCurrencyCode(const std::string &pCurrencyCode) noexcept;
+    void setCurrencyCode(std::string &&pCurrencyCode) noexcept;
+    void setCurrencyCodeToNull() noexcept;
 
-    /**  For column address_line_2  */
-    const std::string &getValueOfAddressLine2() const noexcept;
-    const std::shared_ptr<std::string> &getAddressLine2() const noexcept;
-    void setAddressLine2(const std::string &pAddressLine2) noexcept;
-    void setAddressLine2(std::string &&pAddressLine2) noexcept;
-    void setAddressLine2ToNull() noexcept;
+    /**  For column pct_to_base  */
+    const std::string &getValueOfPctToBase() const noexcept;
+    const std::shared_ptr<std::string> &getPctToBase() const noexcept;
+    void setPctToBase(const std::string &pPctToBase) noexcept;
+    void setPctToBase(std::string &&pPctToBase) noexcept;
+    void setPctToBaseToNull() noexcept;
 
-    /**  For column city  */
-    const std::string &getValueOfCity() const noexcept;
-    const std::shared_ptr<std::string> &getCity() const noexcept;
-    void setCity(const std::string &pCity) noexcept;
-    void setCity(std::string &&pCity) noexcept;
-    void setCityToNull() noexcept;
-
-    /**  For column state_or_province  */
-    const std::string &getValueOfStateOrProvince() const noexcept;
-    const std::shared_ptr<std::string> &getStateOrProvince() const noexcept;
-    void setStateOrProvince(const std::string &pStateOrProvince) noexcept;
-    void setStateOrProvince(std::string &&pStateOrProvince) noexcept;
-    void setStateOrProvinceToNull() noexcept;
-
-    /**  For column country  */
-    const std::string &getValueOfCountry() const noexcept;
-    const std::shared_ptr<std::string> &getCountry() const noexcept;
-    void setCountry(const std::string &pCountry) noexcept;
-    void setCountry(std::string &&pCountry) noexcept;
-    void setCountryToNull() noexcept;
-
-    /**  For column country_code  */
-    const std::string &getValueOfCountryCode() const noexcept;
-    const std::shared_ptr<std::string> &getCountryCode() const noexcept;
-    void setCountryCode(const std::string &pCountryCode) noexcept;
-    void setCountryCode(std::string &&pCountryCode) noexcept;
-    void setCountryCodeToNull() noexcept;
-
-    /**  For column address_type_id  */
-    const std::string &getValueOfAddressTypeId() const noexcept;
-    const std::shared_ptr<std::string> &getAddressTypeId() const noexcept;
-    void setAddressTypeId(const std::string &pAddressTypeId) noexcept;
-    void setAddressTypeId(std::string &&pAddressTypeId) noexcept;
-    void setAddressTypeIdToNull() noexcept;
-
-    /**  For column is_active  */
-    const bool &getValueOfIsActive() const noexcept;
-    const std::shared_ptr<bool> &getIsActive() const noexcept;
-    void setIsActive(const bool &pIsActive) noexcept;
+    /**  For column unit_type  */
+    const std::string &getValueOfUnitType() const noexcept;
+    const std::shared_ptr<std::string> &getUnitType() const noexcept;
+    void setUnitType(const std::string &pUnitType) noexcept;
+    void setUnitType(std::string &&pUnitType) noexcept;
+    void setUnitTypeToNull() noexcept;
 
     /**  For column created_by  */
     const std::string &getValueOfCreatedBy() const noexcept;
@@ -187,17 +149,17 @@ class ClientAddress
     void setUpdatedAt(const ::trantor::Date &pUpdatedAt) noexcept;
     void setUpdatedAtToNull() noexcept;
 
-    static size_t getColumnNumber() noexcept {  return 16;  }
+    static size_t getColumnNumber() noexcept {  return 11;  }
     static const std::string &getColumnName(size_t index) noexcept(false);
 
   private:
-    friend drogon::orm::Mapper<ClientAddress>;
-    friend drogon::orm::BaseBuilder<ClientAddress, true, true>;
-    friend drogon::orm::BaseBuilder<ClientAddress, true, false>;
-    friend drogon::orm::BaseBuilder<ClientAddress, false, true>;
-    friend drogon::orm::BaseBuilder<ClientAddress, false, false>;
+    friend drogon::orm::Mapper<CollateralManagement>;
+    friend drogon::orm::BaseBuilder<CollateralManagement, true, true>;
+    friend drogon::orm::BaseBuilder<CollateralManagement, true, false>;
+    friend drogon::orm::BaseBuilder<CollateralManagement, false, true>;
+    friend drogon::orm::BaseBuilder<CollateralManagement, false, false>;
 #ifdef __cpp_impl_coroutine
-    friend drogon::orm::CoroMapper<ClientAddress>;
+    friend drogon::orm::CoroMapper<CollateralManagement>;
 #endif
     static const std::vector<std::string> &insertColumns() noexcept;
     void outputArgs(drogon::orm::internal::SqlBinder &binder) const;
@@ -206,17 +168,12 @@ class ClientAddress
     ///For mysql or sqlite3
     void updateId(const uint64_t id);
     std::shared_ptr<std::string> id_;
-    std::shared_ptr<std::string> businessId_;
-    std::shared_ptr<std::string> clientId_;
-    std::shared_ptr<std::string> street_;
-    std::shared_ptr<std::string> addressLine1_;
-    std::shared_ptr<std::string> addressLine2_;
-    std::shared_ptr<std::string> city_;
-    std::shared_ptr<std::string> stateOrProvince_;
-    std::shared_ptr<std::string> country_;
-    std::shared_ptr<std::string> countryCode_;
-    std::shared_ptr<std::string> addressTypeId_;
-    std::shared_ptr<bool> isActive_;
+    std::shared_ptr<std::string> name_;
+    std::shared_ptr<std::string> quality_;
+    std::shared_ptr<std::string> basePrice_;
+    std::shared_ptr<std::string> currencyCode_;
+    std::shared_ptr<std::string> pctToBase_;
+    std::shared_ptr<std::string> unitType_;
     std::shared_ptr<std::string> createdBy_;
     std::shared_ptr<::trantor::Date> createdAt_;
     std::shared_ptr<std::string> updatedBy_;
@@ -232,7 +189,7 @@ class ClientAddress
         const bool notNull_;
     };
     static const std::vector<MetaData> metaData_;
-    bool dirtyFlag_[16]={ false };
+    bool dirtyFlag_[11]={ false };
   public:
     static const std::string &sqlForFindingByPrimaryKey()
     {
@@ -258,79 +215,53 @@ class ClientAddress
         }
         if(dirtyFlag_[1])
         {
-            sql += "business_id,";
+            sql += "name,";
             ++parametersCount;
         }
         if(dirtyFlag_[2])
         {
-            sql += "client_id,";
+            sql += "quality,";
             ++parametersCount;
         }
         if(dirtyFlag_[3])
         {
-            sql += "street,";
+            sql += "base_price,";
             ++parametersCount;
         }
         if(dirtyFlag_[4])
         {
-            sql += "address_line_1,";
+            sql += "currency_code,";
             ++parametersCount;
         }
         if(dirtyFlag_[5])
         {
-            sql += "address_line_2,";
+            sql += "pct_to_base,";
             ++parametersCount;
         }
         if(dirtyFlag_[6])
         {
-            sql += "city,";
+            sql += "unit_type,";
             ++parametersCount;
         }
         if(dirtyFlag_[7])
-        {
-            sql += "state_or_province,";
-            ++parametersCount;
-        }
-        if(dirtyFlag_[8])
-        {
-            sql += "country,";
-            ++parametersCount;
-        }
-        if(dirtyFlag_[9])
-        {
-            sql += "country_code,";
-            ++parametersCount;
-        }
-        if(dirtyFlag_[10])
-        {
-            sql += "address_type_id,";
-            ++parametersCount;
-        }
-        sql += "is_active,";
-        ++parametersCount;
-        if(!dirtyFlag_[11])
-        {
-            needSelection=true;
-        }
-        if(dirtyFlag_[12])
         {
             sql += "created_by,";
             ++parametersCount;
         }
         sql += "created_at,";
         ++parametersCount;
-        if(!dirtyFlag_[13])
+        if(!dirtyFlag_[8])
         {
             needSelection=true;
         }
-        if(dirtyFlag_[14])
+        if(dirtyFlag_[9])
         {
             sql += "updated_by,";
             ++parametersCount;
         }
         sql += "updated_at,";
         ++parametersCount;
-        if(!dirtyFlag_[15])
+        if(!dirtyFlag_[10])
         {
             needSelection=true;
         }
@@ -394,45 +325,16 @@ class ClientAddress
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
         }
+        else
+        {
+            sql +="default,";
+        }
         if(dirtyFlag_[9])
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
         }
         if(dirtyFlag_[10])
-        {
-            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
-            sql.append(placeholderStr, n);
-        }
-        if(dirtyFlag_[11])
-        {
-            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
-            sql.append(placeholderStr, n);
-        }
-        else
-        {
-            sql +="default,";
-        }
-        if(dirtyFlag_[12])
-        {
-            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
-            sql.append(placeholderStr, n);
-        }
-        if(dirtyFlag_[13])
-        {
-            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
-            sql.append(placeholderStr, n);
-        }
-        else
-        {
-            sql +="default,";
-        }
-        if(dirtyFlag_[14])
-        {
-            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
-            sql.append(placeholderStr, n);
-        }
-        if(dirtyFlag_[15])
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);

@@ -32,9 +32,10 @@
    "identity": "http://127.0.0.1:7500",
    "accounting": "http://127.0.0.1:7501",
    "organization": "http://127.0.0.1:7503",
-   "systemconfig": "http://127.0.0.1:7509",
-   "provisioner": "http://127.0.0.1:7512"
-  },
+      "systemconfig": "http://127.0.0.1:7509",
+      "provisioner": "http://127.0.0.1:7512",
+      "customer": "http://127.0.0.1:7504"
+    },
   "provisioner": {
    "base_url": "http://127.0.0.1:7512",
    "cache_ttl_seconds": 5.0
@@ -81,7 +82,11 @@
                 { "prefix": "/api/v1/entity-notes/", "service": "systemconfig" },
                 { "prefix": "/api/v1/entity-images/", "service": "systemconfig" },
                 { "prefix": "/api/v1/entity-calendars/", "service": "systemconfig" },
-                { "prefix": "/api/v1/entity-meetings/", "service": "systemconfig" }
+                { "prefix": "/api/v1/entity-meetings/", "service": "systemconfig" },
+                { "prefix": "/api/v1/clients/", "service": "customer" },
+                { "prefix": "/api/v1/client/", "service": "customer" },
+                { "prefix": "/api/v1/collateral-management/", "service": "customer" },
+                { "prefix": "/api/v2/clients/", "service": "customer" }
             ],
             "tenants": [
                 { "id": "default", "name": "Default Tenant", "status": "ACTIVE" },

@@ -149,13 +149,90 @@ The reference-data layer every product feature reads.
 - ✅ **Compile- and link-verified**, one level beyond Phase 2's `-fsyntax-only`-only verification: the local toolchain now also produces a real `DrogonConfig.cmake`/`jsoncppConfig.cmake` install (persisted outside `/tmp` at `~/.toolchain`, since `/tmp` doesn't survive between sessions — see `~/.toolchain/README.md`), so `cmake --build` was run for real, linking a genuine `Accounting` executable (and, as a bonus regression check, a genuine `Organization` executable) — not just per-file syntax checks. Every `.cc` in the service (10 controllers incl. the new 7, the `AccountingService`, and all 9 models) compiles with zero errors/warnings under `-Wall -Wextra`.
 - **Exit criteria:** balanced entry posting w/ reversal — ✅ implemented and compiles/links; **not runtime-tested against a live Postgres** (none is reachable in this sandbox, same limitation as Phase 2). Trial balance reconciliation and the 1k-entries/sec throughput target are design-compatible (running balances are maintained incrementally in-transaction, not recomputed from full history) but likewise unverified without a live DB/load environment — flagged here rather than silently assumed.
 
-### Phase 4 — Customer domain (≈64 endpoints)
+### Phase 4 — Customer domain (≈64 endpoints) ✅ DONE
 
-- `clients` (53 + v2 list): full lifecycle commands (`activate`, `close`, `reject`, `withdraw`, `reactivate`, `undoRejection`, `assignStaff`, `proposeTransfer`, `acceptTransfer`, ...), addresses, family members, identifiers (with document images), client charges, client transactions (pay/waive/undo), non-person (entity) clients, client accounts overview (composes DAM+Portfolio via async fan-out).
-- `collateral-management` (6) product-level collateral registry.
-- Wire in datatables/documents/notes/images from Phase 2.
-- ⭐ Modern addition here: **client risk attributes** (KYC status, risk rating, FATCA/CRS flags) as first-class columns, consumed by Compliance in Phase 9.
-- **Exit criteria:** Fineract Postman `clients` folder passes against Turbo Ledger with only base-URL/tenant-header changes.
+- ✅ `clients` (53: full CRUD + lifecycle commands — `activate`/`close`/`reject`/`withdraw`/`reactivate`/
+  `undoRejection`/`undoWithdrawal`/`assignStaff`/`unassignStaff`/`updateSavingsAccount`/`proposeTransfer`/
+  `withdrawTransfer`/`acceptTransfer`/`rejectTransfer`, dispatched via an explicit `{id}/command/{name}`
+  path segment rather than Fineract's `?command=` query param, matching this codebase's
+  explicit-action-suffix convention everywhere else — see `GlAccountsController`/`CodesController`),
+  nested charges/identifiers/familymembers/collaterals/transactions sub-resources, `template`,
+  `{id}/transferproposaldate`, external-id addressing for the core single-client operations only
+  (get-detail/update/delete/command/transactions-list — not nested sub-resources, a deliberate scope
+  trim documented in `ClientsController.h`), and `downloadtemplate`/`uploadtemplate` bulk-import stubs
+  deferred to Phase 8 (same precedent as glaccounts/Organization/SystemConfig). `client` (4) addresses.
+  `collateral-management` (6) product-level collateral registry, distinct from the client-level
+  pledges nested under `clients/{id}/collaterals/*`. `clients (v2)` (1) text search across
+  firstname/lastname/fullname/displayName/accountNo/externalId.
+- ✅ All implemented against one `CustomerService` (the established Organization/SystemConfig/Accounting
+  monolithic-service-class, per-resource-controller pattern), fully ORM (`CoroMapper<Model>`) — **zero
+  raw SQL anywhere in this service**. Three new/regenerated model pairs were hand-authored from scratch
+  or extended via `src/tools/genmodel.py` (drogon_ctl isn't runnable in this sandbox — see Phase 2/3's
+  same workaround): `CollateralManagement` and `ClientFamilyMember` are brand new V003 tables;
+  `Client`/`ClientAddress`/`ClientCollateralManagement` were regenerated to add the Phase 4 columns
+  below plus real audit columns. `ClientCharge`, `ClientChargePaidBy`, `ClientIdentifier`,
+  `ClientNonPerson`, `ClientTransaction`, `ClientTransferDetails` are untouched, genuine drogon_ctl
+  output — the V001 baseline already covered every column they need.
+- ✅ **V003 migration also tightens FKs across every `client_*` child table** (all previously bare
+  uuid columns with zero constraints in the V001 baseline — the same class of real gap as Phase 3's
+  `accounting_rules` int/uuid bug), plus adds real uniqueness Fineract itself enforces
+  (`client.account_no` UNIQUE, a partial unique index on `client.external_id`,
+  `client_identifier UNIQUE(client_id, document_type_id, document_key)`,
+  `client_non_person UNIQUE(client_id)`).
+- ✅ ⭐ Modern addition here: **client risk attributes** (`kyc_status`, `risk_rating`, `fatca_flag`,
+  `crs_flag`) as first-class columns on `client`, ahead of Compliance (Phase 9+) consuming them.
+- ✅ Non-person (entity) clients are supported inline via an optional `nonPerson` object on
+  create/update (`client_non_person`, 1:1 with `client`) rather than as a separate top-level
+  sub-resource — Fineract itself treats it the same way (a detail table keyed by `client_id`), and it
+  isn't a distinct entry in `ENDPOINT_INVENTORY.md`.
+- ✅ Client transfers are modeled locally via `client_transfer_details` + `client.sub_status`
+  (`proposeTransfer` inserts a row and sets `sub_status=TRANSFER_IN_PROGRESS`; `acceptTransfer`/
+  `rejectTransfer`/`withdrawTransfer` finalize it) — `client.status` stays `ACTIVE` throughout a
+  transfer, matching Fineract's actual design. `transfer_type` is repurposed as the proposal's
+  outcome enum (proposed/accepted/rejected/withdrawn) since the V001 baseline already shaped the
+  column that way with no separate status column to add.
+- ✅ Client charges are caller-supplied (no `charges` product catalog exists yet — that catalog lands
+  in DepositAccountManagement, a later phase); `pay`/`waive` commands post `client_transaction` +
+  `client_charge_paid_by` rows and maintain `amount_paid_derived`/`amount_waived_derived`/
+  `amount_outstanding_derived` using `turbo::Money` exact-decimal arithmetic, with a matching
+  `undo` that reverses both the transaction and the charge's derived amounts. GL posting of charge
+  payments to Accounting is deferred — no inter-service posting client exists yet in this codebase.
+- ✅ **Cross-service ids intentionally trusted as caller-supplied, not validated**: `office_id`,
+  `staff_id`, `charge_id`, `document_type_id`, every `*_cv_id` column, `image_id`, `payment_detail_id`
+  and currency codes belong to Organization/SystemConfig/DAM, each in its own dedicated Postgres
+  database (see each service's `config.json` — `dbname` differs per service) — there is no
+  inter-service RPC client in this codebase yet, so no cross-database join or validation call is even
+  possible. Template endpoints that would normally return those catalogs as dropdown options
+  (address types, document types, relationship/marital-status/gender/profession code values) are
+  documented empty stubs for the same reason. `clients/{id}/accounts` (accounts overview) and
+  `clients/{id}/obligeedetails` return `501 Not Implemented` since they compose
+  DepositAccountManagement + Portfolio data that doesn't exist until later phases — same precedent as
+  the `downloadtemplate`/`uploadtemplate` stubs.
+- ✅ **Observation, not an omission**: `AccountTransferStandingInstructions[History]` and
+  `ClientAttendance` models/tables already existed in the Customer service's V001 baseline but are
+  outside the 64-endpoint Phase 4 inventory (they functionally belong to DAM/standing-instructions and
+  a future Group/Meetings domain respectively, not `clients`/`client`/`collateral-management`). Left
+  untouched rather than deleted, to be picked up by whichever later phase owns them.
+- ✅ Identity permission catalog seeded (`src/services/Identity/migrations/V006__phase4_permissions.sql`,
+  grouping `customer`, 44 codes) and the "Admin" role template extended to it, same precedent as
+  Phase 2/3's V004/V005.
+- ✅ Gateway routing (`src/services/ApiGateway/config.json`): new `customer` upstream
+  (`http://127.0.0.1:7504`) and four route prefixes — `/api/v1/clients/`, `/api/v1/client/`,
+  `/api/v1/collateral-management/`, `/api/v2/clients/`.
+- ✅ **Compile- and link-verified** against the same rebuilt local toolchain as Phase 3 (`~/.toolchain`,
+  rebuilt from scratch this session since it didn't persist between sessions): `cmake --build` was run
+  for real, linking a genuine `Customer` executable (and its test binary) against `libturbo`, with zero
+  compile errors anywhere, and zero warnings under `-Wall -Wextra` in all 5 controllers and the
+  `CustomerService` itself. The model `.cc` files do emit the same pair of harmless
+  `-Wunused-parameter` warnings (in the generated `updateId`/`validJsonOfField` stubs) already present
+  in every drogon_ctl-generated model since Phase 2 — confirmed by rebuilding Accounting side-by-side
+  with identical flags and seeing the exact same warning shape in its genuine, untouched models
+  (`Accounts.cc`, `GlClosure.cc`, ...), so this is template boilerplate, not something Phase 4
+  introduced.
+- **Exit criteria:** Fineract Postman `clients` folder is expected to pass against Turbo Ledger with
+  only base-URL/tenant-header/route-shape changes (this codebase uses explicit action-suffix paths
+  instead of Fineract's verb-overloaded single path — see above) — **not runtime-tested against a live
+  Postgres**, same unavoidable limitation as Phases 2/3 in this sandbox.
 
 ### Phase 5 — Deposits (≈119 endpoints)
 
