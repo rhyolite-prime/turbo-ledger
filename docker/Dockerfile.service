@@ -1,0 +1,40 @@
+# Turbo Ledger — generic service image.
+#
+#   docker build -f docker/Dockerfile.service --build-arg SERVICE=Identity -t tl-identity .
+#
+# Stage 1 builds Drogon once (cacheable layer), stage 2 builds the requested
+# service via the repo superbuild, stage 3 is a slim runtime image.
+
+FROM debian:bookworm-slim AS drogon-builder
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        g++ cmake ninja-build git ca-certificates \
+        libjsoncpp-dev uuid-dev zlib1g-dev libssl-dev libhiredis-dev libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+RUN git clone --depth 1 --branch v1.9.8 --recurse-submodules --shallow-submodules \
+        https://github.com/drogonframework/drogon /tmp/drogon \
+    && cmake -S /tmp/drogon -B /tmp/drogon/build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+        -DBUILD_EXAMPLES=OFF -DBUILD_CTL=OFF -DBUILD_TESTING=OFF \
+    && cmake --build /tmp/drogon/build -j"$(nproc)" \
+    && cmake --install /tmp/drogon/build \
+    && rm -rf /tmp/drogon
+
+FROM drogon-builder AS service-builder
+ARG SERVICE=Identity
+WORKDIR /workspace
+COPY . .
+RUN cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+        -DTL_SERVICES="${SERVICE}" -DTL_BUILD_TESTS=OFF \
+    && cmake --build build -j"$(nproc)"
+
+FROM debian:bookworm-slim AS runtime
+ARG SERVICE=Identity
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        libjsoncpp25 libuuid1 zlib1g libssl3 libhiredis0.14 libpq5 ca-certificates curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd -r -s /usr/sbin/nologin turbo
+WORKDIR /app/bin
+COPY --from=service-builder /workspace/build/src/services/${SERVICE}/${SERVICE} /app/bin/service
+COPY --from=service-builder /workspace/src/services/${SERVICE}/config.json /app/config.json
+USER turbo
+# Services load "../config.json" relative to their working directory.
+ENTRYPOINT ["/app/bin/service"]

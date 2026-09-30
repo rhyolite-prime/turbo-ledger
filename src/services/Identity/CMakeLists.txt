@@ -3,11 +3,13 @@ project(Identity CXX)
 
 include(CheckIncludeFileCXX)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+# GCC < 13 needs -fcoroutines even in C++20/23 mode; GCC >= 13 and Clang enable
+# coroutines automatically (and Clang rejects the flag).
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 13)
     add_compile_options(-fcoroutines)
 endif()
 
@@ -55,7 +57,17 @@ add_executable(${PROJECT_NAME} main.cc
 find_package(Drogon CONFIG REQUIRED)
 find_package(OpenSSL REQUIRED)
 
-target_link_libraries(${PROJECT_NAME} PRIVATE Drogon::Drogon bcrypt OpenSSL::SSL OpenSSL::Crypto)
+# Shared platform library (libturbo)
+if(NOT TARGET turbo)
+    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../libs/turbo turbo_build)
+endif()
+
+# Shared external dependencies (Bcrypt / jwt-cpp with FetchContent fallback)
+include(${CMAKE_CURRENT_SOURCE_DIR}/../../../cmake/TurboExternalDeps.cmake)
+turbo_require_bcrypt(${PROJECT_NAME})
+turbo_require_jwt_cpp(${PROJECT_NAME})
+
+target_link_libraries(${PROJECT_NAME} PRIVATE Drogon::Drogon turbo::turbo OpenSSL::SSL OpenSSL::Crypto)
 
 # ##############################################################################
 
@@ -64,7 +76,7 @@ if (CMAKE_CXX_STANDARD LESS 17)
 elseif (CMAKE_CXX_STANDARD LESS 20)
     message(STATUS "use c++17")
 else ()
-    message(STATUS "use c++20")
+    message(STATUS "use c++${CMAKE_CXX_STANDARD}")
 endif ()
 
 aux_source_directory(controllers CTL_SRC)
@@ -72,6 +84,7 @@ aux_source_directory(filters FILTER_SRC)
 aux_source_directory(plugins PLUGIN_SRC)
 aux_source_directory(constants PLUGIN_SRC)
 aux_source_directory(services/users SERVICE_SRC)
+aux_source_directory(services/rbac SERVICE_SRC)
 aux_source_directory(models MODEL_SRC)
 
 drogon_create_views(${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/views
@@ -105,32 +118,10 @@ target_sources(${PROJECT_NAME}
 #add_subdirectory(test)
 
 
-# Shared external dependencies (services/external_deps/)
-set(SHARED_EXTERNAL_DEPS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../external_deps")
-
-# Your intentional/canonical Bcrypt
-if(NOT TARGET bcrypt)
-    add_subdirectory(
-            ${SHARED_EXTERNAL_DEPS_DIR}/Bcrypt
-            external_deps/Bcrypt
-    )
-endif()
-
-# jwt-cpp
-set(USE_EXTERNAL_BCRYPT ON CACHE BOOL "" FORCE)
-
-if(NOT TARGET jwt-cpp)
-    add_subdirectory(
-            ${SHARED_EXTERNAL_DEPS_DIR}/jwt-cpp
-            external_deps/jwt-cpp
-    )
-endif()
-
-
-# Add the include directory for jwt-cpp
+# External dependencies (Bcrypt / jwt-cpp) are resolved via
+# cmake/TurboExternalDeps.cmake above (vendored submodule or FetchContent).
 target_include_directories(${PROJECT_NAME}
         PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/models
-        ${SHARED_EXTERNAL_DEPS_DIR}/jwt-cpp/include  # Add this line
 )

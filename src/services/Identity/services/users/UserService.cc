@@ -8,6 +8,7 @@
 #include "utils/PasswordUtils.h"
 #include <bcrypt.h>
 #include <jwt-cpp/jwt.h>
+#include "turbo/TenantDb.h"
 #include "services/audit_logs/AuditScope.h"
 
 using namespace drogon::orm;
@@ -385,6 +386,101 @@ namespace turbo_ledger_identity::services
     }
 
     drogon::Task<dto::BaseApiResponse> UserService::validateUserCredentials(const dto::SigninDto &signin_dto) {
+        co_return co_await validateUserCredentials(signin_dto, "");
+    }
+
+    // Phase 1: tenant-scoped signin. Looks the user up in the tenant schema
+    // (t_<tenantId>.users) first; a miss falls back to the legacy host lookup
+    // in public.users so platform operators can sign in under any tenant.
+    drogon::Task<std::optional<dto::BaseApiResponse>> UserService::tryTenantSignin(
+        const dto::SigninDto &signin_dto, const std::string &tenantId) {
+        auto dbClient = drogon::app().getDbClient();
+        try {
+            auto txn = co_await turbo::db::beginTenantTxn(dbClient, tenantId);
+            auto rows = co_await txn->execSqlCoro(
+                "SELECT id::text AS id, username, email, first_name, last_name, "
+                "  password_hash, is_active, is_locked_out "
+                "FROM users WHERE username = $1 OR email = $1",
+                signin_dto.getUsernameOrEmail());
+            if (rows.size() == 0) co_return std::nullopt;  // fall back to host lookup
+
+            const auto &u = rows[0];
+            dto::BaseApiResponse response;
+            std::string status = "FAILED";
+            std::string failureReason;
+
+            if (!u["is_active"].as<bool>() || u["is_locked_out"].as<bool>()) {
+                failureReason = "User inactive or locked";
+                response.success = false;
+                response.message = "User account is inactive or locked";
+                response.error["code"] = constants::ERR_AUTH_INVALID_CREDENTIALS;
+            } else {
+                const std::string storedHash =
+                    utils::PasswordUtils::normalizeBcryptHash(u["password_hash"].as<std::string>());
+                if (bcrypt::validatePassword(signin_dto.getPassword(), storedHash)) {
+                    status = "SUCCESS";
+                    auto customConfig = drogon::app().getCustomConfig();
+                    const std::string jwtSecurityKey =
+                        customConfig["JwtBearer"]["JwtSecurityKey"].asString();
+                    const std::string jwtIssuer =
+                        customConfig["JwtBearer"]["JwtIssuer"].asString();
+                    const std::string username =
+                        u["username"].isNull() ? "" : u["username"].as<std::string>();
+                    const std::string email = u["email"].as<std::string>();
+                    auto token = jwt::create()
+                                     .set_issuer(jwtIssuer)
+                                     .set_type("JWT")
+                                     .set_issued_at(std::chrono::system_clock::now())
+                                     .set_expires_at(std::chrono::system_clock::now() +
+                                                     std::chrono::hours(24))
+                                     .set_payload_claim("userId", jwt::claim(u["id"].as<std::string>()))
+                                     .set_payload_claim("username", jwt::claim(username))
+                                     .set_payload_claim("email", jwt::claim(email))
+                                     .set_payload_claim("tenantId", jwt::claim(tenantId))
+                                     .sign(jwt::algorithm::hs256{jwtSecurityKey});
+                    response.success = true;
+                    response.message = "Authentication successful";
+                    response.result["token"] = token;
+                    response.result["userId"] = u["id"].as<std::string>();
+                    response.result["username"] = username;
+                    response.result["email"] = email;
+                    response.result["tenantId"] = tenantId;
+                    const std::string first =
+                        u["first_name"].isNull() ? "" : u["first_name"].as<std::string>();
+                    const std::string last =
+                        u["last_name"].isNull() ? "" : u["last_name"].as<std::string>();
+                    response.result["fullName"] = first + " " + last;
+                } else {
+                    failureReason = "Invalid password";
+                    response.success = false;
+                    response.message = "Invalid credentials";
+                    response.error["code"] = constants::ERR_AUTH_INVALID_CREDENTIALS;
+                }
+            }
+
+            try {
+                co_await txn->execSqlCoro(
+                    "INSERT INTO login_history (user_id, status, failure_reason, login_time) "
+                    "VALUES ($1::uuid, $2, NULLIF($3, ''), now())",
+                    u["id"].as<std::string>(), status, failureReason);
+            } catch (...) {
+                // never fail a signin because audit logging failed
+            }
+            co_return response;
+        } catch (const std::exception &) {
+            // tenant schema missing or DB error — let the host path decide
+            co_return std::nullopt;
+        }
+    }
+
+    drogon::Task<dto::BaseApiResponse> UserService::validateUserCredentials(
+        const dto::SigninDto &signin_dto, const std::string &tenantId) {
+        if (!tenantId.empty() && signin_dto.getAccountId().empty()) {
+            auto tenantResult = co_await tryTenantSignin(signin_dto, tenantId);
+            if (tenantResult) co_return *tenantResult;
+        }
+        const std::string jwtTenantClaim = tenantId.empty() ? "default" : tenantId;
+
         auto dbClient = drogon::app().getDbClient();
         CoroMapper<drogon_model::TlIdentity::Users> mapper(dbClient);
         
@@ -468,6 +564,7 @@ namespace turbo_ledger_identity::services
                         .set_payload_claim("userId", jwt::claim(user.getValueOfId()))
                         .set_payload_claim("username", jwt::claim(user.getValueOfUsername()))
                         .set_payload_claim("email", jwt::claim(user.getValueOfEmail()))
+                        .set_payload_claim("tenantId", jwt::claim(jwtTenantClaim))
                         .sign(jwt::algorithm::hs256{jwtSecurityKey});
 
                 response.success = true;

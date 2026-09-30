@@ -132,6 +132,7 @@ class LoginHistory
     ///Set the value of the column user_id
     void setUserId(const std::string &pUserId) noexcept;
     void setUserId(std::string &&pUserId) noexcept;
+    void setUserIdToNull() noexcept;
 
     /**  For column login_time  */
     ///Get the value of the column login_time, returns the default value if the column is null
