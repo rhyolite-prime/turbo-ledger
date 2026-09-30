@@ -84,7 +84,8 @@ CREATE TABLE business_accounts (
 CREATE TABLE login_history (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     business_id uuid,
-    user_id uuid NOT NULL,
+    -- Nullable on purpose: failed sign-ins for UNKNOWN users must still be auditable.
+    user_id uuid,
     login_time timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
     ip_address inet,
     user_agent character varying(512),

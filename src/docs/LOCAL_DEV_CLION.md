@@ -138,3 +138,13 @@ default `default`) — that is the multi-tenancy contract from the plan.
 - **401 "Invalid TL-Context"** on direct service calls → expected; go through
   the gateway (only it can mint the signed context).
 - **Redis warnings at startup** → harmless in Phase 0; start Redis to silence.
+- **`null value in column "user_id" of relation "login_history"` (Identity log,
+  PgBatchConnection.cc)** → your DB was created before the baseline made
+  `login_history.user_id` nullable (failed sign-ins by unknown users must still
+  be auditable). One-time fix on an existing DB:
+  ```bash
+  psql -U postgres -d TlIdentity -c \
+    "ALTER TABLE public.login_history ALTER COLUMN user_id DROP NOT NULL;"
+  ```
+  The error itself is swallowed by Identity (signin still responds normally) —
+  but the audit row is lost until you apply the ALTER.
