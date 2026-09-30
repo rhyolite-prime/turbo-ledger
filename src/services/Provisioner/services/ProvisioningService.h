@@ -18,6 +18,8 @@
 #include <string>
 #include <vector>
 
+#include "turbo/TenantStatus.h"
+
 namespace provisioner {
 
 class ApiError : public std::runtime_error {
@@ -51,7 +53,7 @@ class ProvisioningService {
     drogon::Task<Json::Value> listTenants();
     drogon::Task<Json::Value> getTenant(const std::string &id);
     drogon::Task<Json::Value> createTenant(const Json::Value &body);
-    drogon::Task<Json::Value> setStatus(const std::string &id, const std::string &newStatus);
+    drogon::Task<Json::Value> setStatus(const std::string &id, turbo::TenantStatus newStatus);
     Json::Value instanceMode() const;
 
     /// Split a migration file into single statements (quotes, dollar-quoting

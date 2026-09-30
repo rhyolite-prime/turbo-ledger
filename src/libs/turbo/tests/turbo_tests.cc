@@ -13,6 +13,7 @@
 #include "turbo/Money.h"
 #include "turbo/Pagination.h"
 #include "turbo/RequestContext.h"
+#include "turbo/TenantStatus.h"
 
 static int g_failures = 0;
 #define CHECK(cond)                                                        \
@@ -163,11 +164,40 @@ static void testIdsAndResponse() {
     CHECK(j["error"]["errors"][0]["parameterName"].asString() == "name");
 }
 
+static void testTenantStatus() {
+    using turbo::TenantStatus;
+    using turbo::tenantStatusFromString;
+    using turbo::toString;
+
+    // round-trip every enumerator through its wire label
+    for (const auto status : turbo::kAllTenantStatuses)
+        CHECK(tenantStatusFromString(toString(status)) == status);
+    CHECK(!tenantStatusFromString("active"));   // labels are case-sensitive
+    CHECK(!tenantStatusFromString("DELETED"));
+    CHECK(!tenantStatusFromString(""));
+
+    CHECK(turbo::isServing(TenantStatus::Active));
+    CHECK(!turbo::isServing(TenantStatus::Suspended));
+    CHECK(!turbo::isServing(TenantStatus::Provisioning));
+
+    using turbo::isLegalTransition;
+    CHECK(isLegalTransition(TenantStatus::Active, TenantStatus::Suspended));
+    CHECK(isLegalTransition(TenantStatus::Suspended, TenantStatus::Active));
+    CHECK(isLegalTransition(TenantStatus::Pending, TenantStatus::Active));
+    CHECK(isLegalTransition(TenantStatus::Active, TenantStatus::Closed));
+    CHECK(isLegalTransition(TenantStatus::Failed, TenantStatus::Closed));
+    CHECK(!isLegalTransition(TenantStatus::Closed, TenantStatus::Active));    // terminal
+    CHECK(!isLegalTransition(TenantStatus::Closed, TenantStatus::Closed));
+    CHECK(!isLegalTransition(TenantStatus::Suspended, TenantStatus::Suspended));
+    CHECK(!isLegalTransition(TenantStatus::Active, TenantStatus::Pending));   // initial only
+}
+
 int main() {
     testMoney();
     testContextCodec();
     testPagination();
     testIdsAndResponse();
+    testTenantStatus();
     if (g_failures == 0) {
         std::printf("turbo_tests: ALL PASSED\n");
         return 0;

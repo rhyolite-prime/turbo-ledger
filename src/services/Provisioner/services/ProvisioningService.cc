@@ -92,22 +92,55 @@ drogon::Task<void> ProvisioningService::ensureRegistry() {
     if (registryReady_) co_return;
     auto client = drogon::app().getDbClient();
     auto txn = co_await client->newTransactionCoro();
+    // Native Postgres ENUM mirroring turbo::TenantStatus (CREATE TYPE has no
+    // IF NOT EXISTS, hence the DO block).
+    std::string labels;
+    for (const auto status : turbo::kAllTenantStatuses) {
+        if (!labels.empty()) labels += ", ";
+        labels += "'" + std::string(turbo::toString(status)) + "'";
+    }
+    co_await txn->execSqlCoro(
+        "DO $do$ BEGIN "
+        "  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'tenant_status') THEN "
+        "    CREATE TYPE public.tenant_status AS ENUM (" + labels + "); "
+        "  END IF; "
+        "END $do$");
     co_await txn->execSqlCoro(
         "CREATE TABLE IF NOT EXISTS public.tenants ("
         "  id         varchar(40) PRIMARY KEY,"
         "  name       varchar(200) NOT NULL,"
-        "  status     varchar(20)  NOT NULL DEFAULT 'PENDING',"
+        "  status     public.tenant_status NOT NULL DEFAULT 'PENDING',"
         "  details    jsonb        NOT NULL DEFAULT '{}'::jsonb,"
         "  created_at timestamptz  NOT NULL DEFAULT now(),"
-        "  updated_at timestamptz  NOT NULL DEFAULT now(),"
-        "  CONSTRAINT chk_tenants_status CHECK "
-        "    (status IN ('PENDING','PROVISIONING','ACTIVE','SUSPENDED','CLOSED','FAILED')))");
+        "  updated_at timestamptz  NOT NULL DEFAULT now())");
+    // One-time upgrade of registries created before the ENUM existed
+    // (varchar + CHECK constraint -> tenant_status).
+    co_await txn->execSqlCoro(
+        "DO $do$ BEGIN "
+        "  IF EXISTS (SELECT 1 FROM information_schema.columns "
+        "             WHERE table_schema = 'public' AND table_name = 'tenants' "
+        "               AND column_name = 'status' AND udt_name <> 'tenant_status') THEN "
+        "    ALTER TABLE public.tenants DROP CONSTRAINT IF EXISTS chk_tenants_status; "
+        "    ALTER TABLE public.tenants ALTER COLUMN status DROP DEFAULT; "
+        "    ALTER TABLE public.tenants ALTER COLUMN status "
+        "      TYPE public.tenant_status USING status::public.tenant_status; "
+        "    ALTER TABLE public.tenants ALTER COLUMN status "
+        "      SET DEFAULT 'PENDING'::public.tenant_status; "
+        "  END IF; "
+        "END $do$");
     for (const auto &t : staticTenants_) {
+        const std::string rawStatus = t.get("status", "ACTIVE").asString();
+        const auto status = turbo::tenantStatusFromString(rawStatus);
+        if (!status) {
+            LOG_WARN << "static_tenants entry '" << t.get("id", "").asString()
+                     << "' has unknown status '" << rawStatus << "', skipping";
+            continue;
+        }
         co_await txn->execSqlCoro(
-            "INSERT INTO public.tenants (id, name, status) VALUES ($1, $2, $3) "
-            "ON CONFLICT (id) DO NOTHING",
+            "INSERT INTO public.tenants (id, name, status) "
+            "VALUES ($1, $2, $3::public.tenant_status) ON CONFLICT (id) DO NOTHING",
             t.get("id", "").asString(), t.get("name", "").asString(),
-            t.get("status", "ACTIVE").asString());
+            std::string(turbo::toString(*status)));
     }
     co_await commitTxn(std::move(txn));
     registryReady_ = true;
@@ -120,7 +153,7 @@ drogon::Task<Json::Value> ProvisioningService::listTenants() {
     auto client = drogon::app().getDbClient();
     auto txn = co_await client->newTransactionCoro();
     auto rows = co_await txn->execSqlCoro(
-        "SELECT id, name, status, created_at::text AS created_at, "
+        "SELECT id, name, status::text AS status, created_at::text AS created_at, "
         "  updated_at::text AS updated_at FROM public.tenants ORDER BY id");
     Json::Value list(Json::arrayValue);
     for (const auto &row : rows) list.append(tenantRowToJson(row));
@@ -135,7 +168,7 @@ drogon::Task<Json::Value> ProvisioningService::getTenant(const std::string &id) 
     auto client = drogon::app().getDbClient();
     auto txn = co_await client->newTransactionCoro();
     auto rows = co_await txn->execSqlCoro(
-        "SELECT id, name, status, created_at::text AS created_at, "
+        "SELECT id, name, status::text AS status, created_at::text AS created_at, "
         "  updated_at::text AS updated_at FROM public.tenants WHERE id = $1",
         id);
     if (rows.size() == 0)
@@ -160,9 +193,10 @@ drogon::Task<Json::Value> ProvisioningService::createTenant(const Json::Value &b
     {
         auto txn = co_await client->newTransactionCoro();
         auto inserted = co_await txn->execSqlCoro(
-            "INSERT INTO public.tenants (id, name, status) VALUES ($1, $2, 'PROVISIONING') "
+            "INSERT INTO public.tenants (id, name, status) "
+            "VALUES ($1, $2, $3::public.tenant_status) "
             "ON CONFLICT (id) DO NOTHING RETURNING id",
-            id, name);
+            id, name, std::string(turbo::toString(turbo::TenantStatus::Provisioning)));
         if (inserted.size() == 0)
             throw ApiError(drogon::k409Conflict, "Tenant already exists: " + id,
                            "error.msg.provisioner.tenant.duplicate");
@@ -196,9 +230,9 @@ drogon::Task<Json::Value> ProvisioningService::createTenant(const Json::Value &b
     if (!failure.empty()) {
         auto txn = co_await client->newTransactionCoro();
         co_await txn->execSqlCoro(
-            "UPDATE public.tenants SET status = 'FAILED', updated_at = now(), "
+            "UPDATE public.tenants SET status = $3::public.tenant_status, updated_at = now(), "
             "  details = jsonb_set(details, '{failure}', to_jsonb($2::text)) WHERE id = $1",
-            id, failure);
+            id, failure, std::string(turbo::toString(turbo::TenantStatus::Failed)));
         co_await commitTxn(std::move(txn));
         throw ApiError(drogon::k500InternalServerError,
                        "Tenant provisioning failed: " + failure,
@@ -208,14 +242,16 @@ drogon::Task<Json::Value> ProvisioningService::createTenant(const Json::Value &b
     {
         auto txn = co_await client->newTransactionCoro();
         co_await txn->execSqlCoro(
-            "UPDATE public.tenants SET status = 'ACTIVE', updated_at = now() WHERE id = $1", id);
+            "UPDATE public.tenants SET status = $2::public.tenant_status, updated_at = now() "
+            "WHERE id = $1",
+            id, std::string(turbo::toString(turbo::TenantStatus::Active)));
         co_await commitTxn(std::move(txn));
     }
 
     Json::Value out;
     out["tenantId"] = id;
     out["name"] = name;
-    out["status"] = "ACTIVE";
+    out["status"] = std::string(turbo::toString(turbo::TenantStatus::Active));
     out["services"] = serviceReport;
     out["adminUsername"] = adminUsername;
     out["adminEmail"] = adminEmail;
@@ -225,33 +261,36 @@ drogon::Task<Json::Value> ProvisioningService::createTenant(const Json::Value &b
 }
 
 drogon::Task<Json::Value> ProvisioningService::setStatus(const std::string &id,
-                                                         const std::string &newStatus) {
+                                                         const turbo::TenantStatus newStatus) {
     co_await ensureRegistry();
     auto client = drogon::app().getDbClient();
     auto txn = co_await client->newTransactionCoro();
     auto rows = co_await txn->execSqlCoro(
-        "SELECT status FROM public.tenants WHERE id = $1 FOR UPDATE", id);
+        "SELECT status::text AS status FROM public.tenants WHERE id = $1 FOR UPDATE", id);
     if (rows.size() == 0)
         throw ApiError(drogon::k404NotFound, "Unknown tenant: " + id,
                        "error.msg.provisioner.tenant.not.found");
-    const std::string current = rows[0]["status"].as<std::string>();
+    const std::string currentLabel = rows[0]["status"].as<std::string>();
+    const auto current = turbo::tenantStatusFromString(currentLabel);
+    if (!current)
+        throw std::runtime_error("Corrupt tenant registry: unknown status '" + currentLabel +
+                                 "' for tenant " + id);
 
-    const bool allowed =
-        (newStatus == "ACTIVE" && (current == "SUSPENDED" || current == "PENDING")) ||
-        (newStatus == "SUSPENDED" && current == "ACTIVE") ||
-        (newStatus == "CLOSED" && current != "CLOSED");
-    if (!allowed)
+    if (!turbo::isLegalTransition(*current, newStatus))
         throw ApiError(drogon::k409Conflict,
-                       "Illegal status transition " + current + " -> " + newStatus,
+                       "Illegal status transition " + currentLabel + " -> " +
+                           std::string(turbo::toString(newStatus)),
                        "error.msg.provisioner.tenant.transition");
 
     co_await txn->execSqlCoro(
-        "UPDATE public.tenants SET status = $2, updated_at = now() WHERE id = $1", id, newStatus);
+        "UPDATE public.tenants SET status = $2::public.tenant_status, updated_at = now() "
+        "WHERE id = $1",
+        id, std::string(turbo::toString(newStatus)));
     co_await commitTxn(std::move(txn));
     Json::Value out;
     out["id"] = id;
-    out["previousStatus"] = current;
-    out["status"] = newStatus;
+    out["previousStatus"] = currentLabel;
+    out["status"] = std::string(turbo::toString(newStatus));
     co_return out;
 }
 

@@ -158,7 +158,7 @@ drogon::Task<drogon::HttpResponsePtr> GatewayCore::handleAsync(drogon::HttpReque
     }
     if (!tenant->isActive()) {
         auto resp = ApiResponse::httpError(drogon::k403Forbidden,
-                                           "Tenant is not active: " + tenant->status,
+                                           "Tenant is not active: " + tenant->statusLabel(),
                                            "error.msg.gateway.tenant.inactive");
         decorate(req, resp, requestId);
         co_return resp;
