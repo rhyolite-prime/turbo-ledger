@@ -1,0 +1,1268 @@
+{
+  "info": {
+    "_postman_id": "9ffc774c-7ee2-46e3-9b23-20873994dc8c",
+    "name": "TurboLedger \u2014 Phase 1 (Tenancy, RBAC, Maker-Checker)",
+    "description": "Full Phase 1 surface through the API Gateway.\n\nRun top to bottom: host signin -> provision tenant -> tenant admin signin -> RBAC -> maker-checker -> self -> lifecycle.\n\nCollection variables: baseUrl (default http://127.0.0.1:7499), tenantId (the tenant being exercised), hostToken / token / adminPassword / commandId are set by test scripts.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:7499"
+    },
+    {
+      "key": "tenantId",
+      "value": "acme_bank"
+    },
+    {
+      "key": "hostToken",
+      "value": ""
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "adminPassword",
+      "value": ""
+    },
+    {
+      "key": "commandId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "0 \u00b7 Host plane",
+      "item": [
+        {
+          "name": "Host admin sign in (tenant: default)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "default"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/signin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "signin"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usernameOrEmail\": \"admin\",\n  \"password\": \"Passw0rd!\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = pm.response.json();",
+                  "pm.test('signin ok', () => pm.expect(d.success).to.be.true);",
+                  "pm.collectionVariables.set('hostToken', d.result.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Gateway health fan-out",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "default"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "1 \u00b7 Tenants (Provisioner, host JWT required for mutations)",
+      "item": [
+        {
+          "name": "Create tenant",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "default"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hostToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tenants/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tenants",
+                "create"
+              ]
+            },
+            "description": "Provisions t_<tenantId> schemas in every service DB, applies migrations, seeds a tenant admin. The one-time admin password is returned exactly once.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{tenantId}}\",\n  \"name\": \"Acme Bank\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = pm.response.json();",
+                  "pm.test('provisioned', () => pm.expect(d.success).to.be.true);",
+                  "if (d.result && d.result.adminPassword) pm.collectionVariables.set('adminPassword', d.result.adminPassword);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List tenants",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "default"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hostToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tenants/get-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tenants",
+                "get-all"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Tenant details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "default"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hostToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tenants/get-details/{{tenantId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tenants",
+                "get-details",
+                "{{tenantId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Instance mode",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "default"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hostToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tenants/instance-mode",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tenants",
+                "instance-mode"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Suspend tenant",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "default"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hostToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tenants/suspend/{{tenantId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tenants",
+                "suspend",
+                "{{tenantId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Activate tenant",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "default"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hostToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tenants/activate/{{tenantId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tenants",
+                "activate",
+                "{{tenantId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Close tenant (terminal!)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "default"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{hostToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/tenants/close/{{tenantId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tenants",
+                "close",
+                "{{tenantId}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2 \u00b7 Tenant authentication",
+      "item": [
+        {
+          "name": "Tenant admin sign in",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/signin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "signin"
+              ]
+            },
+            "description": "Wait ~6s after tenant creation: the gateway tenant cache has a 5s TTL.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usernameOrEmail\": \"admin\",\n  \"password\": \"{{adminPassword}}\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = pm.response.json();",
+                  "pm.test('signin ok', () => pm.expect(d.success).to.be.true);",
+                  "pm.collectionVariables.set('token', d.result.token);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3 \u00b7 Users",
+      "item": [
+        {
+          "name": "List users",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/get-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "get-all"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create user",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "create"
+              ]
+            },
+            "description": "If CREATE_USER maker-checker is enabled this returns a pending commandId instead.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"alice\",\n  \"email\": \"alice@acme.dev\",\n  \"firstName\": \"Alice\",\n  \"lastName\": \"Ops\",\n  \"password\": \"Passw0rd!1\",\n  \"roles\": [\n    \"Admin\"\n  ]\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = pm.response.json();",
+                  "if (d.result && d.result.commandId) pm.collectionVariables.set('commandId', d.result.commandId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "User details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/get-details/{userId}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "get-details",
+                "{userId}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update user",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/update/{userId}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "update",
+                "{userId}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Alicia\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Assign roles",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/assign-roles/{userId}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "assign-roles",
+                "{userId}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roles\": [\n    \"Teller\"\n  ]\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Activate user",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/activate/{userId}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "activate",
+                "{userId}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Deactivate user",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/deactivate/{userId}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "deactivate",
+                "{userId}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Lock user",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/lock/{userId}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "lock",
+                "{userId}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Unlock user",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/unlock/{userId}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "unlock",
+                "{userId}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete user",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/delete/{userId}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "delete",
+                "{userId}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "4 \u00b7 Roles",
+      "item": [
+        {
+          "name": "List roles",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/roles/get-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "roles",
+                "get-all"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create role",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/roles/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "roles",
+                "create"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Branch supervisor\",\n  \"description\": \"Approves branch ops\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Role details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/roles/get-details/{roleId}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "roles",
+                "get-details",
+                "{roleId}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update role",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/roles/update/{roleId}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "roles",
+                "update",
+                "{roleId}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Updated\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update role permissions",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/roles/update-permissions/{roleId}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "roles",
+                "update-permissions",
+                "{roleId}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"permissions\": {\n    \"READ_USER\": true,\n    \"CREATE_USER\": false\n  }\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Enable role",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/roles/enable/{roleId}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "roles",
+                "enable",
+                "{roleId}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Disable role",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/roles/disable/{roleId}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "roles",
+                "disable",
+                "{roleId}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete role",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/roles/delete/{roleId}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "roles",
+                "delete",
+                "{roleId}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "5 \u00b7 Permissions",
+      "item": [
+        {
+          "name": "Permission catalog",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/permissions/get-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "permissions",
+                "get-all"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Toggle maker-checker",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/permissions/maker-checker",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "permissions",
+                "maker-checker"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"CREATE_USER\",\n  \"enabled\": true\n}"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "6 \u00b7 Maker-checker",
+      "item": [
+        {
+          "name": "Pending commands",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/makercheckers/get-all?status=PENDING",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "makercheckers",
+                "get-all?status=PENDING"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Approve command",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/makercheckers/approve/{{commandId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "makercheckers",
+                "approve",
+                "{{commandId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Reject command",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/makercheckers/reject/{{commandId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "makercheckers",
+                "reject",
+                "{{commandId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete command",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/makercheckers/delete/{{commandId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "makercheckers",
+                "delete",
+                "{{commandId}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "7 \u00b7 Self service",
+      "item": [
+        {
+          "name": "My details (profile, roles, permissions)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/self/userdetails",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "self",
+                "userdetails"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Change my password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/self/change-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "self",
+                "change-password"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"oldPassword\": \"{{adminPassword}}\",\n  \"newPassword\": \"N3wPassw0rd!\"\n}"
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

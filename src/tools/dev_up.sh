@@ -22,7 +22,7 @@ fi
     -o "-p 5432 -c listen_addresses=127.0.0.1" start || true
 
 echo "==> Databases"
-for db in TlIdentity TlAccounting; do
+for db in TlIdentity TlAccounting TlProvisioner; do
     "${PG_BIN:+$PG_BIN/}createdb" -h 127.0.0.1 -U postgres "$db" 2>/dev/null || true
 done
 
@@ -32,19 +32,19 @@ $PSQL -h 127.0.0.1 -U postgres -d TlIdentity  -v ON_ERROR_STOP=1 -q \
 $PSQL -h 127.0.0.1 -U postgres -d TlAccounting -v ON_ERROR_STOP=1 -q \
     -f "$REPO_ROOT/src/services/Accounting/migrations/V001__baseline.sql" 2>/dev/null || true
 
-echo "==> Per-tenant schemas (default, demo_bank)"
+echo "==> Per-tenant schemas (default, demo_bank, rhyolite_prime)"
 PSQL="$PSQL" python3 "$REPO_ROOT/src/tools/migrate.py" --service Identity \
-    --tenant default --tenant demo_bank \
+    --tenant default --tenant demo_bank --tenant rhyolite_prime \
     --database-url "postgresql://postgres@127.0.0.1:5432/TlIdentity"
 PSQL="$PSQL" python3 "$REPO_ROOT/src/tools/migrate.py" --service Accounting \
-    --tenant default --tenant demo_bank \
+    --tenant default --tenant demo_bank --tenant rhyolite_prime \
     --database-url "postgresql://postgres@127.0.0.1:5432/TlAccounting"
 
 echo "==> Redis"
 (redis-server --port 6379 --save '' --appendonly no --daemonize yes) || true
 
 echo "==> Services (run each from its rundir so ../config.json resolves)"
-for svc in Identity Accounting ApiGateway; do
+for svc in Identity Accounting Provisioner ApiGateway; do
     mkdir -p "$REPO_ROOT/src/services/$svc/rundir"
     (cd "$REPO_ROOT/src/services/$svc/rundir" && \
         nohup "$REPO_ROOT/build/src/services/$svc/$svc" > "$svc.log" 2>&1 &)

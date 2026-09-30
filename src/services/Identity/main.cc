@@ -1,5 +1,10 @@
 #include <drogon/drogon.h>
 #include "turbo/Health.h"
+#include "turbo/filters/TrustedContextFilter.h"
+
+// Anchor: force the linker to keep libturbo's TrustedContextFilter object file
+// so its drogon auto-registration runs (static libraries drop unreferenced TUs).
+static const turbo::TrustedContextFilter kTrustedContextFilterAnchor{};
 
 
 int main() {

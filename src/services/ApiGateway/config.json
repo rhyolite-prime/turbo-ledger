@@ -28,15 +28,22 @@
                 "requests_per_second": 50.0,
                 "burst": 100.0
             },
-            "services": {
-                "identity": "http://127.0.0.1:7500",
-                "accounting": "http://127.0.0.1:7501"
-            },
+  "services": {
+   "identity": "http://127.0.0.1:7500",
+   "accounting": "http://127.0.0.1:7501",
+   "provisioner": "http://127.0.0.1:7512"
+  },
+  "provisioner": {
+   "base_url": "http://127.0.0.1:7512",
+   "cache_ttl_seconds": 5.0
+  },
             "routes": [
                 { "prefix": "/api/v1/auth/", "service": "identity", "public": true },
                 { "prefix": "/api/v1/users/", "service": "identity" },
                 { "prefix": "/api/v1/roles/", "service": "identity" },
-                { "prefix": "/api/v1/tenants/", "service": "identity" },
+                { "prefix": "/api/v1/tenants/", "service": "provisioner" },
+                { "prefix": "/api/v1/permissions/", "service": "identity" },
+                { "prefix": "/api/v1/makercheckers/", "service": "identity" },
                 { "prefix": "/api/v1/api-keys/", "service": "identity" },
                 { "prefix": "/api/v1/self/", "service": "identity" },
                 { "prefix": "/api/v1/accounting/", "service": "accounting" }

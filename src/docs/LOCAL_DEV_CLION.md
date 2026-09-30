@@ -1,6 +1,6 @@
 # Local development with CLion + Postman (Phase 0)
 
-Gets Identity, Accounting and the ApiGateway running from CLion, with
+Gets Identity, Accounting, the Provisioner and the ApiGateway running from CLion, with
 PostgreSQL/Redis local, and the Phase 0 Postman collection passing.
 
 ---
@@ -32,43 +32,45 @@ cmake --build drogon/build -j && sudo cmake --install drogon/build
 1. **File ▸ Open** the repository root (it contains the superbuild `CMakeLists.txt`).
 2. **Settings ▸ Build, Execution, Deployment ▸ CMake** — in the active profile set *CMake options*:
    ```
-   -G Ninja -DTL_SERVICES="Identity;Accounting;ApiGateway"
+   -G Ninja -DTL_SERVICES="Identity;Accounting;ApiGateway;Provisioner"
    ```
    macOS only (Homebrew keg-only OpenSSL), append:
    ```
    -DCMAKE_PREFIX_PATH="$(brew --prefix);$(brew --prefix openssl@3);$(brew --prefix libpq)"
    ```
-3. Reload CMake. You get four targets: **Identity**, **Accounting**, **ApiGateway**, **turbo_tests**.
+3. Reload CMake. You get five targets: **Identity**, **Accounting**, **ApiGateway**, **Provisioner**, **turbo_tests**.
 
 ### Run configurations — set the working directory (important!)
 
 Every service loads `../config.json` **relative to its working directory**.
-For each of the three run configurations (Run ▸ Edit Configurations…):
+For each of the four run configurations (Run ▸ Edit Configurations…):
 
-| Target     | Working directory                                  |
-|------------|----------------------------------------------------|
-| Identity   | `$PROJECT_DIR$/src/services/Identity/rundir`       |
-| Accounting | `$PROJECT_DIR$/src/services/Accounting/rundir`     |
-| ApiGateway | `$PROJECT_DIR$/src/services/ApiGateway/rundir`     |
+| Target      | Working directory                                  |
+|-------------|----------------------------------------------------|
+| Identity    | `$PROJECT_DIR$/src/services/Identity/rundir`       |
+| Accounting  | `$PROJECT_DIR$/src/services/Accounting/rundir`     |
+| Provisioner | `$PROJECT_DIR$/src/services/Provisioner/rundir`    |
+| ApiGateway  | `$PROJECT_DIR$/src/services/ApiGateway/rundir`     |
 
-Create the folders once: `mkdir -p src/services/{Identity,Accounting,ApiGateway}/rundir`
+Create the folders once: `mkdir -p src/services/{Identity,Accounting,ApiGateway,Provisioner}/rundir`
 
-(You can also create a *Compound* run configuration that launches all three.)
+(You can also create a *Compound* run configuration that launches all four.)
 
 ## 3. Database & seed data
 
 ```bash
 createdb -U postgres TlIdentity
 createdb -U postgres TlAccounting
+createdb -U postgres TlProvisioner   # tenant registry (Provisioner creates its own table)
 
 # legacy public-schema tables (Identity/Accounting are tenantised in Phase 1):
 psql -U postgres -d TlIdentity  -v ON_ERROR_STOP=1 -f src/services/Identity/migrations/V001__baseline.sql
 psql -U postgres -d TlAccounting -v ON_ERROR_STOP=1 -f src/services/Accounting/migrations/V001__baseline.sql
 
 # per-tenant schemas via the migration runner:
-python3 src/tools/migrate.py --service Identity   --tenant default --tenant demo_bank \
+python3 src/tools/migrate.py --service Identity   --tenant default --tenant demo_bank --tenant rhyolite_prime \
     --database-url postgresql://postgres@127.0.0.1:5432/TlIdentity
-python3 src/tools/migrate.py --service Accounting --tenant default --tenant demo_bank \
+python3 src/tools/migrate.py --service Accounting --tenant default --tenant demo_bank --tenant rhyolite_prime \
     --database-url postgresql://postgres@127.0.0.1:5432/TlAccounting
 ```
 
@@ -102,16 +104,19 @@ If your local Postgres user/password differ from `postgres`/`postgres`, edit
 
 ## 4. Start & verify
 
-Run **Identity**, **Accounting**, **ApiGateway** from CLion (ports 7500, 7501, 7499).
+Run **Identity**, **Accounting**, **Provisioner**, **ApiGateway** from CLion (ports 7500, 7501, 7512, 7499).
 
 ```bash
-curl http://127.0.0.1:7499/health        # both services must report UP
-src/tools/smoke_test.sh                  # 14-check acceptance suite
+curl http://127.0.0.1:7499/health        # all three upstreams must report UP
+src/tools/smoke_test.sh                  # 14-check acceptance suite (Phase 0)
+src/tools/smoke_phase1.sh                # 26-check tenancy/RBAC suite (Phase 1)
 ```
 
 ## 5. Test from Postman
 
-1. **Import ▸** `src/docs/TurboLedger-Phase0.postman_collection.json`.
+1. **Import ▸** `src/docs/TurboLedger-Phase0.postman_collection.json` and
+   `src/docs/TurboLedger-Phase1.postman_collection.json` (tenancy, RBAC,
+   maker-checker — run its folders top to bottom).
 2. Run **03 Sign in** — its test script stores the JWT into `{{token}}` automatically.
 3. Run the rest (or the whole collection via the Collection Runner):
 
@@ -133,7 +138,7 @@ default `default`) — that is the multi-tenancy contract from the plan.
   is wrong (see the table above).
 - **Signin 500 / DB errors** → check Postgres credentials in the service
   `config.json`; confirm `TlIdentity` has the `users` table.
-- **Gateway 502 upstream unavailable** → Identity/Accounting not running, or
+- **Gateway 502 upstream unavailable** → Identity/Accounting/Provisioner not running, or
   ports differ from `src/services/ApiGateway/config.json`'s `services` map.
 - **401 "Invalid TL-Context"** on direct service calls → expected; go through
   the gateway (only it can mint the signed context).

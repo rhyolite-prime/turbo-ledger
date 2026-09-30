@@ -1,206 +1,157 @@
 #include "UsersController.h"
-#include "dto/BaseApiResponse.h"
-#include "dto/SigninDto.h"
-#include "dto/UserDto.h"
-#include "plugins/IdentityServicePlugin.h"
-#include "dto/UserIdentityDto.h"
 
-using namespace turbo_ledger_identity::plugins;
+#include "services/rbac/RbacService.h"
+#include "turbo/ApiResponse.h"
+#include "turbo/RequestContext.h"
 
+using turbo::ApiResponse;
+using turbo_ledger_identity::rbac::ApiError;
+using turbo_ledger_identity::rbac::RbacService;
+
+namespace {
+RbacService &svc() {
+    static RbacService instance;
+    return instance;
+}
+}  // namespace
 
 Task<HttpResponsePtr> UsersController::getAllUsers(HttpRequestPtr req) {
-    int pageSize = 10;
-    int pageNo = 1;
-
-    if (!req->getParameter("pageSize").empty()) {
-        try { pageSize = std::max(1, std::min(100, std::stoi(req->getParameter("pageSize")))); } catch (...) {}
+    auto ctx = turbo::RequestContext::from(req);
+    if (!ctx) co_return ApiResponse::httpUnauthorized("Missing trusted context");
+    int pageNo = 1, pageSize = 20;
+    try { if (!req->getParameter("pageNo").empty()) pageNo = std::stoi(req->getParameter("pageNo")); } catch (...) {}
+    try { if (!req->getParameter("pageSize").empty()) pageSize = std::stoi(req->getParameter("pageSize")); } catch (...) {}
+    try {
+        co_return ApiResponse::httpOk(co_await svc().listUsers(*ctx, pageNo, pageSize));
+    } catch (const ApiError &e) {
+        co_return ApiResponse::httpError(e.status(), e.what(), e.globalisationCode());
+    } catch (const std::exception &e) {
+        co_return ApiResponse::httpError(k500InternalServerError, e.what());
     }
-    if (!req->getParameter("pageNo").empty()) {
-        try { pageNo = std::max(1, std::stoi(req->getParameter("pageNo"))); } catch (...) {}
-    }
-
-    auto identity = turbo_ledger_identity::dto::UserIdentityDto::fromRequest(req);
-
-    std::string query = req->getParameter("query");
-
-    auto plugin = drogon::app().getPlugin<IdentityServicePlugin>();
-    auto& userService = plugin->getUserService();
-
-    auto result = co_await userService.getAll(identity, pageNo, pageSize, query);
-    auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
-    co_return resp;
 }
 
 Task<HttpResponsePtr> UsersController::getDetails(HttpRequestPtr req, std::string id) {
-    auto identity = turbo_ledger_identity::dto::UserIdentityDto::fromRequest(req);
-
-    auto plugin = drogon::app().getPlugin<IdentityServicePlugin>();
-    auto& userService = plugin->getUserService();
-
-    auto result = co_await userService.getDetails(identity, id);
-    auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
-    co_return resp;
-}
-
-
-Task<HttpResponsePtr> UsersController::signIn(HttpRequestPtr req) {
-
-    auto jsonBody = req->getJsonObject();
-    if (!jsonBody) {
-        turbo_ledger_identity::dto::BaseApiResponse response;
-        response.success = false;
-        response.error["message"] = "Invalid JSON body";
-        auto resp = HttpResponse::newHttpJsonResponse(response.toJson());
-        resp->setStatusCode(k400BadRequest);
-        co_return resp;
-    }
-
-
-    turbo_ledger_identity::dto::SigninDto signin_dto;
+    auto ctx = turbo::RequestContext::from(req);
+    if (!ctx) co_return ApiResponse::httpUnauthorized("Missing trusted context");
     try {
-        signin_dto.fromJson(*jsonBody);
-    } catch (const std::exception& e) {
-        turbo_ledger_identity::dto::BaseApiResponse response;
-        response.success = false;
-        response.error["message"] = "Missing or invalid required fields";
-        auto resp = HttpResponse::newHttpJsonResponse(response.toJson());
-        resp->setStatusCode(k400BadRequest);
-        co_return resp;
+        co_return ApiResponse::httpOk(co_await svc().getUser(*ctx, id));
+    } catch (const ApiError &e) {
+        co_return ApiResponse::httpError(e.status(), e.what(), e.globalisationCode());
+    } catch (const std::exception &e) {
+        co_return ApiResponse::httpError(k500InternalServerError, e.what());
     }
-
-    auto plugin = drogon::app().getPlugin<IdentityServicePlugin>();
-    auto& userService = plugin->getUserService();
-
-    auto result = co_await userService.validateUserCredentials(signin_dto);
-    auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
-    resp->setStatusCode(result.success ? k200OK : k500InternalServerError);
-    co_return resp;
-}
-
-Task<HttpResponsePtr> UsersController::lockUserAccount(HttpRequestPtr req, std::string id) {
-
-    auto identity = turbo_ledger_identity::dto::UserIdentityDto::fromRequest(req);
-
-    auto plugin = drogon::app().getPlugin<IdentityServicePlugin>();
-    auto& userService = plugin->getUserService();
-
-    auto result = co_await userService.lockUserAccount(identity, id);
-    auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
-    co_return resp;
-}
-
-Task<HttpResponsePtr> UsersController::unLockUserAccount(HttpRequestPtr req, std::string id) {
-
-    auto identity = turbo_ledger_identity::dto::UserIdentityDto::fromRequest(req);
-
-    auto plugin = drogon::app().getPlugin<IdentityServicePlugin>();
-    auto& userService = plugin->getUserService();
-
-    auto result = co_await userService.unlockUserAccount(identity, id);
-    auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
-    co_return resp;
-}
-
-Task<HttpResponsePtr> UsersController::activateAccount(HttpRequestPtr req, std::string id) {
-
-    auto identity = turbo_ledger_identity::dto::UserIdentityDto::fromRequest(req);
-
-    auto plugin = drogon::app().getPlugin<IdentityServicePlugin>();
-    auto& userService = plugin->getUserService();
-
-    auto result = co_await userService.activateUserAccount(identity, id);
-    auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
-    co_return resp;
-}
-
-Task<HttpResponsePtr> UsersController::deActivateAccount(HttpRequestPtr req, std::string id) {
-
-    auto identity = turbo_ledger_identity::dto::UserIdentityDto::fromRequest(req);
-
-    auto plugin = drogon::app().getPlugin<IdentityServicePlugin>();
-    auto& userService = plugin->getUserService();
-
-    auto result = co_await userService.deactivateUserAccount(identity, id);
-    auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
-    co_return resp;
 }
 
 Task<HttpResponsePtr> UsersController::createUser(HttpRequestPtr req) {
-    auto jsonBody = req->getJsonObject();
-    if (!jsonBody) {
-        turbo_ledger_identity::dto::BaseApiResponse response;
-        response.success = false;
-        response.error["message"] = "Invalid JSON body";
-        auto resp = HttpResponse::newHttpJsonResponse(response.toJson());
-        resp->setStatusCode(k400BadRequest);
-        co_return resp;
-    }
-
-    auto identity = turbo_ledger_identity::dto::UserIdentityDto::fromRequest(req);
-
-    turbo_ledger_identity::dto::UserDto userData;
+    auto ctx = turbo::RequestContext::from(req);
+    if (!ctx) co_return ApiResponse::httpUnauthorized("Missing trusted context");
+    auto body = req->getJsonObject();
+    if (!body) co_return ApiResponse::httpBadRequest("Invalid JSON body");
     try {
-        userData.fromJson(*jsonBody);
-    } catch (const std::exception& e) {
-        turbo_ledger_identity::dto::BaseApiResponse response;
-        response.success = false;
-        response.error["message"] = "Missing or invalid required fields";
-        auto resp = HttpResponse::newHttpJsonResponse(response.toJson());
-        resp->setStatusCode(k400BadRequest);
+        auto result = co_await svc().createUser(*ctx, *body);
+        const bool pending = result.get("pendingApproval", false).asBool();
+        auto resp = ApiResponse::httpOk(result, pending ? "Command queued for approval"
+                                                        : "User created");
+        resp->setStatusCode(pending ? k202Accepted : k201Created);
         co_return resp;
+    } catch (const ApiError &e) {
+        co_return ApiResponse::httpError(e.status(), e.what(), e.globalisationCode());
+    } catch (const std::exception &e) {
+        co_return ApiResponse::httpError(k500InternalServerError, e.what());
     }
-
-    auto plugin = drogon::app().getPlugin<IdentityServicePlugin>();
-    auto& userService = plugin->getUserService();
-
-    auto result = co_await userService.create(identity, userData);
-    auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
-    resp->setStatusCode(result.success ? k201Created : k500InternalServerError);
-    co_return resp;
 }
 
 Task<HttpResponsePtr> UsersController::updateUser(HttpRequestPtr req, std::string id) {
-    auto jsonBody = req->getJsonObject();
-    if (!jsonBody) {
-        turbo_ledger_identity::dto::BaseApiResponse response;
-        response.success = false;
-        response.error["message"] = "Invalid JSON body";
-        auto resp = HttpResponse::newHttpJsonResponse(response.toJson());
-        resp->setStatusCode(k400BadRequest);
-        co_return resp;
-    }
-
-    auto identity = turbo_ledger_identity::dto::UserIdentityDto::fromRequest(req);
-
-    turbo_ledger_identity::dto::UserDto userData;
+    auto ctx = turbo::RequestContext::from(req);
+    if (!ctx) co_return ApiResponse::httpUnauthorized("Missing trusted context");
+    auto body = req->getJsonObject();
+    if (!body) co_return ApiResponse::httpBadRequest("Invalid JSON body");
     try {
-        userData.fromJson(*jsonBody);
-    } catch (const std::exception& e) {
-        turbo_ledger_identity::dto::BaseApiResponse response;
-        response.success = false;
-        response.error["message"] = "Missing or invalid required fields";
-        auto resp = HttpResponse::newHttpJsonResponse(response.toJson());
-        resp->setStatusCode(k400BadRequest);
-        co_return resp;
+        co_return ApiResponse::httpOk(co_await svc().updateUser(*ctx, id, *body), "User updated");
+    } catch (const ApiError &e) {
+        co_return ApiResponse::httpError(e.status(), e.what(), e.globalisationCode());
+    } catch (const std::exception &e) {
+        co_return ApiResponse::httpError(k500InternalServerError, e.what());
     }
-
-    auto plugin = drogon::app().getPlugin<IdentityServicePlugin>();
-    auto& userService = plugin->getUserService();
-
-    auto result = co_await userService.update(identity, userData, id);
-    auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
-    resp->setStatusCode(result.success ? k200OK : k500InternalServerError);
-    co_return resp;
 }
 
 Task<HttpResponsePtr> UsersController::deleteUser(HttpRequestPtr req, std::string id) {
+    auto ctx = turbo::RequestContext::from(req);
+    if (!ctx) co_return ApiResponse::httpUnauthorized("Missing trusted context");
+    try {
+        co_await svc().deleteUser(*ctx, id);
+        co_return ApiResponse::httpOk(Json::Value(Json::objectValue), "User deleted");
+    } catch (const ApiError &e) {
+        co_return ApiResponse::httpError(e.status(), e.what(), e.globalisationCode());
+    } catch (const std::exception &e) {
+        co_return ApiResponse::httpError(k500InternalServerError, e.what());
+    }
+}
 
-    auto identity = turbo_ledger_identity::dto::UserIdentityDto::fromRequest(req);
+Task<HttpResponsePtr> UsersController::activate(HttpRequestPtr req, std::string id) {
+    auto ctx = turbo::RequestContext::from(req);
+    if (!ctx) co_return ApiResponse::httpUnauthorized("Missing trusted context");
+    try {
+        co_return ApiResponse::httpOk(
+            co_await svc().setUserFlag(*ctx, id, "is_active", true, "ACTIVATE_USER"));
+    } catch (const ApiError &e) {
+        co_return ApiResponse::httpError(e.status(), e.what(), e.globalisationCode());
+    } catch (const std::exception &e) {
+        co_return ApiResponse::httpError(k500InternalServerError, e.what());
+    }
+}
 
-    auto plugin = drogon::app().getPlugin<IdentityServicePlugin>();
-    auto& userService = plugin->getUserService();
+Task<HttpResponsePtr> UsersController::deactivate(HttpRequestPtr req, std::string id) {
+    auto ctx = turbo::RequestContext::from(req);
+    if (!ctx) co_return ApiResponse::httpUnauthorized("Missing trusted context");
+    try {
+        co_return ApiResponse::httpOk(
+            co_await svc().setUserFlag(*ctx, id, "is_active", false, "DEACTIVATE_USER"));
+    } catch (const ApiError &e) {
+        co_return ApiResponse::httpError(e.status(), e.what(), e.globalisationCode());
+    } catch (const std::exception &e) {
+        co_return ApiResponse::httpError(k500InternalServerError, e.what());
+    }
+}
 
-    auto result = co_await userService.deleteUser(identity, id);
-    auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
-    co_return resp;
+Task<HttpResponsePtr> UsersController::lockAccount(HttpRequestPtr req, std::string id) {
+    auto ctx = turbo::RequestContext::from(req);
+    if (!ctx) co_return ApiResponse::httpUnauthorized("Missing trusted context");
+    try {
+        co_return ApiResponse::httpOk(
+            co_await svc().setUserFlag(*ctx, id, "is_locked_out", true, "LOCK_USER"));
+    } catch (const ApiError &e) {
+        co_return ApiResponse::httpError(e.status(), e.what(), e.globalisationCode());
+    } catch (const std::exception &e) {
+        co_return ApiResponse::httpError(k500InternalServerError, e.what());
+    }
+}
+
+Task<HttpResponsePtr> UsersController::unlockAccount(HttpRequestPtr req, std::string id) {
+    auto ctx = turbo::RequestContext::from(req);
+    if (!ctx) co_return ApiResponse::httpUnauthorized("Missing trusted context");
+    try {
+        co_return ApiResponse::httpOk(
+            co_await svc().setUserFlag(*ctx, id, "is_locked_out", false, "UNLOCK_USER"));
+    } catch (const ApiError &e) {
+        co_return ApiResponse::httpError(e.status(), e.what(), e.globalisationCode());
+    } catch (const std::exception &e) {
+        co_return ApiResponse::httpError(k500InternalServerError, e.what());
+    }
+}
+
+Task<HttpResponsePtr> UsersController::assignRoles(HttpRequestPtr req, std::string id) {
+    auto ctx = turbo::RequestContext::from(req);
+    if (!ctx) co_return ApiResponse::httpUnauthorized("Missing trusted context");
+    auto body = req->getJsonObject();
+    if (!body || !body->isMember("roles"))
+        co_return ApiResponse::httpBadRequest("Body must contain a 'roles' array");
+    try {
+        co_return ApiResponse::httpOk(co_await svc().assignRoles(*ctx, id, (*body)["roles"]),
+                                      "Roles assigned");
+    } catch (const ApiError &e) {
+        co_return ApiResponse::httpError(e.status(), e.what(), e.globalisationCode());
+    } catch (const std::exception &e) {
+        co_return ApiResponse::httpError(k500InternalServerError, e.what());
+    }
 }

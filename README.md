@@ -4,20 +4,22 @@ Multi-tenant core banking platform — C++23 / [Drogon](https://github.com/drogo
 
 📋 **Plan:** [`src/docs/IMPLEMENTATION_PLAN.md`](src/docs/IMPLEMENTATION_PLAN.md) · **Endpoint inventory:** [`src/docs/ENDPOINT_INVENTORY.md`](src/docs/ENDPOINT_INVENTORY.md) (871 endpoints mapped to owning services)
 
-## Architecture (Phase 0)
+## Architecture (Phase 1)
 
 ```
                         ┌──────────────────────────────┐
-  client ── TL-Tenant-Id ─▶│  ApiGateway :7499            │
-           Bearer JWT      │  tenant resolve · authN ·    │
-           Idempotency-Key │  rate limit · idempotency ·  │
-                        │  request-id · CORS           │
+  client ── TL-Tenant-Id ─▶│  ApiGateway :7499            │──▶ Provisioner :7512
+           Bearer JWT      │  tenant resolve (dynamic,    │    tenant registry ·
+           Idempotency-Key │  5s TTL cache) · authN ·     │    lifecycle · schema
+                        │  rate limit · idempotency ·  │    provisioning + admin
+                        │  request-id · CORS           │    seeding pipeline
                         └───────┬──────────────────────┘
                  signed TL-Context (HMAC, 60s TTL)
                     ┌───────────┴───────────┐
                     ▼                       ▼
              Identity :7500          Accounting :7501     ... (see port map in plan)
-             users/roles/JWT         GL/journals (stubs)
+             users/roles/perms/      GL/journals (stubs)
+             maker-checker/JWT              │
                     │                       │
              TlIdentity DB           TlAccounting DB
              t_<tenant> schemas      t_<tenant> schemas
@@ -30,7 +32,7 @@ Cross-cutting code lives in **`src/libs/turbo`** (libturbo): response envelope, 
 Requires: g++ ≥ 11, CMake ≥ 3.16, Drogon 1.9.x (with jsoncpp, OpenSSL, libpq, hiredis, libuuid, zlib).
 
 ```bash
-cmake -B build -G Ninja -DTL_SERVICES="Identity;Accounting;ApiGateway"
+cmake -B build -G Ninja -DTL_SERVICES="Identity;Accounting;ApiGateway;Provisioner"
 cmake --build build -j
 ctest --test-dir build --output-on-failure   # libturbo unit tests
 python3 src/tools/check_coroutines.py        # CI lint: every Task<> must co_return
@@ -62,6 +64,14 @@ TOKEN=$(curl -s -X POST http://127.0.0.1:7499/api/v1/auth/signin \
   -d '{"usernameOrEmail":"admin","password":"..."}' | jq -r .result.token)
 curl http://127.0.0.1:7499/api/v1/accounting/gl-accounts/get-all \
   -H 'TL-Tenant-Id: default' -H "Authorization: Bearer $TOKEN"
+
+# provision a brand-new tenant end-to-end (host-plane JWT required):
+curl -s -X POST http://127.0.0.1:7499/api/v1/tenants/create \
+  -H 'TL-Tenant-Id: default' -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' -d '{"id":"acme_bank","name":"Acme Bank"}'
+
+src/tools/smoke_test.sh     # Phase 0 acceptance (14 checks)
+src/tools/smoke_phase1.sh   # Phase 1 acceptance (26 checks: tenancy, RBAC, maker-checker)
 ```
 
 ## Repo layout

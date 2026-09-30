@@ -1,4 +1,4 @@
-#include "SelfController.h"
+#include "PermissionsController.h"
 
 #include "services/rbac/RbacService.h"
 #include "turbo/ApiResponse.h"
@@ -15,11 +15,11 @@ RbacService &svc() {
 }
 }  // namespace
 
-Task<HttpResponsePtr> SelfController::userDetails(HttpRequestPtr req) {
+Task<HttpResponsePtr> PermissionsController::getAll(HttpRequestPtr req) {
     auto ctx = turbo::RequestContext::from(req);
     if (!ctx) co_return ApiResponse::httpUnauthorized("Missing trusted context");
     try {
-        co_return ApiResponse::httpOk(co_await svc().selfDetails(*ctx));
+        co_return ApiResponse::httpOk(co_await svc().listPermissions(*ctx));
     } catch (const ApiError &e) {
         co_return ApiResponse::httpError(e.status(), e.what(), e.globalisationCode());
     } catch (const std::exception &e) {
@@ -27,16 +27,17 @@ Task<HttpResponsePtr> SelfController::userDetails(HttpRequestPtr req) {
     }
 }
 
-Task<HttpResponsePtr> SelfController::changePassword(HttpRequestPtr req) {
+Task<HttpResponsePtr> PermissionsController::updateMakerChecker(HttpRequestPtr req) {
     auto ctx = turbo::RequestContext::from(req);
     if (!ctx) co_return ApiResponse::httpUnauthorized("Missing trusted context");
     auto body = req->getJsonObject();
-    if (!body || !body->isMember("oldPassword") || !body->isMember("newPassword"))
-        co_return ApiResponse::httpBadRequest("Body must contain 'oldPassword' and 'newPassword'");
+    if (!body || !(*body).isMember("code") || !(*body).isMember("enabled"))
+        co_return ApiResponse::httpBadRequest("Body must contain 'code' and 'enabled'");
     try {
-        co_await svc().changePassword(*ctx, (*body)["oldPassword"].asString(),
-                                      (*body)["newPassword"].asString());
-        co_return ApiResponse::httpOk(Json::Value(Json::objectValue), "Password changed");
+        co_return ApiResponse::httpOk(
+            co_await svc().setMakerChecker(*ctx, (*body)["code"].asString(),
+                                           (*body)["enabled"].asBool()),
+            "Maker-checker updated");
     } catch (const ApiError &e) {
         co_return ApiResponse::httpError(e.status(), e.what(), e.globalisationCode());
     } catch (const std::exception &e) {

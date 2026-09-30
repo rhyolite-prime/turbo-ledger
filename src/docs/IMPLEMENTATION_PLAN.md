@@ -108,12 +108,13 @@ Each phase lists scope, the granular endpoints delivered (counts match [`ENDPOIN
 - CI (GitHub Actions in `src/services/.github`): build all services, run unit + integration tests against docker-compose, clang-tidy/format.
 - **Exit criteria:** `docker compose up` boots gateway + Identity + Accounting; authenticated request flows gateway→service with tenant context; CI green.
 
-### Phase 1 — Tenancy & Identity completion (≈34 endpoints + tenant APIs)
+### Phase 1 — Tenancy & Identity completion (≈34 endpoints + tenant APIs) ✅ DONE
 
-- **Provisioner:** tenant registry CRUD + lifecycle (`create/activate/suspend/close`), per-service schema provisioning + seeding pipeline, `instance-mode` endpoint, tenant cache invalidation events.
-- **Identity:** finish 501 stubs (OTP send/verify, change password, self profile); `users` (9), `roles` (8: CRUD + enable/disable + permission assignment), `permissions` (2), `passwordpreferences` (3), `twofactor` (6, TOTP), `userdetails`, `authentication`; maker-checker command store + `makercheckers` (4).
-- Permission catalog seeding; role templates (Super user, Admin, Teller, Loan officer, Self-service).
-- **Exit criteria:** create tenant end-to-end via API → login as tenant admin → create user/role → maker-checker round trip on `CREATE_USER`.
+- ✅ **Provisioner:** tenant registry CRUD + lifecycle (`create/activate/suspend/close`), per-service schema provisioning + seeding pipeline (migrations discovered from each service's `migrations/`, applied transactionally with commit-await, tenant admin seeded with a one-time password), `instance-mode` endpoint. Gateway resolves tenants dynamically from the Provisioner through a 5s TTL cache (`TenantRegistry`), overlaying the static config list; cache-expiry acts as the invalidation mechanism for now (push invalidation events deferred).
+- ✅ **Identity:** `users` (10), `roles` (8: CRUD + enable/disable + permission assignment), `permissions` (2: catalog + maker-checker toggle), `self/userdetails` + `self/change-password`, tenant-aware `authentication` (tenant-schema users first, host fallback; JWT carries a `tenantId` claim the gateway enforces — a token minted for one tenant is rejected on any other). Maker-checker command store (`tl_commands`) + `makercheckers` (4: list/approve/reject/delete) wired into every guarded action.
+- ✅ Permission catalog seeding (33 codes) + role templates (Super user, Admin, Teller, Loan officer, Self-service) in `V003__rbac_maker_checker.sql`.
+- ⏸ Deferred to a later hardening pass: OTP send/verify, `passwordpreferences` (3), `twofactor` (6, TOTP) — still respond 501.
+- ✅ **Exit criteria met** (see `src/tools/smoke_phase1.sh`, 26 checks): create tenant end-to-end via API → login as tenant admin → create user/role → maker-checker round trip on `CREATE_USER` (queue → approve executes / reject discards) → suspend/close lifecycle enforced at the gateway.
 
 ### Phase 2 — Organization & SystemConfig (≈142 endpoints)
 

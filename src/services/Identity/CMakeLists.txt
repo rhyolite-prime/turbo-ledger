@@ -84,6 +84,7 @@ aux_source_directory(filters FILTER_SRC)
 aux_source_directory(plugins PLUGIN_SRC)
 aux_source_directory(constants PLUGIN_SRC)
 aux_source_directory(services/users SERVICE_SRC)
+aux_source_directory(services/rbac SERVICE_SRC)
 aux_source_directory(models MODEL_SRC)
 
 drogon_create_views(${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/views

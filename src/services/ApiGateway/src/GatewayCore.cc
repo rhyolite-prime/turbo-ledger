@@ -49,6 +49,9 @@ void GatewayCore::initFromAppConfig() {
                                                  rl.get("burst", 100.0).asDouble());
 
     tenants_.loadFromConfig(cfg["tenants"]);
+    tenants_.configureProvisioner(cfg["provisioner"].get("base_url", "").asString(),
+                                  cfg["provisioner"].get("cache_ttl_seconds", 5.0).asDouble(),
+                                  contextSecret_);
 
     if (contextSecret_.empty())
         LOG_ERROR << "gateway.context_secret is not configured — internal context signing "
@@ -146,7 +149,7 @@ drogon::Task<drogon::HttpResponsePtr> GatewayCore::handleAsync(drogon::HttpReque
         decorate(req, resp, requestId);
         co_return resp;
     }
-    auto tenant = tenants_.find(tenantId);
+    auto tenant = co_await tenants_.find(tenantId);
     if (!tenant) {
         auto resp = ApiResponse::httpError(drogon::k404NotFound, "Unknown tenant: " + tenantId,
                                            "error.msg.gateway.tenant.unknown");
@@ -198,6 +201,18 @@ drogon::Task<drogon::HttpResponsePtr> GatewayCore::handleAsync(drogon::HttpReque
                     ctx.userId = decoded.get_payload_claim("userId").as_string();
                 if (decoded.has_payload_claim("username"))
                     ctx.username = decoded.get_payload_claim("username").as_string();
+                // Cross-tenant replay protection: a token minted for one tenant
+                // must not be usable under another tenant's header.
+                if (decoded.has_payload_claim("tenantId")) {
+                    const auto tokenTenant =
+                        decoded.get_payload_claim("tenantId").as_string();
+                    if (!tokenTenant.empty() && tokenTenant != tenantId) {
+                        auto resp = ApiResponse::httpUnauthorized(
+                            "Token was issued for a different tenant");
+                        decorate(req, resp, requestId);
+                        co_return resp;
+                    }
+                }
             } catch (const std::exception &e) {
                 auto resp = ApiResponse::httpUnauthorized(
                     std::string("Invalid bearer token: ") + e.what());
