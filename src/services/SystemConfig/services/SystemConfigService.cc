@@ -581,12 +581,18 @@ drogon::Task<Json::Value> SystemConfigService::updateExternalService(const turbo
     row.setServiceName(name);
     row.setConfig(jsonCompact(body));
     row.setModifiedAt(Date::now());
+    bool exists = true;
     try {
         co_await mapper.findByPrimaryKey(name);
-        co_await mapper.update(row);
     } catch (const UnexpectedRows &) {
-        co_await mapper.insert(row);
+        exists = false;
     }
+    // NOTE: co_await cannot appear inside a catch handler, so the
+    // update/insert branch is performed after the try/catch completes.
+    if (exists)
+        co_await mapper.update(row);
+    else
+        co_await mapper.insert(row);
     co_await turbo::outbox::writeEvent(txn, ctx, "externalservice", name, "externalservice.updated",
                                        body);
     co_return co_await getExternalService(ctx, name);
@@ -748,12 +754,18 @@ drogon::Task<Json::Value> SystemConfigService::updateCacheConfig(const turbo::Re
     row.setId(1);
     row.setCacheType(cacheType);
     row.setModifiedAt(Date::now());
+    bool exists = true;
     try {
         co_await mapper.findByPrimaryKey(1);
-        co_await mapper.update(row);
     } catch (const UnexpectedRows &) {
-        co_await mapper.insert(row);
+        exists = false;
     }
+    // NOTE: co_await cannot appear inside a catch handler, so the
+    // update/insert branch is performed after the try/catch completes.
+    if (exists)
+        co_await mapper.update(row);
+    else
+        co_await mapper.insert(row);
     co_await turbo::outbox::writeEvent(txn, ctx, "cache", "1", "cache.updated", body);
     co_return co_await getCacheConfig(ctx);
 }
@@ -806,12 +818,18 @@ drogon::Task<Json::Value> SystemConfigService::updateBusinessDate(const turbo::R
     row.setType(type);
     row.setDateValue(dateOr(date, Date::now()));
     row.setModifiedAt(Date::now());
+    bool exists = true;
     try {
         co_await mapper.findByPrimaryKey(type);
-        co_await mapper.update(row);
     } catch (const UnexpectedRows &) {
-        co_await mapper.insert(row);
+        exists = false;
     }
+    // NOTE: co_await cannot appear inside a catch handler, so the
+    // update/insert branch is performed after the try/catch completes.
+    if (exists)
+        co_await mapper.update(row);
+    else
+        co_await mapper.insert(row);
     co_await turbo::outbox::writeEvent(txn, ctx, "businessdate", type, "businessdate.updated", body);
     co_return co_await getBusinessDate(ctx, type);
 }
@@ -849,12 +867,18 @@ drogon::Task<Json::Value> SystemConfigService::updateExternalEventConfig(
     row.setCategory(category);
     row.setIsEnabled(enabled);
     row.setModifiedAt(Date::now());
+    bool exists = true;
     try {
         co_await mapper.findByPrimaryKey(category);
-        co_await mapper.update(row);
     } catch (const UnexpectedRows &) {
-        co_await mapper.insert(row);
+        exists = false;
     }
+    // NOTE: co_await cannot appear inside a catch handler, so the
+    // update/insert branch is performed after the try/catch completes.
+    if (exists)
+        co_await mapper.update(row);
+    else
+        co_await mapper.insert(row);
     co_await turbo::outbox::writeEvent(txn, ctx, "externalevents", category,
                                        "externalevents.updated", body);
     co_return co_await listExternalEventConfig(ctx);
@@ -993,12 +1017,18 @@ drogon::Task<Json::Value> SystemConfigService::registerDatatable(const turbo::Re
     row.setDatatableName(datatable);
     row.setApptableName(apptable);
     row.setColumns(jsonCompact(cols));
+    bool registryExists = true;
     try {
         co_await registry.findByPrimaryKey(datatable);
-        co_await registry.update(row);
     } catch (const UnexpectedRows &) {
-        co_await registry.insert(row);
+        registryExists = false;
     }
+    // NOTE: co_await cannot appear inside a catch handler, so the
+    // update/insert branch is performed after the try/catch completes.
+    if (registryExists)
+        co_await registry.update(row);
+    else
+        co_await registry.insert(row);
     co_await turbo::outbox::writeEvent(txn, ctx, "datatable", datatable, "datatable.registered",
                                        Json::Value(Json::objectValue));
     co_return co_await getDatatable(ctx, datatable);
@@ -1112,7 +1142,7 @@ drogon::Task<Json::Value> SystemConfigService::queryDatatable(const turbo::Reque
     Json::Value list(Json::arrayValue);
     for (const auto &r : rows) {
         Json::Value j;
-        for (size_t i = 0; i < r.size(); ++i) j[r.columnName(i)] = r[i].isNull() ? Json::Value() : r[i].as<std::string>();
+        for (size_t i = 0; i < r.size(); ++i) j[r[i].name()] = r[i].isNull() ? Json::Value() : r[i].as<std::string>();
 
         bool matches = true;
         if (filters.isObject()) {
@@ -1144,7 +1174,7 @@ drogon::Task<Json::Value> SystemConfigService::listDatatableEntries(const turbo:
     Json::Value list(Json::arrayValue);
     for (const auto &r : rows) {
         Json::Value j;
-        for (size_t i = 0; i < r.size(); ++i) j[r.columnName(i)] = r[i].isNull() ? Json::Value() : r[i].as<std::string>();
+        for (size_t i = 0; i < r.size(); ++i) j[r[i].name()] = r[i].isNull() ? Json::Value() : r[i].as<std::string>();
         list.append(j);
     }
     co_return list;
@@ -1240,7 +1270,7 @@ drogon::Task<Json::Value> SystemConfigService::getDatatableRow(const turbo::Requ
                        "error.msg.systemconfig.datatable.row.not.found");
     const auto &r = rows[0];
     Json::Value j;
-    for (size_t i = 0; i < r.size(); ++i) j[r.columnName(i)] = r[i].isNull() ? Json::Value() : r[i].as<std::string>();
+    for (size_t i = 0; i < r.size(); ++i) j[r[i].name()] = r[i].isNull() ? Json::Value() : r[i].as<std::string>();
     co_return j;
 }
 
@@ -1642,13 +1672,21 @@ drogon::Task<Json::Value> SystemConfigService::putImage(const turbo::RequestCont
     if (!asStringOr(body, "contentType").empty()) row.setContentType(asStringOr(body, "contentType"));
     row.setContent(bytes);
     row.setModifiedAt(Date::now());
+    bool exists = true;
     try {
         co_await mapper.findOne(Criteria(m::TlImage::Cols::_entity_type, entity) &&
                                 Criteria(m::TlImage::Cols::_entity_id, entityId));
-        co_await mapper.update(row);
     } catch (const UnexpectedRows &) {
-        co_await mapper.insert(row);
+        exists = false;
     }
+    // NOTE: co_await cannot appear inside a catch handler, so the
+    // update/insert branch is performed after the try/catch completes.
+    // The composite primary key (entity_type, entity_id) is already set
+    // on `row` above, so update() targets the correct existing row.
+    if (exists)
+        co_await mapper.update(row);
+    else
+        co_await mapper.insert(row);
     co_await turbo::outbox::writeEvent(txn, ctx, "image", entity + ":" + entityId, "image.updated",
                                        Json::Value(Json::objectValue));
     Json::Value out;

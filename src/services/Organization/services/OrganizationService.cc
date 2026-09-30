@@ -5,14 +5,27 @@
 #include <drogon/orm/DbClient.h>
 #include <drogon/orm/Exception.h>
 
+#include <map>
+#include <set>
+
 #include "turbo/Outbox.h"
 #include "turbo/TenantDb.h"
 
+#include "models/EntityMapping.h"
+#include "models/EntityRelation.h"
+#include "models/Fund.h"
+#include "models/Holiday.h"
 #include "models/Office.h"
 #include "models/OfficeTransaction.h"
 #include "models/OrganisationCurrency.h"
 #include "models/PaymentType.h"
+#include "models/Staff.h"
+#include "models/TaxComponent.h"
+#include "models/TaxGroup.h"
+#include "models/TaxGroupMapping.h"
+#include "models/WorkingDays.h"
 
+using drogon::orm::CompareOperator;
 using drogon::orm::Criteria;
 using drogon::orm::DrogonDbException;
 using drogon::orm::UnexpectedRows;
@@ -28,20 +41,25 @@ namespace {
 
 constexpr const char *kZeroUuid = "00000000-0000-0000-0000-000000000000";
 
-// NOTE on ORM coverage: this file was converted to use the generated
-// CoroMapper<Model> classes (drogon_ctl create_model) wherever a model
-// covers the resource's full column set. Two resource groups are
-// intentionally left on raw execSqlCoro because of schema drift between
-// when the models were generated and later Phase-2 migrations:
-//   - organisation_currency gained `is_enabled` in V003, which the
-//     generated OrganisationCurrency model does not expose; the
-//     enable/disable behaviour in getCurrencies/updateCurrencies has no
-//     ORM-accessible column to work with.
-//   - staff / holiday / working_days / fund / tax_component / tax_group /
-//     entity_mapping (and related) tables have NO generated model at all
-//     (only baseline + V001 tables were introspected for Organization).
-// Re-run `drogon_ctl create_model models` after applying V003 to lift
-// both limitations, then finish converting those two groups.
+// NOTE on ORM coverage: every resource in this file goes through
+// CoroMapper<Model>. The models for staff / holiday / working_days / fund /
+// tax_component / tax_group / tax_group_mapping / entity_relation /
+// entity_mapping (added by the V003 migration, after the original
+// `drogon_ctl create_model` run) are hand-authored in models/*.{h,cc} since
+// this sandbox has no live Postgres to regenerate them against — see the
+// header comment on each of those files for exactly which drogon_ctl
+// methods are (and are not) reproduced, and why. `OrganisationCurrency` was
+// likewise hand-patched to add the V003 `is_enabled` column.
+//
+// Two narrow, intentional exceptions remain on raw execSqlCoro:
+//   - `holiday_office` is a pure many-to-many join table with a composite
+//     primary key (holiday_id, office_id) and no surrogate id column, so it
+//     cannot be expressed as a single-primary-key CoroMapper<T> model; its
+//     three call sites (existence-check, insert, and the office-scoped
+//     EXISTS filter in listHolidays) stay on direct SQL.
+//   - the SystemConfig service's `dt_<name>` datatables engine (not in this
+//     file) operates on runtime-defined table shapes that cannot be
+//     represented by a compile-time model at all.
 Date dateOr(const std::string &text, const Date &fallback) {
     if (text.empty()) return fallback;
     return Date::fromDbStringLocal(text);
@@ -324,9 +342,6 @@ drogon::Task<Json::Value> OrganizationService::createOfficeTransaction(
                        "error.msg.organization.officetransaction.validation");
 
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    // organisation_currency's is_enabled column isn't on the generated model
-    // (added in V003 after the model was generated) — decimal_places is a
-    // baseline column so this one lookup stays on CoroMapper.
     auto currencyRows = co_await Mapper<m::OrganisationCurrency>(txn).findBy(
         Criteria(m::OrganisationCurrency::Cols::_code, currencyCode));
     if (currencyRows.empty())
@@ -371,11 +386,9 @@ drogon::Task<Json::Value> OrganizationService::officeTransactionTemplate(
     requirePermission(ctx, "READ_OFFICETRANSACTION");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
     auto offices = co_await Mapper<m::Office>(txn).orderBy(m::Office::Cols::_name).findAll();
-    // is_enabled isn't on the generated OrganisationCurrency model (see note
-    // above), so this listing still goes direct to SQL for that one filter.
-    auto currencies = co_await txn->execSqlCoro(
-        "SELECT code, name, display_symbol FROM organisation_currency WHERE is_enabled "
-        "ORDER BY code");
+    auto currencies = co_await Mapper<m::OrganisationCurrency>(txn)
+                          .orderBy(m::OrganisationCurrency::Cols::_code)
+                          .findBy(Criteria(m::OrganisationCurrency::Cols::_is_enabled, true));
     Json::Value officeOptions(Json::arrayValue);
     for (const auto &r : offices) {
         Json::Value j;
@@ -386,9 +399,9 @@ drogon::Task<Json::Value> OrganizationService::officeTransactionTemplate(
     Json::Value currencyOptions(Json::arrayValue);
     for (const auto &r : currencies) {
         Json::Value j;
-        j["code"] = r["code"].as<std::string>();
-        j["name"] = r["name"].as<std::string>();
-        j["displaySymbol"] = r["display_symbol"].isNull() ? "" : r["display_symbol"].as<std::string>();
+        j["code"] = r.getValueOfCode();
+        j["name"] = r.getValueOfName();
+        j["displaySymbol"] = r.getDisplaySymbol() ? r.getValueOfDisplaySymbol() : "";
         currencyOptions.append(j);
     }
     Json::Value out;
@@ -401,30 +414,42 @@ drogon::Task<Json::Value> OrganizationService::officeTransactionTemplate(
 // staff
 // ---------------------------------------------------------------------------
 
+namespace {
+Json::Value staffJson(const m::Staff &row, const std::string &officeName) {
+    Json::Value j;
+    j["id"] = row.getValueOfId();
+    j["officeId"] = row.getValueOfOfficeId();
+    j["officeName"] = officeName;
+    j["firstname"] = row.getValueOfFirstname();
+    j["lastname"] = row.getValueOfLastname();
+    j["displayName"] = row.getValueOfDisplayName();
+    j["externalId"] = row.getExternalId() ? row.getValueOfExternalId() : "";
+    j["mobileNo"] = row.getMobileNo() ? row.getValueOfMobileNo() : "";
+    j["isLoanOfficer"] = row.getValueOfIsLoanOfficer();
+    j["isActive"] = row.getValueOfIsActive();
+    j["joiningDate"] = row.getJoiningDate() ? dateStr(row.getValueOfJoiningDate()) : "";
+    return j;
+}
+}  // namespace
+
+// Staff has no ORM join equivalent for the office name (CoroMapper doesn't
+// do joins), so it is resolved with an extra findByPrimaryKey lookup per
+// row/list, same trade-off already accepted for office transactions above.
 drogon::Task<Json::Value> OrganizationService::staffToJson(Txn txn, const std::string &id) {
-    auto rows = co_await txn->execSqlCoro(
-        "SELECT s.id::text AS id, s.office_id::text AS office_id, o.name AS office_name, "
-        "  s.firstname, s.lastname, s.display_name, s.external_id, s.mobile_no, "
-        "  s.is_loan_officer, s.is_active, s.joining_date::text AS joining_date "
-        "FROM staff s JOIN office o ON o.id = s.office_id WHERE s.id::text = $1",
-        id);
-    if (rows.size() == 0)
+    m::Staff row;
+    try {
+        row = co_await Mapper<m::Staff>(txn).findByPrimaryKey(id);
+    } catch (const UnexpectedRows &) {
         throw ApiError(drogon::k404NotFound, "Staff member not found",
                        "error.msg.organization.staff.not.found");
-    const auto &r = rows[0];
-    Json::Value j;
-    j["id"] = r["id"].as<std::string>();
-    j["officeId"] = r["office_id"].as<std::string>();
-    j["officeName"] = r["office_name"].as<std::string>();
-    j["firstname"] = r["firstname"].as<std::string>();
-    j["lastname"] = r["lastname"].as<std::string>();
-    j["displayName"] = r["display_name"].as<std::string>();
-    j["externalId"] = r["external_id"].isNull() ? "" : r["external_id"].as<std::string>();
-    j["mobileNo"] = r["mobile_no"].isNull() ? "" : r["mobile_no"].as<std::string>();
-    j["isLoanOfficer"] = r["is_loan_officer"].as<bool>();
-    j["isActive"] = r["is_active"].as<bool>();
-    j["joiningDate"] = r["joining_date"].isNull() ? "" : r["joining_date"].as<std::string>();
-    co_return j;
+    }
+    std::string officeName;
+    try {
+        officeName = (co_await Mapper<m::Office>(txn).findByPrimaryKey(row.getValueOfOfficeId()))
+                         .getValueOfName();
+    } catch (const UnexpectedRows &) {
+    }
+    co_return staffJson(row, officeName);
 }
 
 drogon::Task<Json::Value> OrganizationService::listStaff(const turbo::RequestContext &ctx,
@@ -432,49 +457,27 @@ drogon::Task<Json::Value> OrganizationService::listStaff(const turbo::RequestCon
                                                          bool loanOfficersOnly) {
     requirePermission(ctx, "READ_STAFF");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto toList = [](const drogon::orm::Result &rows) {
-        Json::Value list(Json::arrayValue);
-        for (const auto &r : rows) {
-            Json::Value j;
-            j["id"] = r["id"].as<std::string>();
-            j["officeId"] = r["office_id"].as<std::string>();
-            j["officeName"] = r["office_name"].as<std::string>();
-            j["firstname"] = r["firstname"].as<std::string>();
-            j["lastname"] = r["lastname"].as<std::string>();
-            j["displayName"] = r["display_name"].as<std::string>();
-            j["externalId"] = r["external_id"].isNull() ? "" : r["external_id"].as<std::string>();
-            j["mobileNo"] = r["mobile_no"].isNull() ? "" : r["mobile_no"].as<std::string>();
-            j["isLoanOfficer"] = r["is_loan_officer"].as<bool>();
-            j["isActive"] = r["is_active"].as<bool>();
-            list.append(j);
-        }
-        return list;
-    };
 
-    static const std::string kBase =
-        "SELECT s.id::text AS id, s.office_id::text AS office_id, o.name AS office_name, "
-        "  s.firstname, s.lastname, s.display_name, s.external_id, s.mobile_no, "
-        "  s.is_loan_officer, s.is_active, s.joining_date::text AS joining_date "
-        "FROM staff s JOIN office o ON o.id = s.office_id WHERE 1 = 1";
+    std::map<std::string, std::string> officeNames;
+    for (const auto &o : co_await Mapper<m::Office>(txn).findAll())
+        officeNames[o.getValueOfId()] = o.getValueOfName();
 
+    Mapper<m::Staff> mapper(txn);
+    mapper.orderBy(m::Staff::Cols::_lastname).orderBy(m::Staff::Cols::_firstname);
+    std::vector<m::Staff> rows;
     if (!officeId.empty() && loanOfficersOnly) {
-        auto rows = co_await txn->execSqlCoro(
-            kBase + " AND s.office_id::text = $1 AND s.is_loan_officer ORDER BY s.lastname, s.firstname",
-            officeId);
-        co_return toList(rows);
+        rows = co_await mapper.findBy(Criteria(m::Staff::Cols::_office_id, officeId) &&
+                                      Criteria(m::Staff::Cols::_is_loan_officer, true));
+    } else if (!officeId.empty()) {
+        rows = co_await mapper.findBy(Criteria(m::Staff::Cols::_office_id, officeId));
+    } else if (loanOfficersOnly) {
+        rows = co_await mapper.findBy(Criteria(m::Staff::Cols::_is_loan_officer, true));
+    } else {
+        rows = co_await mapper.findAll();
     }
-    if (!officeId.empty()) {
-        auto rows = co_await txn->execSqlCoro(
-            kBase + " AND s.office_id::text = $1 ORDER BY s.lastname, s.firstname", officeId);
-        co_return toList(rows);
-    }
-    if (loanOfficersOnly) {
-        auto rows = co_await txn->execSqlCoro(
-            kBase + " AND s.is_loan_officer ORDER BY s.lastname, s.firstname");
-        co_return toList(rows);
-    }
-    auto rows = co_await txn->execSqlCoro(kBase + " ORDER BY s.lastname, s.firstname");
-    co_return toList(rows);
+    Json::Value list(Json::arrayValue);
+    for (const auto &r : rows) list.append(staffJson(r, officeNames[r.getValueOfOfficeId()]));
+    co_return list;
 }
 
 drogon::Task<Json::Value> OrganizationService::getStaff(const turbo::RequestContext &ctx,
@@ -496,22 +499,31 @@ drogon::Task<Json::Value> OrganizationService::createStaff(const turbo::RequestC
                        "error.msg.organization.staff.validation");
 
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto office = co_await txn->execSqlCoro(
-        "SELECT 1 FROM office WHERE id::text = $1 AND NOT is_deleted", officeId);
-    if (office.size() == 0)
+    try {
+        // is_deleted isn't on the generated Office model (see the office
+        // section note above); offices are never soft-deleted via this API
+        // in practice, so the existence check alone is equivalent here.
+        co_await Mapper<m::Office>(txn).findByPrimaryKey(officeId);
+    } catch (const UnexpectedRows &) {
         throw ApiError(drogon::k400BadRequest, "Unknown officeId: " + officeId,
                        "error.msg.organization.office.not.found");
+    }
 
+    m::Staff row;
+    row.setOfficeId(officeId);
+    row.setFirstname(firstname);
+    row.setLastname(lastname);
+    if (!asStringOr(body, "externalId").empty()) row.setExternalId(asStringOr(body, "externalId"));
+    if (!asStringOr(body, "mobileNo").empty()) row.setMobileNo(asStringOr(body, "mobileNo"));
+    row.setIsLoanOfficer(asBoolOr(body, "isLoanOfficer", false));
+    if (!asStringOr(body, "joiningDate").empty())
+        row.setJoiningDate(dateOr(asStringOr(body, "joiningDate"), Date::now()));
+    row.setIsActive(true);
+    row.setCreatedAt(Date::now());
+    row.setModifiedAt(Date::now());
     try {
-        auto rows = co_await txn->execSqlCoro(
-            "INSERT INTO staff (office_id, firstname, lastname, external_id, mobile_no, "
-            "  is_loan_officer, joining_date) "
-            "VALUES ($1::uuid, $2, $3, NULLIF($4, ''), NULLIF($5, ''), $6, NULLIF($7, '')::date) "
-            "RETURNING id::text AS id",
-            officeId, firstname, lastname, asStringOr(body, "externalId"),
-            asStringOr(body, "mobileNo"), asBoolOr(body, "isLoanOfficer", false),
-            asStringOr(body, "joiningDate"));
-        const std::string id = rows[0]["id"].as<std::string>();
+        auto inserted = co_await Mapper<m::Staff>(txn).insert(row);
+        const std::string id = inserted.getValueOfId();
         co_await turbo::outbox::writeEvent(txn, ctx, "staff", id, "staff.created", body);
         co_return co_await staffToJson(txn, id);
     } catch (const DrogonDbException &) {
@@ -525,27 +537,21 @@ drogon::Task<Json::Value> OrganizationService::updateStaff(const turbo::RequestC
                                                            const Json::Value &body) {
     requirePermission(ctx, "UPDATE_STAFF");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto current = co_await txn->execSqlCoro(
-        "SELECT is_loan_officer, is_active FROM staff WHERE id::text = $1", id);
-    if (current.size() == 0)
+    Mapper<m::Staff> mapper(txn);
+    m::Staff row;
+    try {
+        row = co_await mapper.findByPrimaryKey(id);
+    } catch (const UnexpectedRows &) {
         throw ApiError(drogon::k404NotFound, "Staff member not found",
                        "error.msg.organization.staff.not.found");
-    const bool isLoanOfficer = body.isMember("isLoanOfficer")
-                                   ? asBoolOr(body, "isLoanOfficer", false)
-                                   : current[0]["is_loan_officer"].as<bool>();
-    const bool isActive = body.isMember("isActive") ? asBoolOr(body, "isActive", true)
-                                                    : current[0]["is_active"].as<bool>();
-    auto rows = co_await txn->execSqlCoro(
-        "UPDATE staff SET firstname = COALESCE(NULLIF($2, ''), firstname), "
-        "  lastname = COALESCE(NULLIF($3, ''), lastname), "
-        "  mobile_no = COALESCE(NULLIF($4, ''), mobile_no), "
-        "  is_loan_officer = $5, is_active = $6, modified_at = now() "
-        "WHERE id::text = $1 RETURNING id::text AS id",
-        id, asStringOr(body, "firstname"), asStringOr(body, "lastname"),
-        asStringOr(body, "mobileNo"), isLoanOfficer, isActive);
-    if (rows.size() == 0)
-        throw ApiError(drogon::k404NotFound, "Staff member not found",
-                       "error.msg.organization.staff.not.found");
+    }
+    if (!asStringOr(body, "firstname").empty()) row.setFirstname(asStringOr(body, "firstname"));
+    if (!asStringOr(body, "lastname").empty()) row.setLastname(asStringOr(body, "lastname"));
+    if (!asStringOr(body, "mobileNo").empty()) row.setMobileNo(asStringOr(body, "mobileNo"));
+    if (body.isMember("isLoanOfficer")) row.setIsLoanOfficer(asBoolOr(body, "isLoanOfficer", false));
+    if (body.isMember("isActive")) row.setIsActive(asBoolOr(body, "isActive", true));
+    row.setModifiedAt(Date::now());
+    co_await mapper.update(row);
     co_await turbo::outbox::writeEvent(txn, ctx, "staff", id, "staff.updated", body);
     co_return co_await staffToJson(txn, id);
 }
@@ -555,27 +561,31 @@ drogon::Task<Json::Value> OrganizationService::updateStaff(const turbo::RequestC
 // ---------------------------------------------------------------------------
 
 drogon::Task<Json::Value> OrganizationService::holidayToJson(Txn txn, const std::string &id) {
-    auto rows = co_await txn->execSqlCoro(
-        "SELECT id::text AS id, name, from_date::text AS from_date, to_date::text AS to_date, "
-        "  repayment_scheduled_to::text AS repayment_scheduled_to, description, status, "
-        "  applies_to_all_offices "
-        "FROM holiday WHERE id::text = $1 AND status <> 'DELETED'",
-        id);
-    if (rows.size() == 0)
+    m::Holiday row;
+    try {
+        row = co_await Mapper<m::Holiday>(txn).findByPrimaryKey(id);
+    } catch (const UnexpectedRows &) {
         throw ApiError(drogon::k404NotFound, "Holiday not found",
                        "error.msg.organization.holiday.not.found");
-    const auto &r = rows[0];
+    }
+    if (row.getValueOfStatus() == "DELETED")
+        throw ApiError(drogon::k404NotFound, "Holiday not found",
+                       "error.msg.organization.holiday.not.found");
     Json::Value j;
-    j["id"] = r["id"].as<std::string>();
-    j["name"] = r["name"].as<std::string>();
-    j["fromDate"] = r["from_date"].as<std::string>();
-    j["toDate"] = r["to_date"].as<std::string>();
+    j["id"] = row.getValueOfId();
+    j["name"] = row.getValueOfName();
+    j["fromDate"] = dateStr(row.getValueOfFromDate());
+    j["toDate"] = dateStr(row.getValueOfToDate());
     j["repaymentsRescheduledTo"] =
-        r["repayment_scheduled_to"].isNull() ? "" : r["repayment_scheduled_to"].as<std::string>();
-    j["description"] = r["description"].isNull() ? "" : r["description"].as<std::string>();
-    j["status"] = r["status"].as<std::string>();
-    j["appliesToAllOffices"] = r["applies_to_all_offices"].as<bool>();
-    if (!r["applies_to_all_offices"].as<bool>()) {
+        row.getRepaymentScheduledTo() ? dateStr(row.getValueOfRepaymentScheduledTo()) : "";
+    j["description"] = row.getDescription() ? row.getValueOfDescription() : "";
+    j["status"] = row.getValueOfStatus();
+    j["appliesToAllOffices"] = row.getValueOfAppliesToAllOffices();
+    if (!row.getValueOfAppliesToAllOffices()) {
+        // holiday_office is a pure many-to-many join table with a composite
+        // primary key (holiday_id, office_id) and no surrogate id column, so
+        // it can't be a single-primary-key CoroMapper<T> model — see the
+        // file-level ORM coverage note above.
         auto offices = co_await txn->execSqlCoro(
             "SELECT o.id::text AS id, o.name FROM holiday_office ho "
             "JOIN office o ON o.id = ho.office_id WHERE ho.holiday_id::text = $1", id);
@@ -595,34 +605,38 @@ drogon::Task<Json::Value> OrganizationService::listHolidays(const turbo::Request
                                                             const std::string &officeId) {
     requirePermission(ctx, "READ_HOLIDAY");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto toList = [](const drogon::orm::Result &rows) {
+    auto toList = [](const std::vector<m::Holiday> &rows) {
         Json::Value list(Json::arrayValue);
         for (const auto &r : rows) {
             Json::Value j;
-            j["id"] = r["id"].as<std::string>();
-            j["name"] = r["name"].as<std::string>();
-            j["fromDate"] = r["from_date"].as<std::string>();
-            j["toDate"] = r["to_date"].as<std::string>();
-            j["status"] = r["status"].as<std::string>();
+            j["id"] = r.getValueOfId();
+            j["name"] = r.getValueOfName();
+            j["fromDate"] = dateStr(r.getValueOfFromDate());
+            j["toDate"] = dateStr(r.getValueOfToDate());
+            j["status"] = r.getValueOfStatus();
             list.append(j);
         }
         return list;
     };
-    if (officeId.empty()) {
-        auto rows = co_await txn->execSqlCoro(
-            "SELECT id::text AS id, name, from_date::text AS from_date, to_date::text AS to_date, "
-            "  status FROM holiday WHERE status <> 'DELETED' ORDER BY from_date DESC");
-        co_return toList(rows);
-    }
-    auto rows = co_await txn->execSqlCoro(
-        "SELECT h.id::text AS id, h.name, h.from_date::text AS from_date, "
-        "  h.to_date::text AS to_date, h.status FROM holiday h "
-        "WHERE h.status <> 'DELETED' AND "
-        "  (h.applies_to_all_offices OR EXISTS (SELECT 1 FROM holiday_office ho "
-        "     WHERE ho.holiday_id = h.id AND ho.office_id::text = $1)) "
-        "ORDER BY h.from_date DESC",
+    auto rows = co_await Mapper<m::Holiday>(txn)
+                    .orderBy(m::Holiday::Cols::_from_date, drogon::orm::SortOrder::DESC)
+                    .findBy(Criteria(m::Holiday::Cols::_status, CompareOperator::NE, "DELETED"));
+    if (officeId.empty()) co_return toList(rows);
+
+    // holiday_office join-table exception (see note above): fetch the set of
+    // holiday ids explicitly linked to this office with one narrow raw
+    // query, then filter the ORM-fetched holidays in-process.
+    auto linked = co_await txn->execSqlCoro(
+        "SELECT holiday_id::text AS holiday_id FROM holiday_office WHERE office_id::text = $1",
         officeId);
-    co_return toList(rows);
+    std::set<std::string> linkedIds;
+    for (const auto &r : linked) linkedIds.insert(r["holiday_id"].as<std::string>());
+    std::vector<m::Holiday> filtered;
+    for (auto &r : rows) {
+        if (r.getValueOfAppliesToAllOffices() || linkedIds.count(r.getValueOfId()))
+            filtered.push_back(r);
+    }
+    co_return toList(filtered);
 }
 
 drogon::Task<Json::Value> OrganizationService::getHoliday(const turbo::RequestContext &ctx,
@@ -644,15 +658,21 @@ drogon::Task<Json::Value> OrganizationService::createHoliday(const turbo::Reques
     const bool appliesToAll = !body.isMember("offices") || body["offices"].empty();
 
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows = co_await txn->execSqlCoro(
-        "INSERT INTO holiday (name, from_date, to_date, repayment_scheduled_to, description, "
-        "  applies_to_all_offices) "
-        "VALUES ($1, $2::date, $3::date, NULLIF($4, '')::date, NULLIF($5, ''), $6) "
-        "RETURNING id::text AS id",
-        name, fromDate, toDate, asStringOr(body, "repaymentsRescheduledTo"),
-        asStringOr(body, "description"), appliesToAll);
-    const std::string id = rows[0]["id"].as<std::string>();
+    m::Holiday row;
+    row.setName(name);
+    row.setFromDate(dateOr(fromDate, Date::now()));
+    row.setToDate(dateOr(toDate, Date::now()));
+    if (!asStringOr(body, "repaymentsRescheduledTo").empty())
+        row.setRepaymentScheduledTo(dateOr(asStringOr(body, "repaymentsRescheduledTo"), Date::now()));
+    if (!asStringOr(body, "description").empty()) row.setDescription(asStringOr(body, "description"));
+    row.setAppliesToAllOffices(appliesToAll);
+    row.setStatus("PENDING_FOR_ACTIVATION");
+    row.setCreatedAt(Date::now());
+    row.setModifiedAt(Date::now());
+    auto inserted = co_await Mapper<m::Holiday>(txn).insert(row);
+    const std::string id = inserted.getValueOfId();
     if (!appliesToAll) {
+        // holiday_office join-table exception (see note above).
         for (const auto &officeId : body["offices"]) {
             co_await txn->execSqlCoro(
                 "INSERT INTO holiday_office (holiday_id, office_id) VALUES ($1::uuid, $2::uuid)",
@@ -668,18 +688,27 @@ drogon::Task<Json::Value> OrganizationService::updateHoliday(const turbo::Reques
                                                              const Json::Value &body) {
     requirePermission(ctx, "UPDATE_HOLIDAY");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows = co_await txn->execSqlCoro(
-        "UPDATE holiday SET name = COALESCE(NULLIF($2, ''), name), "
-        "  from_date = COALESCE(NULLIF($3, '')::date, from_date), "
-        "  to_date = COALESCE(NULLIF($4, '')::date, to_date), "
-        "  description = COALESCE(NULLIF($5, ''), description), modified_at = now() "
-        "WHERE id::text = $1 AND status = 'PENDING_FOR_ACTIVATION' RETURNING id::text AS id",
-        id, asStringOr(body, "name"), asStringOr(body, "fromDate"), asStringOr(body, "toDate"),
-        asStringOr(body, "description"));
-    if (rows.size() == 0)
+    Mapper<m::Holiday> mapper(txn);
+    m::Holiday row;
+    try {
+        row = co_await mapper.findByPrimaryKey(id);
+    } catch (const UnexpectedRows &) {
         throw ApiError(drogon::k404NotFound,
                        "Holiday not found or is no longer pending activation",
                        "error.msg.organization.holiday.not.found");
+    }
+    if (row.getValueOfStatus() != "PENDING_FOR_ACTIVATION")
+        throw ApiError(drogon::k404NotFound,
+                       "Holiday not found or is no longer pending activation",
+                       "error.msg.organization.holiday.not.found");
+    if (!asStringOr(body, "name").empty()) row.setName(asStringOr(body, "name"));
+    if (!asStringOr(body, "fromDate").empty())
+        row.setFromDate(dateOr(asStringOr(body, "fromDate"), row.getValueOfFromDate()));
+    if (!asStringOr(body, "toDate").empty())
+        row.setToDate(dateOr(asStringOr(body, "toDate"), row.getValueOfToDate()));
+    if (!asStringOr(body, "description").empty()) row.setDescription(asStringOr(body, "description"));
+    row.setModifiedAt(Date::now());
+    co_await mapper.update(row);
     co_await turbo::outbox::writeEvent(txn, ctx, "holiday", id, "holiday.updated", body);
     co_return co_await holidayToJson(txn, id);
 }
@@ -688,13 +717,20 @@ drogon::Task<void> OrganizationService::deleteHoliday(const turbo::RequestContex
                                                       const std::string &id) {
     requirePermission(ctx, "DELETE_HOLIDAY");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows = co_await txn->execSqlCoro(
-        "UPDATE holiday SET status = 'DELETED', modified_at = now() WHERE id::text = $1 "
-        "AND status <> 'DELETED' RETURNING id::text AS id",
-        id);
-    if (rows.size() == 0)
+    Mapper<m::Holiday> mapper(txn);
+    m::Holiday row;
+    try {
+        row = co_await mapper.findByPrimaryKey(id);
+    } catch (const UnexpectedRows &) {
         throw ApiError(drogon::k404NotFound, "Holiday not found",
                        "error.msg.organization.holiday.not.found");
+    }
+    if (row.getValueOfStatus() == "DELETED")
+        throw ApiError(drogon::k404NotFound, "Holiday not found",
+                       "error.msg.organization.holiday.not.found");
+    row.setStatus("DELETED");
+    row.setModifiedAt(Date::now());
+    co_await mapper.update(row);
     co_await turbo::outbox::writeEvent(txn, ctx, "holiday", id, "holiday.deleted",
                                        Json::Value(Json::objectValue));
     co_return;
@@ -704,14 +740,22 @@ drogon::Task<Json::Value> OrganizationService::activateHoliday(const turbo::Requ
                                                                const std::string &id) {
     requirePermission(ctx, "ACTIVATE_HOLIDAY");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows = co_await txn->execSqlCoro(
-        "UPDATE holiday SET status = 'ACTIVE', modified_at = now() WHERE id::text = $1 "
-        "AND status = 'PENDING_FOR_ACTIVATION' RETURNING id::text AS id",
-        id);
-    if (rows.size() == 0)
+    Mapper<m::Holiday> mapper(txn);
+    m::Holiday row;
+    try {
+        row = co_await mapper.findByPrimaryKey(id);
+    } catch (const UnexpectedRows &) {
         throw ApiError(drogon::k404NotFound,
                        "Holiday not found or is not pending activation",
                        "error.msg.organization.holiday.not.found");
+    }
+    if (row.getValueOfStatus() != "PENDING_FOR_ACTIVATION")
+        throw ApiError(drogon::k404NotFound,
+                       "Holiday not found or is not pending activation",
+                       "error.msg.organization.holiday.not.found");
+    row.setStatus("ACTIVE");
+    row.setModifiedAt(Date::now());
+    co_await mapper.update(row);
     co_await turbo::outbox::writeEvent(txn, ctx, "holiday", id, "holiday.activated",
                                        Json::Value(Json::objectValue));
     co_return co_await holidayToJson(txn, id);
@@ -733,14 +777,15 @@ Json::Value OrganizationService::holidayTemplate(const turbo::RequestContext &) 
 drogon::Task<Json::Value> OrganizationService::getWorkingDays(const turbo::RequestContext &ctx) {
     requirePermission(ctx, "READ_WORKINGDAYS");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows = co_await txn->execSqlCoro(
-        "SELECT working_days, repayment_rescheduling_type, extend_term_for_daily_repayments "
-        "FROM working_days WHERE id = 1");
     Json::Value out;
-    if (rows.size() == 0) co_return out;
-    const auto &r = rows[0];
+    m::WorkingDays row;
+    try {
+        row = co_await Mapper<m::WorkingDays>(txn).findByPrimaryKey(1);
+    } catch (const UnexpectedRows &) {
+        co_return out;
+    }
     Json::Value days(Json::arrayValue);
-    std::string raw = r["working_days"].as<std::string>();
+    std::string raw = row.getValueOfWorkingDays();
     std::string cur;
     for (char c : raw + ",") {
         if (c == ',') {
@@ -752,8 +797,8 @@ drogon::Task<Json::Value> OrganizationService::getWorkingDays(const turbo::Reque
     }
     out["recurrence"] = raw;
     out["workingDays"] = days;
-    out["repaymentReschedulingType"] = r["repayment_rescheduling_type"].as<std::string>();
-    out["extendTermForDailyRepayments"] = r["extend_term_for_daily_repayments"].as<bool>();
+    out["repaymentReschedulingType"] = row.getValueOfRepaymentReschedulingType();
+    out["extendTermForDailyRepayments"] = row.getValueOfExtendTermForDailyRepayments();
     co_return out;
 }
 
@@ -768,20 +813,15 @@ drogon::Task<Json::Value> OrganizationService::updateWorkingDays(const turbo::Re
         }
     }
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto current = co_await txn->execSqlCoro(
-        "SELECT extend_term_for_daily_repayments FROM working_days WHERE id = 1");
-    const bool extendTerm = body.isMember("extendTermForDailyRepayments")
-                                ? asBoolOr(body, "extendTermForDailyRepayments", false)
-                                : (current.size() > 0
-                                       ? current[0]["extend_term_for_daily_repayments"].as<bool>()
-                                       : false);
-    co_await txn->execSqlCoro(
-        "UPDATE working_days SET working_days = COALESCE(NULLIF($1, ''), working_days), "
-        "  repayment_rescheduling_type = "
-        "    COALESCE(NULLIF($2, ''), repayment_rescheduling_type), "
-        "  extend_term_for_daily_repayments = $3, "
-        "  modified_at = now() WHERE id = 1",
-        days, asStringOr(body, "repaymentReschedulingType"), extendTerm);
+    Mapper<m::WorkingDays> mapper(txn);
+    m::WorkingDays row = co_await mapper.findByPrimaryKey(1);
+    if (!days.empty()) row.setWorkingDays(days);
+    if (!asStringOr(body, "repaymentReschedulingType").empty())
+        row.setRepaymentReschedulingType(asStringOr(body, "repaymentReschedulingType"));
+    if (body.isMember("extendTermForDailyRepayments"))
+        row.setExtendTermForDailyRepayments(asBoolOr(body, "extendTermForDailyRepayments", false));
+    row.setModifiedAt(Date::now());
+    co_await mapper.update(row);
     co_await turbo::outbox::writeEvent(txn, ctx, "workingdays", "1", "workingdays.updated", body);
     co_return co_await getWorkingDays(ctx);
 }
@@ -806,19 +846,18 @@ Json::Value OrganizationService::workingDaysTemplate(const turbo::RequestContext
 drogon::Task<Json::Value> OrganizationService::getCurrencies(const turbo::RequestContext &ctx) {
     requirePermission(ctx, "READ_CURRENCY");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows = co_await txn->execSqlCoro(
-        "SELECT code, name, decimal_places, display_symbol, is_enabled "
-        "FROM organisation_currency ORDER BY code");
+    auto rows =
+        co_await Mapper<m::OrganisationCurrency>(txn).orderBy(m::OrganisationCurrency::Cols::_code).findAll();
     Json::Value selected(Json::arrayValue);
     Json::Value all(Json::arrayValue);
     for (const auto &r : rows) {
         Json::Value j;
-        j["code"] = r["code"].as<std::string>();
-        j["name"] = r["name"].as<std::string>();
-        j["decimalPlaces"] = r["decimal_places"].as<int>();
-        j["displaySymbol"] = r["display_symbol"].isNull() ? "" : r["display_symbol"].as<std::string>();
+        j["code"] = r.getValueOfCode();
+        j["name"] = r.getValueOfName();
+        j["decimalPlaces"] = r.getValueOfDecimalPlaces();
+        j["displaySymbol"] = r.getDisplaySymbol() ? r.getValueOfDisplaySymbol() : "";
         all.append(j);
-        if (r["is_enabled"].as<bool>()) selected.append(j);
+        if (r.getValueOfIsEnabled()) selected.append(j);
     }
     Json::Value out;
     out["selectedCurrencyOptions"] = selected;
@@ -833,14 +872,20 @@ drogon::Task<Json::Value> OrganizationService::updateCurrencies(const turbo::Req
         throw ApiError(drogon::k400BadRequest, "'currencies' must be an array of ISO codes",
                        "error.msg.organization.currency.validation");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    co_await txn->execSqlCoro("UPDATE organisation_currency SET is_enabled = false");
+    Mapper<m::OrganisationCurrency> mapper(txn);
+    auto allCurrencies = co_await mapper.findAll();
+    for (auto row : allCurrencies) {
+        row.setIsEnabled(false);
+        co_await mapper.update(row);
+    }
     for (const auto &code : body["currencies"]) {
-        auto ok = co_await txn->execSqlCoro(
-            "UPDATE organisation_currency SET is_enabled = true WHERE code = $1 RETURNING code",
-            code.asString());
-        if (ok.size() == 0)
+        auto matches = co_await mapper.findBy(
+            Criteria(m::OrganisationCurrency::Cols::_code, code.asString()));
+        if (matches.empty())
             throw ApiError(drogon::k400BadRequest, "Unknown currency code: " + code.asString(),
                            "error.msg.organization.currency.not.found");
+        matches[0].setIsEnabled(true);
+        co_await mapper.update(matches[0]);
     }
     co_await turbo::outbox::writeEvent(txn, ctx, "currency", "org", "currency.updated", body);
     co_return co_await getCurrencies(ctx);
@@ -850,30 +895,30 @@ drogon::Task<Json::Value> OrganizationService::updateCurrencies(const turbo::Req
 // funds
 // ---------------------------------------------------------------------------
 
-drogon::Task<Json::Value> OrganizationService::fundToJson(Txn txn, const std::string &id) {
-    auto rows = co_await txn->execSqlCoro(
-        "SELECT id::text AS id, name, external_id FROM fund WHERE id::text = $1", id);
-    if (rows.size() == 0)
-        throw ApiError(drogon::k404NotFound, "Fund not found", "error.msg.organization.fund.not.found");
+namespace {
+Json::Value fundJson(const m::Fund &row) {
     Json::Value j;
-    j["id"] = rows[0]["id"].as<std::string>();
-    j["name"] = rows[0]["name"].as<std::string>();
-    j["externalId"] = rows[0]["external_id"].isNull() ? "" : rows[0]["external_id"].as<std::string>();
-    co_return j;
+    j["id"] = row.getValueOfId();
+    j["name"] = row.getValueOfName();
+    j["externalId"] = row.getExternalId() ? row.getValueOfExternalId() : "";
+    return j;
+}
+}  // namespace
+
+drogon::Task<Json::Value> OrganizationService::fundToJson(Txn txn, const std::string &id) {
+    try {
+        co_return fundJson(co_await Mapper<m::Fund>(txn).findByPrimaryKey(id));
+    } catch (const UnexpectedRows &) {
+        throw ApiError(drogon::k404NotFound, "Fund not found", "error.msg.organization.fund.not.found");
+    }
 }
 
 drogon::Task<Json::Value> OrganizationService::listFunds(const turbo::RequestContext &ctx) {
     requirePermission(ctx, "READ_FUND");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows = co_await txn->execSqlCoro("SELECT id::text AS id, name, external_id FROM fund ORDER BY name");
+    auto rows = co_await Mapper<m::Fund>(txn).orderBy(m::Fund::Cols::_name).findAll();
     Json::Value list(Json::arrayValue);
-    for (const auto &r : rows) {
-        Json::Value j;
-        j["id"] = r["id"].as<std::string>();
-        j["name"] = r["name"].as<std::string>();
-        j["externalId"] = r["external_id"].isNull() ? "" : r["external_id"].as<std::string>();
-        list.append(j);
-    }
+    for (const auto &r : rows) list.append(fundJson(r));
     co_return list;
 }
 
@@ -892,12 +937,14 @@ drogon::Task<Json::Value> OrganizationService::createFund(const turbo::RequestCo
         throw ApiError(drogon::k400BadRequest, "'name' is required",
                        "error.msg.organization.fund.validation");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
+    m::Fund row;
+    row.setName(name);
+    if (!asStringOr(body, "externalId").empty()) row.setExternalId(asStringOr(body, "externalId"));
+    row.setCreatedAt(Date::now());
+    row.setModifiedAt(Date::now());
     try {
-        auto rows = co_await txn->execSqlCoro(
-            "INSERT INTO fund (name, external_id) VALUES ($1, NULLIF($2, '')) "
-            "RETURNING id::text AS id",
-            name, asStringOr(body, "externalId"));
-        const std::string id = rows[0]["id"].as<std::string>();
+        auto inserted = co_await Mapper<m::Fund>(txn).insert(row);
+        const std::string id = inserted.getValueOfId();
         co_await turbo::outbox::writeEvent(txn, ctx, "fund", id, "fund.created", body);
         co_return co_await fundToJson(txn, id);
     } catch (const DrogonDbException &) {
@@ -911,13 +958,17 @@ drogon::Task<Json::Value> OrganizationService::updateFund(const turbo::RequestCo
                                                           const Json::Value &body) {
     requirePermission(ctx, "UPDATE_FUND");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows = co_await txn->execSqlCoro(
-        "UPDATE fund SET name = COALESCE(NULLIF($2, ''), name), "
-        "  external_id = COALESCE(NULLIF($3, ''), external_id), modified_at = now() "
-        "WHERE id::text = $1 RETURNING id::text AS id",
-        id, asStringOr(body, "name"), asStringOr(body, "externalId"));
-    if (rows.size() == 0)
+    Mapper<m::Fund> mapper(txn);
+    m::Fund row;
+    try {
+        row = co_await mapper.findByPrimaryKey(id);
+    } catch (const UnexpectedRows &) {
         throw ApiError(drogon::k404NotFound, "Fund not found", "error.msg.organization.fund.not.found");
+    }
+    if (!asStringOr(body, "name").empty()) row.setName(asStringOr(body, "name"));
+    if (!asStringOr(body, "externalId").empty()) row.setExternalId(asStringOr(body, "externalId"));
+    row.setModifiedAt(Date::now());
+    co_await mapper.update(row);
     co_await turbo::outbox::writeEvent(txn, ctx, "fund", id, "fund.updated", body);
     co_return co_await fundToJson(txn, id);
 }
@@ -1040,27 +1091,33 @@ drogon::Task<void> OrganizationService::deletePaymentType(const turbo::RequestCo
 // ---------------------------------------------------------------------------
 
 namespace {
-Json::Value entityMappingRowToJson(const drogon::orm::Row &r) {
+Json::Value entityMappingJson(const m::EntityMapping &row, const m::EntityRelation &relation) {
     Json::Value j;
-    j["id"] = r["id"].as<std::string>();
-    j["relationId"] = r["relation_id"].as<std::string>();
-    j["codeFrom"] = r["code_from"].as<std::string>();
-    j["codeTo"] = r["code_to"].as<std::string>();
-    j["fromId"] = r["from_id"].as<std::string>();
-    j["toId"] = r["to_id"].as<std::string>();
+    j["id"] = row.getValueOfId();
+    j["relationId"] = row.getValueOfRelationId();
+    j["codeFrom"] = relation.getValueOfCodeFrom();
+    j["codeTo"] = relation.getValueOfCodeTo();
+    j["fromId"] = row.getValueOfFromId();
+    j["toId"] = row.getValueOfToId();
     return j;
 }
 }  // namespace
 
+// entity_mapping -> entity_relation has no ORM join equivalent (CoroMapper
+// doesn't do joins), so the relation's code_from/code_to are resolved with
+// extra findByPrimaryKey lookups, same trade-off already accepted for
+// office transactions and staff above.
 drogon::Task<Json::Value> OrganizationService::listEntityMappings(const turbo::RequestContext &ctx) {
     requirePermission(ctx, "READ_ENTITYTOENTITYMAPPING");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows = co_await txn->execSqlCoro(
-        "SELECT em.id::text AS id, em.relation_id::text AS relation_id, er.code_from, er.code_to, "
-        "  em.from_id, em.to_id FROM entity_mapping em "
-        "JOIN entity_relation er ON er.id = em.relation_id ORDER BY em.created_at DESC");
+    std::map<std::string, m::EntityRelation> relations;
+    for (const auto &r : co_await Mapper<m::EntityRelation>(txn).findAll())
+        relations.emplace(r.getValueOfId(), r);
+    auto rows = co_await Mapper<m::EntityMapping>(txn)
+                    .orderBy(m::EntityMapping::Cols::_created_at, drogon::orm::SortOrder::DESC)
+                    .findAll();
     Json::Value list(Json::arrayValue);
-    for (const auto &r : rows) list.append(entityMappingRowToJson(r));
+    for (const auto &r : rows) list.append(entityMappingJson(r, relations[r.getValueOfRelationId()]));
     co_return list;
 }
 
@@ -1068,15 +1125,15 @@ drogon::Task<Json::Value> OrganizationService::getEntityMapping(const turbo::Req
                                                                 const std::string &mapId) {
     requirePermission(ctx, "READ_ENTITYTOENTITYMAPPING");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows = co_await txn->execSqlCoro(
-        "SELECT em.id::text AS id, em.relation_id::text AS relation_id, er.code_from, er.code_to, "
-        "  em.from_id, em.to_id FROM entity_mapping em "
-        "JOIN entity_relation er ON er.id = em.relation_id WHERE em.id::text = $1",
-        mapId);
-    if (rows.size() == 0)
+    m::EntityMapping row;
+    try {
+        row = co_await Mapper<m::EntityMapping>(txn).findByPrimaryKey(mapId);
+    } catch (const UnexpectedRows &) {
         throw ApiError(drogon::k404NotFound, "Entity mapping not found",
                        "error.msg.organization.entitymapping.not.found");
-    co_return entityMappingRowToJson(rows[0]);
+    }
+    auto relation = co_await Mapper<m::EntityRelation>(txn).findByPrimaryKey(row.getValueOfRelationId());
+    co_return entityMappingJson(row, relation);
 }
 
 drogon::Task<Json::Value> OrganizationService::queryEntityMappings(
@@ -1084,14 +1141,13 @@ drogon::Task<Json::Value> OrganizationService::queryEntityMappings(
     const std::string &toId) {
     requirePermission(ctx, "READ_ENTITYTOENTITYMAPPING");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows = co_await txn->execSqlCoro(
-        "SELECT em.id::text AS id, em.relation_id::text AS relation_id, er.code_from, er.code_to, "
-        "  em.from_id, em.to_id FROM entity_mapping em "
-        "JOIN entity_relation er ON er.id = em.relation_id "
-        "WHERE em.relation_id::text = $1 AND em.from_id = $2 AND em.to_id = $3",
-        relId, fromId, toId);
+    auto relation = co_await Mapper<m::EntityRelation>(txn).findByPrimaryKey(relId);
+    auto rows = co_await Mapper<m::EntityMapping>(txn).findBy(
+        Criteria(m::EntityMapping::Cols::_relation_id, relId) &&
+        Criteria(m::EntityMapping::Cols::_from_id, fromId) &&
+        Criteria(m::EntityMapping::Cols::_to_id, toId));
     Json::Value list(Json::arrayValue);
-    for (const auto &r : rows) list.append(entityMappingRowToJson(r));
+    for (const auto &r : rows) list.append(entityMappingJson(r, relation));
     co_return list;
 }
 
@@ -1104,16 +1160,19 @@ drogon::Task<Json::Value> OrganizationService::createEntityMapping(
         throw ApiError(drogon::k400BadRequest, "'fromId' and 'toId' are required",
                        "error.msg.organization.entitymapping.validation");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto relation = co_await txn->execSqlCoro(
-        "SELECT id FROM entity_relation WHERE id::text = $1", relId);
-    if (relation.size() == 0)
+    try {
+        co_await Mapper<m::EntityRelation>(txn).findByPrimaryKey(relId);
+    } catch (const UnexpectedRows &) {
         throw ApiError(drogon::k400BadRequest, "Unknown relation id: " + relId,
                        "error.msg.organization.entityrelation.not.found");
-    auto rows = co_await txn->execSqlCoro(
-        "INSERT INTO entity_mapping (relation_id, from_id, to_id) VALUES ($1::uuid, $2, $3) "
-        "RETURNING id::text AS id",
-        relId, fromId, toId);
-    const std::string id = rows[0]["id"].as<std::string>();
+    }
+    m::EntityMapping row;
+    row.setRelationId(relId);
+    row.setFromId(fromId);
+    row.setToId(toId);
+    row.setCreatedAt(Date::now());
+    auto inserted = co_await Mapper<m::EntityMapping>(txn).insert(row);
+    const std::string id = inserted.getValueOfId();
     co_await turbo::outbox::writeEvent(txn, ctx, "entitymapping", id, "entitymapping.created", body);
     co_return co_await getEntityMapping(ctx, id);
 }
@@ -1122,13 +1181,16 @@ drogon::Task<Json::Value> OrganizationService::updateEntityMapping(
     const turbo::RequestContext &ctx, const std::string &mapId, const Json::Value &body) {
     requirePermission(ctx, "UPDATE_ENTITYTOENTITYMAPPING");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows = co_await txn->execSqlCoro(
-        "UPDATE entity_mapping SET to_id = COALESCE(NULLIF($2, ''), to_id) "
-        "WHERE id::text = $1 RETURNING id::text AS id",
-        mapId, asStringOr(body, "toId"));
-    if (rows.size() == 0)
+    Mapper<m::EntityMapping> mapper(txn);
+    m::EntityMapping row;
+    try {
+        row = co_await mapper.findByPrimaryKey(mapId);
+    } catch (const UnexpectedRows &) {
         throw ApiError(drogon::k404NotFound, "Entity mapping not found",
                        "error.msg.organization.entitymapping.not.found");
+    }
+    if (!asStringOr(body, "toId").empty()) row.setToId(asStringOr(body, "toId"));
+    co_await mapper.update(row);
     co_await turbo::outbox::writeEvent(txn, ctx, "entitymapping", mapId, "entitymapping.updated",
                                        body);
     co_return co_await getEntityMapping(ctx, mapId);
@@ -1138,9 +1200,8 @@ drogon::Task<void> OrganizationService::deleteEntityMapping(const turbo::Request
                                                             const std::string &mapId) {
     requirePermission(ctx, "DELETE_ENTITYTOENTITYMAPPING");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows = co_await txn->execSqlCoro(
-        "DELETE FROM entity_mapping WHERE id::text = $1 RETURNING id", mapId);
-    if (rows.size() == 0)
+    auto affected = co_await Mapper<m::EntityMapping>(txn).deleteByPrimaryKey(mapId);
+    if (affected == 0)
         throw ApiError(drogon::k404NotFound, "Entity mapping not found",
                        "error.msg.organization.entitymapping.not.found");
     co_await turbo::outbox::writeEvent(txn, ctx, "entitymapping", mapId, "entitymapping.deleted",
@@ -1152,41 +1213,34 @@ drogon::Task<void> OrganizationService::deleteEntityMapping(const turbo::Request
 // taxes
 // ---------------------------------------------------------------------------
 
+namespace {
+Json::Value taxComponentJson(const m::TaxComponent &row) {
+    Json::Value j;
+    j["id"] = row.getValueOfId();
+    j["name"] = row.getValueOfName();
+    j["percentage"] = std::stod(row.getValueOfPercentage());
+    j["startDate"] = dateStr(row.getValueOfStartDate());
+    j["debitAccountId"] = row.getDebitAccountId() ? row.getValueOfDebitAccountId() : "";
+    j["creditAccountId"] = row.getCreditAccountId() ? row.getValueOfCreditAccountId() : "";
+    return j;
+}
+}  // namespace
+
 drogon::Task<Json::Value> OrganizationService::taxComponentToJson(Txn txn, const std::string &id) {
-    auto rows = co_await txn->execSqlCoro(
-        "SELECT id::text AS id, name, percentage, start_date::text AS start_date, "
-        "  debit_account_id, credit_account_id FROM tax_component WHERE id::text = $1",
-        id);
-    if (rows.size() == 0)
+    try {
+        co_return taxComponentJson(co_await Mapper<m::TaxComponent>(txn).findByPrimaryKey(id));
+    } catch (const UnexpectedRows &) {
         throw ApiError(drogon::k404NotFound, "Tax component not found",
                        "error.msg.organization.taxcomponent.not.found");
-    const auto &r = rows[0];
-    Json::Value j;
-    j["id"] = r["id"].as<std::string>();
-    j["name"] = r["name"].as<std::string>();
-    j["percentage"] = r["percentage"].as<double>();
-    j["startDate"] = r["start_date"].as<std::string>();
-    j["debitAccountId"] = r["debit_account_id"].isNull() ? "" : r["debit_account_id"].as<std::string>();
-    j["creditAccountId"] =
-        r["credit_account_id"].isNull() ? "" : r["credit_account_id"].as<std::string>();
-    co_return j;
+    }
 }
 
 drogon::Task<Json::Value> OrganizationService::listTaxComponents(const turbo::RequestContext &ctx) {
     requirePermission(ctx, "READ_TAXCOMPONENT");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows = co_await txn->execSqlCoro(
-        "SELECT id::text AS id, name, percentage, start_date::text AS start_date "
-        "FROM tax_component ORDER BY name");
+    auto rows = co_await Mapper<m::TaxComponent>(txn).orderBy(m::TaxComponent::Cols::_name).findAll();
     Json::Value list(Json::arrayValue);
-    for (const auto &r : rows) {
-        Json::Value j;
-        j["id"] = r["id"].as<std::string>();
-        j["name"] = r["name"].as<std::string>();
-        j["percentage"] = r["percentage"].as<double>();
-        j["startDate"] = r["start_date"].as<std::string>();
-        list.append(j);
-    }
+    for (const auto &r : rows) list.append(taxComponentJson(r));
     co_return list;
 }
 
@@ -1208,14 +1262,19 @@ drogon::Task<Json::Value> OrganizationService::createTaxComponent(const turbo::R
                        "'name', 'startDate' and a non-negative 'percentage' are required",
                        "error.msg.organization.taxcomponent.validation");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
+    m::TaxComponent row;
+    row.setName(name);
+    row.setPercentage(std::to_string(percentage));
+    row.setStartDate(dateOr(startDate, Date::now()));
+    if (!asStringOr(body, "debitAccountId").empty())
+        row.setDebitAccountId(asStringOr(body, "debitAccountId"));
+    if (!asStringOr(body, "creditAccountId").empty())
+        row.setCreditAccountId(asStringOr(body, "creditAccountId"));
+    row.setCreatedAt(Date::now());
+    row.setModifiedAt(Date::now());
     try {
-        auto rows = co_await txn->execSqlCoro(
-            "INSERT INTO tax_component (name, percentage, start_date, debit_account_id, "
-            "  credit_account_id) VALUES ($1, $2, $3::date, NULLIF($4, ''), NULLIF($5, '')) "
-            "RETURNING id::text AS id",
-            name, percentage, startDate, asStringOr(body, "debitAccountId"),
-            asStringOr(body, "creditAccountId"));
-        const std::string id = rows[0]["id"].as<std::string>();
+        auto inserted = co_await Mapper<m::TaxComponent>(txn).insert(row);
+        const std::string id = inserted.getValueOfId();
         co_await turbo::outbox::writeEvent(txn, ctx, "taxcomponent", id, "taxcomponent.created",
                                            body);
         co_return co_await taxComponentToJson(txn, id);
@@ -1230,48 +1289,53 @@ drogon::Task<Json::Value> OrganizationService::updateTaxComponent(const turbo::R
                                                                   const Json::Value &body) {
     requirePermission(ctx, "UPDATE_TAXCOMPONENT");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto current =
-        co_await txn->execSqlCoro("SELECT percentage FROM tax_component WHERE id::text = $1", id);
-    if (current.size() == 0)
+    Mapper<m::TaxComponent> mapper(txn);
+    m::TaxComponent row;
+    try {
+        row = co_await mapper.findByPrimaryKey(id);
+    } catch (const UnexpectedRows &) {
         throw ApiError(drogon::k404NotFound, "Tax component not found",
                        "error.msg.organization.taxcomponent.not.found");
-    const double percentage = body.isMember("percentage")
-                                   ? asDoubleOr(body, "percentage", 0)
-                                   : current[0]["percentage"].as<double>();
-    auto rows = co_await txn->execSqlCoro(
-        "UPDATE tax_component SET name = COALESCE(NULLIF($2, ''), name), "
-        "  percentage = $3, modified_at = now() "
-        "WHERE id::text = $1 RETURNING id::text AS id",
-        id, asStringOr(body, "name"), percentage);
-    if (rows.size() == 0)
-        throw ApiError(drogon::k404NotFound, "Tax component not found",
-                       "error.msg.organization.taxcomponent.not.found");
+    }
+    if (!asStringOr(body, "name").empty()) row.setName(asStringOr(body, "name"));
+    if (body.isMember("percentage")) row.setPercentage(std::to_string(asDoubleOr(body, "percentage", 0)));
+    row.setModifiedAt(Date::now());
+    co_await mapper.update(row);
     co_await turbo::outbox::writeEvent(txn, ctx, "taxcomponent", id, "taxcomponent.updated", body);
     co_return co_await taxComponentToJson(txn, id);
 }
 
+// tax_group -> tax_group_mapping -> tax_component has no ORM join
+// equivalent (CoroMapper doesn't do joins), so each mapping's component
+// name/percentage is resolved with an extra findByPrimaryKey lookup, same
+// trade-off already accepted elsewhere in this file.
 drogon::Task<Json::Value> OrganizationService::taxGroupToJson(Txn txn, const std::string &id) {
-    auto rows = co_await txn->execSqlCoro(
-        "SELECT id::text AS id, name FROM tax_group WHERE id::text = $1", id);
-    if (rows.size() == 0)
+    m::TaxGroup group;
+    try {
+        group = co_await Mapper<m::TaxGroup>(txn).findByPrimaryKey(id);
+    } catch (const UnexpectedRows &) {
         throw ApiError(drogon::k404NotFound, "Tax group not found",
                        "error.msg.organization.taxgroup.not.found");
+    }
     Json::Value j;
-    j["id"] = rows[0]["id"].as<std::string>();
-    j["name"] = rows[0]["name"].as<std::string>();
-    auto components = co_await txn->execSqlCoro(
-        "SELECT tc.id::text AS id, tc.name, tc.percentage, tgm.start_date::text AS start_date "
-        "FROM tax_group_mapping tgm JOIN tax_component tc ON tc.id = tgm.tax_component_id "
-        "WHERE tgm.tax_group_id::text = $1 ORDER BY tgm.start_date",
-        id);
+    j["id"] = group.getValueOfId();
+    j["name"] = group.getValueOfName();
+    auto mappings = co_await Mapper<m::TaxGroupMapping>(txn)
+                        .orderBy(m::TaxGroupMapping::Cols::_start_date)
+                        .findBy(Criteria(m::TaxGroupMapping::Cols::_tax_group_id, id));
     Json::Value comps(Json::arrayValue);
-    for (const auto &c : components) {
-        Json::Value cj;
-        cj["id"] = c["id"].as<std::string>();
-        cj["name"] = c["name"].as<std::string>();
-        cj["percentage"] = c["percentage"].as<double>();
-        cj["startDate"] = c["start_date"].as<std::string>();
-        comps.append(cj);
+    for (const auto &mapping : mappings) {
+        try {
+            auto component =
+                co_await Mapper<m::TaxComponent>(txn).findByPrimaryKey(mapping.getValueOfTaxComponentId());
+            Json::Value cj;
+            cj["id"] = component.getValueOfId();
+            cj["name"] = component.getValueOfName();
+            cj["percentage"] = std::stod(component.getValueOfPercentage());
+            cj["startDate"] = dateStr(mapping.getValueOfStartDate());
+            comps.append(cj);
+        } catch (const UnexpectedRows &) {
+        }
     }
     j["taxComponents"] = comps;
     co_return j;
@@ -1280,12 +1344,12 @@ drogon::Task<Json::Value> OrganizationService::taxGroupToJson(Txn txn, const std
 drogon::Task<Json::Value> OrganizationService::listTaxGroups(const turbo::RequestContext &ctx) {
     requirePermission(ctx, "READ_TAXGROUP");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows = co_await txn->execSqlCoro("SELECT id::text AS id, name FROM tax_group ORDER BY name");
+    auto rows = co_await Mapper<m::TaxGroup>(txn).orderBy(m::TaxGroup::Cols::_name).findAll();
     Json::Value list(Json::arrayValue);
     for (const auto &r : rows) {
         Json::Value j;
-        j["id"] = r["id"].as<std::string>();
-        j["name"] = r["name"].as<std::string>();
+        j["id"] = r.getValueOfId();
+        j["name"] = r.getValueOfName();
         list.append(j);
     }
     co_return list;
@@ -1307,18 +1371,22 @@ drogon::Task<Json::Value> OrganizationService::createTaxGroup(const turbo::Reque
                        "error.msg.organization.taxgroup.validation");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
     try {
-        auto rows = co_await txn->execSqlCoro(
-            "INSERT INTO tax_group (name) VALUES ($1) RETURNING id::text AS id", name);
-        const std::string id = rows[0]["id"].as<std::string>();
+        m::TaxGroup group;
+        group.setName(name);
+        group.setCreatedAt(Date::now());
+        group.setModifiedAt(Date::now());
+        auto inserted = co_await Mapper<m::TaxGroup>(txn).insert(group);
+        const std::string id = inserted.getValueOfId();
         if (body.isMember("taxComponents") && body["taxComponents"].isArray()) {
             for (const auto &tc : body["taxComponents"]) {
                 const std::string componentId = asStringOr(tc, "taxComponentId");
                 const std::string startDate = asStringOr(tc, "startDate");
                 if (componentId.empty() || startDate.empty()) continue;
-                co_await txn->execSqlCoro(
-                    "INSERT INTO tax_group_mapping (tax_group_id, tax_component_id, start_date) "
-                    "VALUES ($1::uuid, $2::uuid, $3::date)",
-                    id, componentId, startDate);
+                m::TaxGroupMapping mapping;
+                mapping.setTaxGroupId(id);
+                mapping.setTaxComponentId(componentId);
+                mapping.setStartDate(dateOr(startDate, Date::now()));
+                co_await Mapper<m::TaxGroupMapping>(txn).insert(mapping);
             }
         }
         co_await turbo::outbox::writeEvent(txn, ctx, "taxgroup", id, "taxgroup.created", body);
@@ -1334,23 +1402,29 @@ drogon::Task<Json::Value> OrganizationService::updateTaxGroup(const turbo::Reque
                                                               const Json::Value &body) {
     requirePermission(ctx, "UPDATE_TAXGROUP");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows = co_await txn->execSqlCoro(
-        "UPDATE tax_group SET name = COALESCE(NULLIF($2, ''), name) "
-        "WHERE id::text = $1 RETURNING id::text AS id",
-        id, asStringOr(body, "name"));
-    if (rows.size() == 0)
+    Mapper<m::TaxGroup> mapper(txn);
+    m::TaxGroup group;
+    try {
+        group = co_await mapper.findByPrimaryKey(id);
+    } catch (const UnexpectedRows &) {
         throw ApiError(drogon::k404NotFound, "Tax group not found",
                        "error.msg.organization.taxgroup.not.found");
+    }
+    if (!asStringOr(body, "name").empty()) group.setName(asStringOr(body, "name"));
+    group.setModifiedAt(Date::now());
+    co_await mapper.update(group);
     if (body.isMember("taxComponents") && body["taxComponents"].isArray()) {
-        co_await txn->execSqlCoro("DELETE FROM tax_group_mapping WHERE tax_group_id::text = $1", id);
+        co_await Mapper<m::TaxGroupMapping>(txn).deleteBy(
+            Criteria(m::TaxGroupMapping::Cols::_tax_group_id, id));
         for (const auto &tc : body["taxComponents"]) {
             const std::string componentId = asStringOr(tc, "taxComponentId");
             const std::string startDate = asStringOr(tc, "startDate");
             if (componentId.empty() || startDate.empty()) continue;
-            co_await txn->execSqlCoro(
-                "INSERT INTO tax_group_mapping (tax_group_id, tax_component_id, start_date) "
-                "VALUES ($1::uuid, $2::uuid, $3::date)",
-                id, componentId, startDate);
+            m::TaxGroupMapping mapping;
+            mapping.setTaxGroupId(id);
+            mapping.setTaxComponentId(componentId);
+            mapping.setStartDate(dateOr(startDate, Date::now()));
+            co_await Mapper<m::TaxGroupMapping>(txn).insert(mapping);
         }
     }
     co_await turbo::outbox::writeEvent(txn, ctx, "taxgroup", id, "taxgroup.updated", body);
