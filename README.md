@@ -1,6 +1,6 @@
 # Turbo Ledger
 
-Multi-tenant core banking platform — C++20 / [Drogon](https://github.com/drogonframework/drogon) microservices, PostgreSQL (schema-per-tenant), Redis. Functionally inspired by [Apache Fineract](https://demo.mifos.io/api-docs/apiLive.htm), extended with modern banking capabilities (instant payments, open banking, cards, webhooks, KYC/AML).
+Multi-tenant core banking platform — C++23 / [Drogon](https://github.com/drogonframework/drogon) microservices, PostgreSQL (schema-per-tenant), Redis. Functionally inspired by [Apache Fineract](https://demo.mifos.io/api-docs/apiLive.htm), extended with modern banking capabilities (instant payments, open banking, cards, webhooks, KYC/AML).
 
 📋 **Plan:** [`src/docs/IMPLEMENTATION_PLAN.md`](src/docs/IMPLEMENTATION_PLAN.md) · **Endpoint inventory:** [`src/docs/ENDPOINT_INVENTORY.md`](src/docs/ENDPOINT_INVENTORY.md) (871 endpoints mapped to owning services)
 

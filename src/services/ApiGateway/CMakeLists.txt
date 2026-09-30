@@ -1,11 +1,13 @@
 cmake_minimum_required(VERSION 3.16)
 project(ApiGateway CXX)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+# GCC < 13 needs -fcoroutines even in C++20/23 mode; GCC >= 13 and Clang enable
+# coroutines automatically (and Clang rejects the flag).
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 13)
     add_compile_options(-fcoroutines)
 endif()
 

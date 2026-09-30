@@ -8,7 +8,7 @@
 
 | Area | Status |
 |---|---|
-| **Stack** | C++20 + Drogon (coroutines), CMake, PostgreSQL (DB-per-service scripts in `src/scripts/`), Redis, bcrypt, JWT |
+| **Stack** | C++23 + Drogon (coroutines), CMake, PostgreSQL (DB-per-service scripts in `src/scripts/`), Redis, bcrypt, JWT |
 | **Services scaffolded** | 16: Identity, Provisioner, Accounting, Customer, DepositAccountManagement, Portfolio, Organization, Group, Teller, SystemConfig, HeartBeat, Notification, Reporting, Staff, Template, ApiGateway (ports 7500–7507 partially mapped in `port-mapping.txt`) |
 | **Identity** | ~80% of foundation done: `UserService`, `RoleService`, `ApiKeyService`, `BusinessAccountService`, `AuditLogService`, `RedisCacheManager`, `JwtAuthFilter`, bcrypt password hashing. OTP, change-password, self endpoints are 501 stubs. `TenantsController` routes declared but unimplemented. |
 | **Accounting** | Service classes exist (`accounts`, `journal`, `accounting_rules`, `gl_closure`, `financial_activity_accounts`, `identity` client, `redis`); controller bodies are **empty** (undefined behavior if called — they don't `co_return`). |

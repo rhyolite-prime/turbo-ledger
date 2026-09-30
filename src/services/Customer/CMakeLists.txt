@@ -3,13 +3,15 @@ project(Customer CXX)
 
 include(CheckIncludeFileCXX)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_compile_options("-include" "${CMAKE_CURRENT_SOURCE_DIR}/utils/codecvt_helper.h" "-Wno-deprecated-declarations")
 
-if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+# GCC < 13 needs -fcoroutines even in C++20/23 mode; GCC >= 13 and Clang enable
+# coroutines automatically (and Clang rejects the flag).
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 13)
     add_compile_options(-fcoroutines)
 endif()
 
@@ -73,7 +75,7 @@ if (CMAKE_CXX_STANDARD LESS 17)
 elseif (CMAKE_CXX_STANDARD LESS 20)
     message(STATUS "use c++17")
 else ()
-    message(STATUS "use c++20")
+    message(STATUS "use c++${CMAKE_CXX_STANDARD}")
 endif ()
 
 aux_source_directory(controllers CTL_SRC)
