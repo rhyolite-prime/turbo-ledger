@@ -30,7 +30,7 @@ const std::string LoginHistory::tableName = "\"login_history\"";
 const std::vector<typename LoginHistory::MetaData> LoginHistory::metaData_={
 {"id","std::string","uuid",0,0,1,1},
 {"business_id","std::string","uuid",0,0,0,0},
-{"user_id","std::string","uuid",0,0,0,1},
+{"user_id","std::string","uuid",0,0,0,0},
 {"login_time","::trantor::Date","timestamp with time zone",0,0,0,0},
 {"ip_address","std::string","inet",0,0,0,0},
 {"user_agent","std::string","character varying",512,0,0,0},
@@ -678,6 +678,11 @@ void LoginHistory::setUserId(const std::string &pUserId) noexcept
 void LoginHistory::setUserId(std::string &&pUserId) noexcept
 {
     userId_ = std::make_shared<std::string>(std::move(pUserId));
+    dirtyFlag_[2] = true;
+}
+void LoginHistory::setUserIdToNull() noexcept
+{
+    userId_.reset();
     dirtyFlag_[2] = true;
 }
 
@@ -1464,11 +1469,6 @@ bool LoginHistory::validateJsonForCreation(const Json::Value &pJson, std::string
         if(!validJsonOfField(2, "user_id", pJson["user_id"], err, true))
             return false;
     }
-    else
-    {
-        err="The user_id column cannot be null";
-        return false;
-    }
     if(pJson.isMember("login_time"))
     {
         if(!validJsonOfField(3, "login_time", pJson["login_time"], err, true))
@@ -1544,11 +1544,6 @@ bool LoginHistory::validateMasqueradedJsonForCreation(const Json::Value &pJson,
               if(!validJsonOfField(2, pMasqueradingVector[2], pJson[pMasqueradingVector[2]], err, true))
                   return false;
           }
-        else
-        {
-            err="The " + pMasqueradingVector[2] + " column cannot be null";
-            return false;
-        }
       }
       if(!pMasqueradingVector[3].empty())
       {
@@ -1785,8 +1780,7 @@ bool LoginHistory::validJsonOfField(size_t index,
         case 2:
             if(pJson.isNull())
             {
-                err="The " + fieldName + " column cannot be null";
-                return false;
+                return true;
             }
             if(!pJson.isString())
             {

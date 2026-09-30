@@ -44,7 +44,8 @@
             "tenants": [
                 { "id": "default", "name": "Default Tenant", "status": "ACTIVE" },
                 { "id": "demo_bank", "name": "Demo Bank", "status": "ACTIVE" },
-                { "id": "closed_bank", "name": "Closed Bank", "status": "SUSPENDED" }
+                { "id": "closed_bank", "name": "Closed Bank", "status": "SUSPENDED" },
+                { "id": "rhyolite_prime", "name": "RhyolitePrime", "status": "ACTIVE" }
             ]
         }
     }
