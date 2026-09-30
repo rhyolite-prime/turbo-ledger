@@ -1,13 +1,43 @@
 #include "SystemConfigService.h"
 
+#include <drogon/orm/CoroMapper.h>
+#include <drogon/orm/Criteria.h>
 #include <drogon/orm/DbClient.h>
+#include <drogon/orm/Exception.h>
 
 #include <sstream>
 
 #include "turbo/Outbox.h"
 #include "turbo/TenantDb.h"
 
+#include "models/BusinessDate.h"
+#include "models/CacheConfig.h"
+#include "models/Code.h"
+#include "models/CodeValue.h"
+#include "models/Configuration.h"
+#include "models/ExternalEventConfiguration.h"
+#include "models/ExternalService.h"
+#include "models/FieldConfiguration.h"
+#include "models/Hook.h"
+#include "models/TlCalendar.h"
+#include "models/TlDatatableRegistry.h"
+#include "models/TlDocument.h"
+#include "models/TlEntityDatatableCheck.h"
+#include "models/TlImage.h"
+#include "models/TlImportDocument.h"
+#include "models/TlMeeting.h"
+#include "models/TlNote.h"
+#include "models/TlOutbox.h"
+
+using drogon::orm::CompareOperator;
+using drogon::orm::Criteria;
 using drogon::orm::DrogonDbException;
+using drogon::orm::UnexpectedRows;
+using trantor::Date;
+
+namespace m = drogon_model::TlSystemConfigDb;
+template <typename T>
+using Mapper = drogon::orm::CoroMapper<T>;
 
 namespace turbo_ledger_systemconfig {
 
@@ -42,6 +72,20 @@ std::string jsonCompact(const Json::Value &v) {
     return Json::writeString(builder, v);
 }
 
+/// Parse a "YYYY-MM-DD" (or full timestamp) string into a trantor::Date, or
+/// return `fallback` if the string is empty / unparsable.
+Date dateOr(const std::string &text, const Date &fallback) {
+    if (text.empty()) return fallback;
+    try {
+        return Date::fromDbStringLocal(text);
+    } catch (...) {
+        return fallback;
+    }
+}
+
+/// Render a trantor::Date as a plain "YYYY-MM-DD" / "YYYY-MM-DD HH:MM:SS" string.
+std::string dateStr(const Date &d) { return d.toDbStringLocal(); }
+
 /// Postgres cast suffix for a datatable column's declared logical type.
 std::string columnCastSuffix(const std::string &type) {
     if (type == "Number" || type == "Decimal") return "::numeric";
@@ -67,6 +111,158 @@ std::string physicalTableIdent(const std::string &datatableName) {
     return turbo::db::quoteIdentifier("dt_" + datatableName);
 }
 
+// ---------------------------------------------------------------------------
+// <Model> -> API-shaped Json::Value mapping helpers.
+//
+// These are plain, synchronous functions (no DB access): drogon_ctl's own
+// Model::toJson() emits raw snake_case column names, which isn't the
+// camelCase shape this API has always returned, so we keep small explicit
+// mappers here instead of using it directly.
+// ---------------------------------------------------------------------------
+
+Json::Value codeJson(const m::Code &r) {
+    Json::Value j;
+    j["id"] = r.getValueOfId();
+    j["name"] = r.getValueOfCodeName();
+    j["systemDefined"] = r.getValueOfIsSystemDefined();
+    return j;
+}
+
+Json::Value codeValueJson(const m::CodeValue &r) {
+    Json::Value j;
+    j["id"] = r.getValueOfId();
+    j["codeId"] = r.getValueOfCodeId();
+    j["name"] = r.getValueOfCodeValue();
+    j["description"] = r.getValueOfCodeDescription();
+    j["position"] = r.getValueOfOrderPosition();
+    j["isActive"] = r.getValueOfIsActive();
+    j["isMandatory"] = r.getValueOfIsMandatory();
+    return j;
+}
+
+Json::Value configurationJson(const m::Configuration &r) {
+    Json::Value j;
+    j["id"] = r.getValueOfId();
+    j["name"] = r.getValueOfName();
+    j["value"] = r.getValueOfValue();
+    j["dateValue"] = r.getDateValue() ? dateStr(r.getValueOfDateValue()) : "";
+    j["enabled"] = r.getValueOfIsEnabled();
+    j["description"] = r.getValueOfDescription();
+    return j;
+}
+
+Json::Value hookJson(const m::Hook &r) {
+    Json::Value j;
+    j["id"] = r.getValueOfId();
+    j["name"] = r.getValueOfName();
+    j["displayName"] = r.getValueOfDisplayName();
+    j["isActive"] = r.getValueOfIsActive();
+    j["config"] = parseJsonOrEmpty(r.getValueOfConfig(), Json::objectValue);
+    j["events"] = parseJsonOrEmpty(r.getValueOfEvents(), Json::arrayValue);
+    return j;
+}
+
+Json::Value datatableJson(const m::TlDatatableRegistry &r) {
+    Json::Value j;
+    j["registeredTableName"] = r.getValueOfDatatableName();
+    j["applicationTableName"] = r.getValueOfApptableName();
+    j["category"] = r.getValueOfCategory();
+    j["multiRow"] = r.getValueOfIsMultiRow();
+    j["columnHeaderData"] = parseJsonOrEmpty(r.getValueOfColumns(), Json::arrayValue);
+    return j;
+}
+
+Json::Value entityDatatableCheckJson(const m::TlEntityDatatableCheck &r) {
+    Json::Value j;
+    j["id"] = r.getValueOfId();
+    j["entity"] = r.getValueOfEntity();
+    j["status"] = r.getValueOfStatusCode();
+    j["datatableName"] = r.getValueOfDatatableName();
+    j["productId"] = r.getProductId() ? r.getValueOfProductId() : "";
+    return j;
+}
+
+Json::Value importJson(const m::TlImportDocument &r) {
+    Json::Value j;
+    j["id"] = r.getValueOfId();
+    j["entityType"] = r.getValueOfEntityType();
+    j["fileName"] = r.getValueOfFileName();
+    j["importTime"] = dateStr(r.getValueOfImportTime());
+    j["endTime"] = r.getEndTime() ? dateStr(r.getValueOfEndTime()) : "";
+    j["totalRecords"] = r.getValueOfTotalRecords();
+    j["successCount"] = r.getValueOfSuccessfulCount();
+    j["failureCount"] = r.getValueOfFailedCount();
+    j["status"] = r.getValueOfStatus();
+    return j;
+}
+
+Json::Value documentJson(const m::TlDocument &r, bool includeContent) {
+    Json::Value j;
+    j["id"] = r.getValueOfId();
+    j["parentEntityType"] = r.getValueOfEntityType();
+    j["parentEntityId"] = r.getValueOfEntityId();
+    j["name"] = r.getValueOfName();
+    j["fileName"] = r.getValueOfFileName();
+    j["type"] = r.getContentType() ? r.getValueOfContentType() : "";
+    j["description"] = r.getDescription() ? r.getValueOfDescription() : "";
+    j["size"] = static_cast<Json::Int64>(r.getValueOfSizeBytes());
+    if (includeContent) {
+        const auto &bytes = r.getValueOfContent();
+        j["content"] = drogon::utils::base64Encode(
+            reinterpret_cast<const unsigned char *>(bytes.data()), bytes.size());
+    }
+    return j;
+}
+
+Json::Value noteJson(const m::TlNote &r) {
+    Json::Value j;
+    j["id"] = r.getValueOfId();
+    j["resourceType"] = r.getValueOfResourceType();
+    j["resourceId"] = r.getValueOfResourceId();
+    j["note"] = r.getValueOfNote();
+    j["createdByUsername"] = r.getCreatedBy() ? r.getValueOfCreatedBy() : "";
+    return j;
+}
+
+Json::Value calendarJson(const m::TlCalendar &r) {
+    Json::Value j;
+    j["id"] = r.getValueOfId();
+    j["entityType"] = r.getValueOfEntityType();
+    j["entityId"] = r.getValueOfEntityId();
+    j["title"] = r.getValueOfTitle();
+    j["description"] = r.getDescription() ? r.getValueOfDescription() : "";
+    j["location"] = r.getLocation() ? r.getValueOfLocation() : "";
+    j["startDate"] = dateStr(r.getValueOfStartDate());
+    j["endDate"] = r.getEndDate() ? dateStr(r.getValueOfEndDate()) : "";
+    j["calendarType"] = r.getValueOfCalendarType();
+    j["recurrence"] = r.getRecurrence() ? r.getValueOfRecurrence() : "";
+    j["remindByDays"] = r.getRemindByDays() ? r.getValueOfRemindByDays() : 0;
+    return j;
+}
+
+Json::Value meetingJson(const m::TlMeeting &r) {
+    Json::Value j;
+    j["id"] = r.getValueOfId();
+    j["entityType"] = r.getValueOfEntityType();
+    j["entityId"] = r.getValueOfEntityId();
+    j["calendarId"] = r.getCalendarId() ? r.getValueOfCalendarId() : "";
+    j["meetingDate"] = dateStr(r.getValueOfMeetingDate());
+    j["notes"] = r.getNotes() ? r.getValueOfNotes() : "";
+    j["status"] = r.getValueOfStatus();
+    return j;
+}
+
+Json::Value auditJson(const m::TlOutbox &r) {
+    Json::Value j;
+    j["id"] = r.getValueOfId();
+    j["resourceType"] = r.getValueOfAggregateType();
+    j["resourceId"] = r.getValueOfAggregateId();
+    j["actionName"] = r.getValueOfEventType();
+    j["maker"] = r.getActorUserId() ? r.getValueOfActorUserId() : "";
+    j["madeOnDate"] = dateStr(r.getValueOfOccurredAt());
+    return j;
+}
+
 }  // namespace
 
 drogon::orm::DbClientPtr SystemConfigService::db() { return drogon::app().getDbClient(); }
@@ -82,31 +278,12 @@ void SystemConfigService::requirePermission(const turbo::RequestContext &ctx,
 // codes / code values
 // ---------------------------------------------------------------------------
 
-drogon::Task<Json::Value> SystemConfigService::codeToJson(Txn txn, const std::string &id) {
-    auto rows = co_await txn->execSqlCoro(
-        "SELECT id::text AS id, code_name, is_system_defined FROM code WHERE id::text = $1", id);
-    if (rows.size() == 0)
-        throw ApiError(drogon::k404NotFound, "Code not found", "error.msg.systemconfig.code.not.found");
-    Json::Value j;
-    j["id"] = rows[0]["id"].as<std::string>();
-    j["name"] = rows[0]["code_name"].isNull() ? "" : rows[0]["code_name"].as<std::string>();
-    j["systemDefined"] = rows[0]["is_system_defined"].as<bool>();
-    co_return j;
-}
-
 drogon::Task<Json::Value> SystemConfigService::listCodes(const turbo::RequestContext &ctx) {
     requirePermission(ctx, "READ_CODE");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows = co_await txn->execSqlCoro(
-        "SELECT id::text AS id, code_name, is_system_defined FROM code ORDER BY code_name");
+    auto rows = co_await Mapper<m::Code>(txn).orderBy(m::Code::Cols::_code_name).findAll();
     Json::Value list(Json::arrayValue);
-    for (const auto &r : rows) {
-        Json::Value j;
-        j["id"] = r["id"].as<std::string>();
-        j["name"] = r["code_name"].isNull() ? "" : r["code_name"].as<std::string>();
-        j["systemDefined"] = r["is_system_defined"].as<bool>();
-        list.append(j);
-    }
+    for (const auto &r : rows) list.append(codeJson(r));
     co_return list;
 }
 
@@ -114,17 +291,23 @@ drogon::Task<Json::Value> SystemConfigService::getCode(const turbo::RequestConte
                                                        const std::string &id) {
     requirePermission(ctx, "READ_CODE");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    co_return co_await codeToJson(txn, id);
+    try {
+        co_return codeJson(co_await Mapper<m::Code>(txn).findByPrimaryKey(id));
+    } catch (const UnexpectedRows &) {
+        throw ApiError(drogon::k404NotFound, "Code not found", "error.msg.systemconfig.code.not.found");
+    }
 }
 
 drogon::Task<Json::Value> SystemConfigService::getCodeByName(const turbo::RequestContext &ctx,
                                                              const std::string &name) {
     requirePermission(ctx, "READ_CODE");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows = co_await txn->execSqlCoro("SELECT id::text AS id FROM code WHERE code_name = $1", name);
-    if (rows.size() == 0)
+    try {
+        auto row = co_await Mapper<m::Code>(txn).findOne(Criteria(m::Code::Cols::_code_name, name));
+        co_return codeJson(row);
+    } catch (const UnexpectedRows &) {
         throw ApiError(drogon::k404NotFound, "Code not found", "error.msg.systemconfig.code.not.found");
-    co_return co_await codeToJson(txn, rows[0]["id"].as<std::string>());
+    }
 }
 
 drogon::Task<Json::Value> SystemConfigService::createCode(const turbo::RequestContext &ctx,
@@ -135,14 +318,14 @@ drogon::Task<Json::Value> SystemConfigService::createCode(const turbo::RequestCo
         throw ApiError(drogon::k400BadRequest, "'name' is required",
                        "error.msg.systemconfig.code.validation");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
+    m::Code row;
+    row.setCodeName(name);
+    row.setIsSystemDefined(false);
     try {
-        auto rows = co_await txn->execSqlCoro(
-            "INSERT INTO code (code_name, is_system_defined) VALUES ($1, false) "
-            "RETURNING id::text AS id",
-            name);
-        const std::string id = rows[0]["id"].as<std::string>();
-        co_await turbo::outbox::writeEvent(txn, ctx, "code", id, "code.created", body);
-        co_return co_await codeToJson(txn, id);
+        auto inserted = co_await Mapper<m::Code>(txn).insert(row);
+        co_await turbo::outbox::writeEvent(txn, ctx, "code", inserted.getValueOfId(), "code.created",
+                                           body);
+        co_return codeJson(inserted);
     } catch (const DrogonDbException &) {
         throw ApiError(drogon::k409Conflict, "A code with this name already exists",
                        "error.msg.systemconfig.code.duplicate");
@@ -154,74 +337,53 @@ drogon::Task<Json::Value> SystemConfigService::updateCode(const turbo::RequestCo
                                                           const Json::Value &body) {
     requirePermission(ctx, "UPDATE_CODE");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows = co_await txn->execSqlCoro(
-        "UPDATE code SET code_name = COALESCE(NULLIF($2, ''), code_name) "
-        "WHERE id::text = $1 AND NOT is_system_defined RETURNING id::text AS id",
-        id, asStringOr(body, "name"));
-    if (rows.size() == 0)
+    Mapper<m::Code> mapper(txn);
+    m::Code row;
+    try {
+        row = co_await mapper.findByPrimaryKey(id);
+    } catch (const UnexpectedRows &) {
         throw ApiError(drogon::k404NotFound, "Code not found or is system-defined",
                        "error.msg.systemconfig.code.not.found");
+    }
+    if (row.getValueOfIsSystemDefined())
+        throw ApiError(drogon::k404NotFound, "Code not found or is system-defined",
+                       "error.msg.systemconfig.code.not.found");
+    if (!asStringOr(body, "name").empty()) row.setCodeName(asStringOr(body, "name"));
+    co_await mapper.update(row);
     co_await turbo::outbox::writeEvent(txn, ctx, "code", id, "code.updated", body);
-    co_return co_await codeToJson(txn, id);
+    co_return codeJson(row);
 }
 
 drogon::Task<void> SystemConfigService::deleteCode(const turbo::RequestContext &ctx,
                                                    const std::string &id) {
     requirePermission(ctx, "DELETE_CODE");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto row = co_await txn->execSqlCoro("SELECT is_system_defined FROM code WHERE id::text = $1", id);
-    if (row.size() == 0)
+    Mapper<m::Code> mapper(txn);
+    m::Code row;
+    try {
+        row = co_await mapper.findByPrimaryKey(id);
+    } catch (const UnexpectedRows &) {
         throw ApiError(drogon::k404NotFound, "Code not found", "error.msg.systemconfig.code.not.found");
-    if (row[0]["is_system_defined"].as<bool>())
+    }
+    if (row.getValueOfIsSystemDefined())
         throw ApiError(drogon::k403Forbidden, "System-defined codes cannot be deleted",
                        "error.msg.systemconfig.code.protected");
-    co_await txn->execSqlCoro("DELETE FROM code_value WHERE code_id::text = $1", id);
-    co_await txn->execSqlCoro("DELETE FROM code WHERE id::text = $1", id);
+    co_await Mapper<m::CodeValue>(txn).deleteBy(Criteria(m::CodeValue::Cols::_code_id, id));
+    co_await mapper.deleteOne(row);
     co_await turbo::outbox::writeEvent(txn, ctx, "code", id, "code.deleted", Json::Value(Json::objectValue));
     co_return;
-}
-
-drogon::Task<Json::Value> SystemConfigService::codeValueToJson(Txn txn, const std::string &id) {
-    auto rows = co_await txn->execSqlCoro(
-        "SELECT id::text AS id, code_id::text AS code_id, code_value, code_description, "
-        "  order_position, code_score, is_active, is_mandatory FROM code_value WHERE id::text = $1",
-        id);
-    if (rows.size() == 0)
-        throw ApiError(drogon::k404NotFound, "Code value not found",
-                       "error.msg.systemconfig.codevalue.not.found");
-    const auto &r = rows[0];
-    Json::Value j;
-    j["id"] = r["id"].as<std::string>();
-    j["codeId"] = r["code_id"].as<std::string>();
-    j["name"] = r["code_value"].isNull() ? "" : r["code_value"].as<std::string>();
-    j["description"] = r["code_description"].isNull() ? "" : r["code_description"].as<std::string>();
-    j["position"] = r["order_position"].as<int>();
-    j["isActive"] = r["is_active"].as<bool>();
-    j["isMandatory"] = r["is_mandatory"].as<bool>();
-    co_return j;
 }
 
 drogon::Task<Json::Value> SystemConfigService::listCodeValues(const turbo::RequestContext &ctx,
                                                               const std::string &codeId) {
     requirePermission(ctx, "READ_CODEVALUE");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows = co_await txn->execSqlCoro(
-        "SELECT id::text AS id, code_id::text AS code_id, code_value, code_description, "
-        "  order_position, code_score, is_active, is_mandatory FROM code_value "
-        "WHERE code_id::text = $1 ORDER BY order_position, code_value",
-        codeId);
+    auto rows = co_await Mapper<m::CodeValue>(txn)
+                    .orderBy(m::CodeValue::Cols::_order_position)
+                    .orderBy(m::CodeValue::Cols::_code_value)
+                    .findBy(Criteria(m::CodeValue::Cols::_code_id, codeId));
     Json::Value list(Json::arrayValue);
-    for (const auto &r : rows) {
-        Json::Value j;
-        j["id"] = r["id"].as<std::string>();
-        j["codeId"] = r["code_id"].as<std::string>();
-        j["name"] = r["code_value"].isNull() ? "" : r["code_value"].as<std::string>();
-        j["description"] = r["code_description"].isNull() ? "" : r["code_description"].as<std::string>();
-        j["position"] = r["order_position"].as<int>();
-        j["isActive"] = r["is_active"].as<bool>();
-        j["isMandatory"] = r["is_mandatory"].as<bool>();
-        list.append(j);
-    }
+    for (const auto &r : rows) list.append(codeValueJson(r));
     co_return list;
 }
 
@@ -231,7 +393,12 @@ drogon::Task<Json::Value> SystemConfigService::getCodeValue(const turbo::Request
     requirePermission(ctx, "READ_CODEVALUE");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
     (void)codeId;
-    co_return co_await codeValueToJson(txn, valueId);
+    try {
+        co_return codeValueJson(co_await Mapper<m::CodeValue>(txn).findByPrimaryKey(valueId));
+    } catch (const UnexpectedRows &) {
+        throw ApiError(drogon::k404NotFound, "Code value not found",
+                       "error.msg.systemconfig.codevalue.not.found");
+    }
 }
 
 drogon::Task<Json::Value> SystemConfigService::createCodeValue(const turbo::RequestContext &ctx,
@@ -243,20 +410,24 @@ drogon::Task<Json::Value> SystemConfigService::createCodeValue(const turbo::Requ
         throw ApiError(drogon::k400BadRequest, "'name' is required",
                        "error.msg.systemconfig.codevalue.validation");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto code = co_await txn->execSqlCoro("SELECT 1 FROM code WHERE id::text = $1", codeId);
-    if (code.size() == 0)
+    try {
+        co_await Mapper<m::Code>(txn).findByPrimaryKey(codeId);
+    } catch (const UnexpectedRows &) {
         throw ApiError(drogon::k400BadRequest, "Unknown codeId: " + codeId,
                        "error.msg.systemconfig.code.not.found");
+    }
+    m::CodeValue row;
+    row.setCodeId(codeId);
+    row.setCodeValue(name);
+    row.setCodeDescription(asStringOr(body, "description"));
+    row.setOrderPosition(asIntOr(body, "position", 0));
+    row.setIsActive(asBoolOr(body, "isActive", true));
+    row.setIsMandatory(asBoolOr(body, "isMandatory", false));
     try {
-        auto rows = co_await txn->execSqlCoro(
-            "INSERT INTO code_value (code_id, code_value, code_description, order_position, "
-            "  is_active, is_mandatory) "
-            "VALUES ($1::uuid, $2, NULLIF($3, ''), $4, $5, $6) RETURNING id::text AS id",
-            codeId, name, asStringOr(body, "description"), asIntOr(body, "position", 0),
-            asBoolOr(body, "isActive", true), asBoolOr(body, "isMandatory", false));
-        const std::string id = rows[0]["id"].as<std::string>();
-        co_await turbo::outbox::writeEvent(txn, ctx, "codevalue", id, "codevalue.created", body);
-        co_return co_await codeValueToJson(txn, id);
+        auto inserted = co_await Mapper<m::CodeValue>(txn).insert(row);
+        co_await turbo::outbox::writeEvent(txn, ctx, "codevalue", inserted.getValueOfId(),
+                                           "codevalue.created", body);
+        co_return codeValueJson(inserted);
     } catch (const DrogonDbException &) {
         throw ApiError(drogon::k409Conflict, "This code already has a value with that name",
                        "error.msg.systemconfig.codevalue.duplicate");
@@ -270,28 +441,22 @@ drogon::Task<Json::Value> SystemConfigService::updateCodeValue(const turbo::Requ
     requirePermission(ctx, "UPDATE_CODEVALUE");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
     (void)codeId;
-    auto current = co_await txn->execSqlCoro(
-        "SELECT is_active, is_mandatory FROM code_value WHERE id::text = $1", valueId);
-    if (current.size() == 0)
+    Mapper<m::CodeValue> mapper(txn);
+    m::CodeValue row;
+    try {
+        row = co_await mapper.findByPrimaryKey(valueId);
+    } catch (const UnexpectedRows &) {
         throw ApiError(drogon::k404NotFound, "Code value not found",
                        "error.msg.systemconfig.codevalue.not.found");
-    const bool isActive =
-        body.isMember("isActive") ? asBoolOr(body, "isActive", true) : current[0]["is_active"].as<bool>();
-    const bool isMandatory = body.isMember("isMandatory") ? asBoolOr(body, "isMandatory", false)
-                                                          : current[0]["is_mandatory"].as<bool>();
-    auto rows = co_await txn->execSqlCoro(
-        "UPDATE code_value SET code_value = COALESCE(NULLIF($2, ''), code_value), "
-        "  code_description = COALESCE(NULLIF($3, ''), code_description), "
-        "  order_position = COALESCE(NULLIF($4, 0), order_position), "
-        "  is_active = $5, is_mandatory = $6 "
-        "WHERE id::text = $1 RETURNING id::text AS id",
-        valueId, asStringOr(body, "name"), asStringOr(body, "description"),
-        asIntOr(body, "position", 0), isActive, isMandatory);
-    if (rows.size() == 0)
-        throw ApiError(drogon::k404NotFound, "Code value not found",
-                       "error.msg.systemconfig.codevalue.not.found");
+    }
+    if (!asStringOr(body, "name").empty()) row.setCodeValue(asStringOr(body, "name"));
+    if (!asStringOr(body, "description").empty()) row.setCodeDescription(asStringOr(body, "description"));
+    if (asIntOr(body, "position", 0) != 0) row.setOrderPosition(asIntOr(body, "position", 0));
+    if (body.isMember("isActive")) row.setIsActive(asBoolOr(body, "isActive", true));
+    if (body.isMember("isMandatory")) row.setIsMandatory(asBoolOr(body, "isMandatory", false));
+    co_await mapper.update(row);
     co_await turbo::outbox::writeEvent(txn, ctx, "codevalue", valueId, "codevalue.updated", body);
-    co_return co_await codeValueToJson(txn, valueId);
+    co_return codeValueJson(row);
 }
 
 drogon::Task<void> SystemConfigService::deleteCodeValue(const turbo::RequestContext &ctx,
@@ -300,9 +465,8 @@ drogon::Task<void> SystemConfigService::deleteCodeValue(const turbo::RequestCont
     requirePermission(ctx, "DELETE_CODEVALUE");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
     (void)codeId;
-    auto rows =
-        co_await txn->execSqlCoro("DELETE FROM code_value WHERE id::text = $1 RETURNING id", valueId);
-    if (rows.size() == 0)
+    auto affected = co_await Mapper<m::CodeValue>(txn).deleteByPrimaryKey(valueId);
+    if (affected == 0)
         throw ApiError(drogon::k404NotFound, "Code value not found",
                        "error.msg.systemconfig.codevalue.not.found");
     co_await turbo::outbox::writeEvent(txn, ctx, "codevalue", valueId, "codevalue.deleted",
@@ -314,42 +478,12 @@ drogon::Task<void> SystemConfigService::deleteCodeValue(const turbo::RequestCont
 // global configuration
 // ---------------------------------------------------------------------------
 
-drogon::Task<Json::Value> SystemConfigService::configurationToJson(Txn txn, const std::string &id) {
-    auto rows = co_await txn->execSqlCoro(
-        "SELECT id::text AS id, name, value, date_value::text AS date_value, is_enabled, description "
-        "FROM configuration WHERE id::text = $1",
-        id);
-    if (rows.size() == 0)
-        throw ApiError(drogon::k404NotFound, "Configuration not found",
-                       "error.msg.systemconfig.configuration.not.found");
-    const auto &r = rows[0];
-    Json::Value j;
-    j["id"] = r["id"].as<std::string>();
-    j["name"] = r["name"].as<std::string>();
-    j["value"] = r["value"].isNull() ? "" : r["value"].as<std::string>();
-    j["dateValue"] = r["date_value"].isNull() ? "" : r["date_value"].as<std::string>();
-    j["enabled"] = r["is_enabled"].as<bool>();
-    j["description"] = r["description"].isNull() ? "" : r["description"].as<std::string>();
-    co_return j;
-}
-
 drogon::Task<Json::Value> SystemConfigService::listConfigurations(const turbo::RequestContext &ctx) {
     requirePermission(ctx, "READ_CONFIGURATION");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows = co_await txn->execSqlCoro(
-        "SELECT id::text AS id, name, value, date_value::text AS date_value, is_enabled, description "
-        "FROM configuration ORDER BY name");
+    auto rows = co_await Mapper<m::Configuration>(txn).orderBy(m::Configuration::Cols::_name).findAll();
     Json::Value list(Json::arrayValue);
-    for (const auto &r : rows) {
-        Json::Value j;
-        j["id"] = r["id"].as<std::string>();
-        j["name"] = r["name"].as<std::string>();
-        j["value"] = r["value"].isNull() ? "" : r["value"].as<std::string>();
-        j["dateValue"] = r["date_value"].isNull() ? "" : r["date_value"].as<std::string>();
-        j["enabled"] = r["is_enabled"].as<bool>();
-        j["description"] = r["description"].isNull() ? "" : r["description"].as<std::string>();
-        list.append(j);
-    }
+    for (const auto &r : rows) list.append(configurationJson(r));
     Json::Value out;
     out["globalConfiguration"] = list;
     co_return out;
@@ -359,19 +493,26 @@ drogon::Task<Json::Value> SystemConfigService::getConfiguration(const turbo::Req
                                                                 const std::string &id) {
     requirePermission(ctx, "READ_CONFIGURATION");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    co_return co_await configurationToJson(txn, id);
+    try {
+        co_return configurationJson(co_await Mapper<m::Configuration>(txn).findByPrimaryKey(id));
+    } catch (const UnexpectedRows &) {
+        throw ApiError(drogon::k404NotFound, "Configuration not found",
+                       "error.msg.systemconfig.configuration.not.found");
+    }
 }
 
 drogon::Task<Json::Value> SystemConfigService::getConfigurationByName(const turbo::RequestContext &ctx,
                                                                      const std::string &name) {
     requirePermission(ctx, "READ_CONFIGURATION");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows =
-        co_await txn->execSqlCoro("SELECT id::text AS id FROM configuration WHERE name = $1", name);
-    if (rows.size() == 0)
+    try {
+        auto row = co_await Mapper<m::Configuration>(txn).findOne(
+            Criteria(m::Configuration::Cols::_name, name));
+        co_return configurationJson(row);
+    } catch (const UnexpectedRows &) {
         throw ApiError(drogon::k404NotFound, "Configuration not found",
                        "error.msg.systemconfig.configuration.not.found");
-    co_return co_await configurationToJson(txn, rows[0]["id"].as<std::string>());
+    }
 }
 
 drogon::Task<Json::Value> SystemConfigService::updateConfiguration(const turbo::RequestContext &ctx,
@@ -379,34 +520,36 @@ drogon::Task<Json::Value> SystemConfigService::updateConfiguration(const turbo::
                                                                   const Json::Value &body) {
     requirePermission(ctx, "UPDATE_CONFIGURATION");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto current = co_await txn->execSqlCoro("SELECT is_enabled FROM configuration WHERE id::text = $1", id);
-    if (current.size() == 0)
+    Mapper<m::Configuration> mapper(txn);
+    m::Configuration row;
+    try {
+        row = co_await mapper.findByPrimaryKey(id);
+    } catch (const UnexpectedRows &) {
         throw ApiError(drogon::k404NotFound, "Configuration not found",
                        "error.msg.systemconfig.configuration.not.found");
-    const bool enabled =
-        body.isMember("enabled") ? asBoolOr(body, "enabled", false) : current[0]["is_enabled"].as<bool>();
-    auto rows = co_await txn->execSqlCoro(
-        "UPDATE configuration SET value = COALESCE(NULLIF($2, ''), value), "
-        "  date_value = COALESCE(NULLIF($3, '')::date, date_value), is_enabled = $4, "
-        "  modified_at = now() WHERE id::text = $1 RETURNING id::text AS id",
-        id, asStringOr(body, "value"), asStringOr(body, "dateValue"), enabled);
-    if (rows.size() == 0)
-        throw ApiError(drogon::k404NotFound, "Configuration not found",
-                       "error.msg.systemconfig.configuration.not.found");
+    }
+    if (!asStringOr(body, "value").empty()) row.setValue(asStringOr(body, "value"));
+    if (!asStringOr(body, "dateValue").empty())
+        row.setDateValue(dateOr(asStringOr(body, "dateValue"), Date()));
+    if (body.isMember("enabled")) row.setIsEnabled(asBoolOr(body, "enabled", false));
+    row.setModifiedAt(Date::now());
+    co_await mapper.update(row);
     co_await turbo::outbox::writeEvent(txn, ctx, "configuration", id, "configuration.updated", body);
-    co_return co_await configurationToJson(txn, id);
+    co_return configurationJson(row);
 }
 
 drogon::Task<Json::Value> SystemConfigService::updateConfigurationByName(
     const turbo::RequestContext &ctx, const std::string &name, const Json::Value &body) {
     requirePermission(ctx, "UPDATE_CONFIGURATION");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows =
-        co_await txn->execSqlCoro("SELECT id::text AS id FROM configuration WHERE name = $1", name);
-    if (rows.size() == 0)
+    try {
+        auto row = co_await Mapper<m::Configuration>(txn).findOne(
+            Criteria(m::Configuration::Cols::_name, name));
+        co_return co_await updateConfiguration(ctx, row.getValueOfId(), body);
+    } catch (const UnexpectedRows &) {
         throw ApiError(drogon::k404NotFound, "Configuration not found",
                        "error.msg.systemconfig.configuration.not.found");
-    co_return co_await updateConfiguration(ctx, rows[0]["id"].as<std::string>(), body);
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -417,14 +560,14 @@ drogon::Task<Json::Value> SystemConfigService::getExternalService(const turbo::R
                                                                   const std::string &name) {
     requirePermission(ctx, "READ_EXTERNALSERVICE");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows = co_await txn->execSqlCoro(
-        "SELECT service_name, config::text AS config FROM external_service WHERE service_name = $1",
-        name);
     Json::Value out;
     out["name"] = name;
-    out["config"] = rows.size() > 0 ? parseJsonOrEmpty(rows[0]["config"].as<std::string>(),
-                                                       Json::objectValue)
-                                    : Json::Value(Json::objectValue);
+    try {
+        auto row = co_await Mapper<m::ExternalService>(txn).findByPrimaryKey(name);
+        out["config"] = parseJsonOrEmpty(row.getValueOfConfig(), Json::objectValue);
+    } catch (const UnexpectedRows &) {
+        out["config"] = Json::Value(Json::objectValue);
+    }
     co_return out;
 }
 
@@ -433,12 +576,17 @@ drogon::Task<Json::Value> SystemConfigService::updateExternalService(const turbo
                                                                     const Json::Value &body) {
     requirePermission(ctx, "UPDATE_EXTERNALSERVICE");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    const std::string configJson = jsonCompact(body);
-    co_await txn->execSqlCoro(
-        "INSERT INTO external_service (service_name, config, modified_at) "
-        "VALUES ($1, $2::jsonb, now()) "
-        "ON CONFLICT (service_name) DO UPDATE SET config = EXCLUDED.config, modified_at = now()",
-        name, configJson);
+    Mapper<m::ExternalService> mapper(txn);
+    m::ExternalService row;
+    row.setServiceName(name);
+    row.setConfig(jsonCompact(body));
+    row.setModifiedAt(Date::now());
+    try {
+        co_await mapper.findByPrimaryKey(name);
+        co_await mapper.update(row);
+    } catch (const UnexpectedRows &) {
+        co_await mapper.insert(row);
+    }
     co_await turbo::outbox::writeEvent(txn, ctx, "externalservice", name, "externalservice.updated",
                                        body);
     co_return co_await getExternalService(ctx, name);
@@ -452,20 +600,12 @@ drogon::Task<Json::Value> SystemConfigService::updateExternalService(const turbo
 drogon::Task<Json::Value> SystemConfigService::listAudits(const turbo::RequestContext &ctx) {
     requirePermission(ctx, "READ_AUDIT");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows = co_await txn->execSqlCoro(
-        "SELECT id::text AS id, aggregate_type, aggregate_id, event_type, actor_user_id, "
-        "  occurred_at::text AS occurred_at FROM tl_outbox ORDER BY occurred_at DESC LIMIT 200");
+    auto rows = co_await Mapper<m::TlOutbox>(txn)
+                    .orderBy(m::TlOutbox::Cols::_occurred_at, drogon::orm::SortOrder::DESC)
+                    .limit(200)
+                    .findAll();
     Json::Value list(Json::arrayValue);
-    for (const auto &r : rows) {
-        Json::Value j;
-        j["id"] = r["id"].as<std::string>();
-        j["resourceType"] = r["aggregate_type"].as<std::string>();
-        j["resourceId"] = r["aggregate_id"].as<std::string>();
-        j["actionName"] = r["event_type"].as<std::string>();
-        j["maker"] = r["actor_user_id"].isNull() ? "" : r["actor_user_id"].as<std::string>();
-        j["madeOnDate"] = r["occurred_at"].as<std::string>();
-        list.append(j);
-    }
+    for (const auto &r : rows) list.append(auditJson(r));
     co_return list;
 }
 
@@ -473,24 +613,16 @@ drogon::Task<Json::Value> SystemConfigService::getAudit(const turbo::RequestCont
                                                         const std::string &id) {
     requirePermission(ctx, "READ_AUDIT");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows = co_await txn->execSqlCoro(
-        "SELECT id::text AS id, aggregate_type, aggregate_id, event_type, payload::text AS payload, "
-        "  actor_user_id, request_id, occurred_at::text AS occurred_at "
-        "FROM tl_outbox WHERE id::text = $1",
-        id);
-    if (rows.size() == 0)
+    m::TlOutbox row;
+    try {
+        row = co_await Mapper<m::TlOutbox>(txn).findByPrimaryKey(id);
+    } catch (const UnexpectedRows &) {
         throw ApiError(drogon::k404NotFound, "Audit entry not found",
                        "error.msg.systemconfig.audit.not.found");
-    const auto &r = rows[0];
-    Json::Value j;
-    j["id"] = r["id"].as<std::string>();
-    j["resourceType"] = r["aggregate_type"].as<std::string>();
-    j["resourceId"] = r["aggregate_id"].as<std::string>();
-    j["actionName"] = r["event_type"].as<std::string>();
-    j["commandAsJson"] = parseJsonOrEmpty(r["payload"].as<std::string>(), Json::objectValue);
-    j["maker"] = r["actor_user_id"].isNull() ? "" : r["actor_user_id"].as<std::string>();
-    j["requestId"] = r["request_id"].isNull() ? "" : r["request_id"].as<std::string>();
-    j["madeOnDate"] = r["occurred_at"].as<std::string>();
+    }
+    Json::Value j = auditJson(row);
+    j["commandAsJson"] = parseJsonOrEmpty(row.getValueOfPayload(), Json::objectValue);
+    j["requestId"] = row.getRequestId() ? row.getValueOfRequestId() : "";
     co_return j;
 }
 
@@ -506,38 +638,12 @@ Json::Value SystemConfigService::auditSearchTemplate(const turbo::RequestContext
 // hooks
 // ---------------------------------------------------------------------------
 
-drogon::Task<Json::Value> SystemConfigService::hookToJson(Txn txn, const std::string &id) {
-    auto rows = co_await txn->execSqlCoro(
-        "SELECT id::text AS id, name, display_name, is_active, config::text AS config, "
-        "  events::text AS events FROM hook WHERE id::text = $1",
-        id);
-    if (rows.size() == 0)
-        throw ApiError(drogon::k404NotFound, "Hook not found", "error.msg.systemconfig.hook.not.found");
-    const auto &r = rows[0];
-    Json::Value j;
-    j["id"] = r["id"].as<std::string>();
-    j["name"] = r["name"].as<std::string>();
-    j["displayName"] = r["display_name"].as<std::string>();
-    j["isActive"] = r["is_active"].as<bool>();
-    j["config"] = parseJsonOrEmpty(r["config"].as<std::string>(), Json::objectValue);
-    j["events"] = parseJsonOrEmpty(r["events"].as<std::string>(), Json::arrayValue);
-    co_return j;
-}
-
 drogon::Task<Json::Value> SystemConfigService::listHooks(const turbo::RequestContext &ctx) {
     requirePermission(ctx, "READ_HOOK");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows = co_await txn->execSqlCoro(
-        "SELECT id::text AS id, name, display_name, is_active FROM hook ORDER BY display_name");
+    auto rows = co_await Mapper<m::Hook>(txn).orderBy(m::Hook::Cols::_display_name).findAll();
     Json::Value list(Json::arrayValue);
-    for (const auto &r : rows) {
-        Json::Value j;
-        j["id"] = r["id"].as<std::string>();
-        j["name"] = r["name"].as<std::string>();
-        j["displayName"] = r["display_name"].as<std::string>();
-        j["isActive"] = r["is_active"].as<bool>();
-        list.append(j);
-    }
+    for (const auto &r : rows) list.append(hookJson(r));
     co_return list;
 }
 
@@ -545,27 +651,30 @@ drogon::Task<Json::Value> SystemConfigService::getHook(const turbo::RequestConte
                                                        const std::string &id) {
     requirePermission(ctx, "READ_HOOK");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    co_return co_await hookToJson(txn, id);
+    try {
+        co_return hookJson(co_await Mapper<m::Hook>(txn).findByPrimaryKey(id));
+    } catch (const UnexpectedRows &) {
+        throw ApiError(drogon::k404NotFound, "Hook not found", "error.msg.systemconfig.hook.not.found");
+    }
 }
 
 drogon::Task<Json::Value> SystemConfigService::createHook(const turbo::RequestContext &ctx,
                                                           const Json::Value &body) {
     requirePermission(ctx, "CREATE_HOOK");
     const std::string name = asStringOr(body, "name");
-    const std::string displayName = asStringOr(body, "displayName", name);
     if (name.empty())
         throw ApiError(drogon::k400BadRequest, "'name' is required",
                        "error.msg.systemconfig.hook.validation");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows = co_await txn->execSqlCoro(
-        "INSERT INTO hook (name, display_name, is_active, config, events) "
-        "VALUES ($1, $2, $3, $4::jsonb, $5::jsonb) RETURNING id::text AS id",
-        name, displayName, asBoolOr(body, "isActive", true),
-        jsonCompact(body.isMember("config") ? body["config"] : Json::Value(Json::objectValue)),
-        jsonCompact(body.isMember("events") ? body["events"] : Json::Value(Json::arrayValue)));
-    const std::string id = rows[0]["id"].as<std::string>();
-    co_await turbo::outbox::writeEvent(txn, ctx, "hook", id, "hook.created", body);
-    co_return co_await hookToJson(txn, id);
+    m::Hook row;
+    row.setName(name);
+    row.setDisplayName(asStringOr(body, "displayName", name));
+    row.setIsActive(asBoolOr(body, "isActive", true));
+    row.setConfig(jsonCompact(body.isMember("config") ? body["config"] : Json::Value(Json::objectValue)));
+    row.setEvents(jsonCompact(body.isMember("events") ? body["events"] : Json::Value(Json::arrayValue)));
+    auto inserted = co_await Mapper<m::Hook>(txn).insert(row);
+    co_await turbo::outbox::writeEvent(txn, ctx, "hook", inserted.getValueOfId(), "hook.created", body);
+    co_return hookJson(inserted);
 }
 
 drogon::Task<Json::Value> SystemConfigService::updateHook(const turbo::RequestContext &ctx,
@@ -573,34 +682,29 @@ drogon::Task<Json::Value> SystemConfigService::updateHook(const turbo::RequestCo
                                                           const Json::Value &body) {
     requirePermission(ctx, "UPDATE_HOOK");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto current = co_await txn->execSqlCoro(
-        "SELECT is_active, config::text AS config, events::text AS events FROM hook WHERE id::text = $1",
-        id);
-    if (current.size() == 0)
+    Mapper<m::Hook> mapper(txn);
+    m::Hook row;
+    try {
+        row = co_await mapper.findByPrimaryKey(id);
+    } catch (const UnexpectedRows &) {
         throw ApiError(drogon::k404NotFound, "Hook not found", "error.msg.systemconfig.hook.not.found");
-    const bool isActive =
-        body.isMember("isActive") ? asBoolOr(body, "isActive", true) : current[0]["is_active"].as<bool>();
-    const std::string config = body.isMember("config") ? jsonCompact(body["config"])
-                                                        : current[0]["config"].as<std::string>();
-    const std::string events = body.isMember("events") ? jsonCompact(body["events"])
-                                                        : current[0]["events"].as<std::string>();
-    auto rows = co_await txn->execSqlCoro(
-        "UPDATE hook SET display_name = COALESCE(NULLIF($2, ''), display_name), is_active = $3, "
-        "  config = $4::jsonb, events = $5::jsonb, modified_at = now() "
-        "WHERE id::text = $1 RETURNING id::text AS id",
-        id, asStringOr(body, "displayName"), isActive, config, events);
-    if (rows.size() == 0)
-        throw ApiError(drogon::k404NotFound, "Hook not found", "error.msg.systemconfig.hook.not.found");
+    }
+    if (!asStringOr(body, "displayName").empty()) row.setDisplayName(asStringOr(body, "displayName"));
+    if (body.isMember("isActive")) row.setIsActive(asBoolOr(body, "isActive", true));
+    if (body.isMember("config")) row.setConfig(jsonCompact(body["config"]));
+    if (body.isMember("events")) row.setEvents(jsonCompact(body["events"]));
+    row.setModifiedAt(Date::now());
+    co_await mapper.update(row);
     co_await turbo::outbox::writeEvent(txn, ctx, "hook", id, "hook.updated", body);
-    co_return co_await hookToJson(txn, id);
+    co_return hookJson(row);
 }
 
 drogon::Task<void> SystemConfigService::deleteHook(const turbo::RequestContext &ctx,
                                                    const std::string &id) {
     requirePermission(ctx, "DELETE_HOOK");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows = co_await txn->execSqlCoro("DELETE FROM hook WHERE id::text = $1 RETURNING id", id);
-    if (rows.size() == 0)
+    auto affected = co_await Mapper<m::Hook>(txn).deleteByPrimaryKey(id);
+    if (affected == 0)
         throw ApiError(drogon::k404NotFound, "Hook not found", "error.msg.systemconfig.hook.not.found");
     co_await turbo::outbox::writeEvent(txn, ctx, "hook", id, "hook.deleted", Json::Value(Json::objectValue));
     co_return;
@@ -621,9 +725,13 @@ Json::Value SystemConfigService::hookTemplate(const turbo::RequestContext &) {
 drogon::Task<Json::Value> SystemConfigService::getCacheConfig(const turbo::RequestContext &ctx) {
     requirePermission(ctx, "READ_CACHE");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows = co_await txn->execSqlCoro("SELECT cache_type FROM cache_config WHERE id = 1");
     Json::Value out;
-    out["cacheType"] = rows.size() > 0 ? rows[0]["cache_type"].as<std::string>() : "NO_CACHE";
+    try {
+        auto row = co_await Mapper<m::CacheConfig>(txn).findByPrimaryKey(1);
+        out["cacheType"] = row.getValueOfCacheType();
+    } catch (const UnexpectedRows &) {
+        out["cacheType"] = "NO_CACHE";
+    }
     co_return out;
 }
 
@@ -635,8 +743,17 @@ drogon::Task<Json::Value> SystemConfigService::updateCacheConfig(const turbo::Re
         throw ApiError(drogon::k400BadRequest, "Unknown cacheType: " + cacheType,
                        "error.msg.systemconfig.cache.validation");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    co_await txn->execSqlCoro(
-        "UPDATE cache_config SET cache_type = $1, modified_at = now() WHERE id = 1", cacheType);
+    Mapper<m::CacheConfig> mapper(txn);
+    m::CacheConfig row;
+    row.setId(1);
+    row.setCacheType(cacheType);
+    row.setModifiedAt(Date::now());
+    try {
+        co_await mapper.findByPrimaryKey(1);
+        co_await mapper.update(row);
+    } catch (const UnexpectedRows &) {
+        co_await mapper.insert(row);
+    }
     co_await turbo::outbox::writeEvent(txn, ctx, "cache", "1", "cache.updated", body);
     co_return co_await getCacheConfig(ctx);
 }
@@ -648,13 +765,12 @@ drogon::Task<Json::Value> SystemConfigService::updateCacheConfig(const turbo::Re
 drogon::Task<Json::Value> SystemConfigService::listBusinessDates(const turbo::RequestContext &ctx) {
     requirePermission(ctx, "READ_BUSINESSDATE");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows =
-        co_await txn->execSqlCoro("SELECT type, date_value::text AS date_value FROM business_date");
+    auto rows = co_await Mapper<m::BusinessDate>(txn).findAll();
     Json::Value list(Json::arrayValue);
     for (const auto &r : rows) {
         Json::Value j;
-        j["type"] = r["type"].as<std::string>();
-        j["date"] = r["date_value"].as<std::string>();
+        j["type"] = r.getValueOfType();
+        j["date"] = dateStr(r.getValueOfDateValue());
         list.append(j);
     }
     co_return list;
@@ -664,15 +780,16 @@ drogon::Task<Json::Value> SystemConfigService::getBusinessDate(const turbo::Requ
                                                                const std::string &type) {
     requirePermission(ctx, "READ_BUSINESSDATE");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows = co_await txn->execSqlCoro(
-        "SELECT type, date_value::text AS date_value FROM business_date WHERE type = $1", type);
-    if (rows.size() == 0)
+    try {
+        auto row = co_await Mapper<m::BusinessDate>(txn).findByPrimaryKey(type);
+        Json::Value j;
+        j["type"] = row.getValueOfType();
+        j["date"] = dateStr(row.getValueOfDateValue());
+        co_return j;
+    } catch (const UnexpectedRows &) {
         throw ApiError(drogon::k404NotFound, "Business date type not found",
                        "error.msg.systemconfig.businessdate.not.found");
-    Json::Value j;
-    j["type"] = rows[0]["type"].as<std::string>();
-    j["date"] = rows[0]["date_value"].as<std::string>();
-    co_return j;
+    }
 }
 
 drogon::Task<Json::Value> SystemConfigService::updateBusinessDate(const turbo::RequestContext &ctx,
@@ -684,10 +801,17 @@ drogon::Task<Json::Value> SystemConfigService::updateBusinessDate(const turbo::R
         throw ApiError(drogon::k400BadRequest, "'date' is required",
                        "error.msg.systemconfig.businessdate.validation");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    co_await txn->execSqlCoro(
-        "INSERT INTO business_date (type, date_value, modified_at) VALUES ($1, $2::date, now()) "
-        "ON CONFLICT (type) DO UPDATE SET date_value = EXCLUDED.date_value, modified_at = now()",
-        type, date);
+    Mapper<m::BusinessDate> mapper(txn);
+    m::BusinessDate row;
+    row.setType(type);
+    row.setDateValue(dateOr(date, Date::now()));
+    row.setModifiedAt(Date::now());
+    try {
+        co_await mapper.findByPrimaryKey(type);
+        co_await mapper.update(row);
+    } catch (const UnexpectedRows &) {
+        co_await mapper.insert(row);
+    }
     co_await turbo::outbox::writeEvent(txn, ctx, "businessdate", type, "businessdate.updated", body);
     co_return co_await getBusinessDate(ctx, type);
 }
@@ -701,13 +825,14 @@ drogon::Task<Json::Value> SystemConfigService::listExternalEventConfig(
     requirePermission(ctx, "READ_EXTERNALEVENTS");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
     auto rows =
-        co_await txn->execSqlCoro("SELECT category, is_enabled FROM external_event_configuration "
-                                  "ORDER BY category");
+        co_await Mapper<m::ExternalEventConfiguration>(txn)
+            .orderBy(m::ExternalEventConfiguration::Cols::_category)
+            .findAll();
     Json::Value list(Json::arrayValue);
     for (const auto &r : rows) {
         Json::Value j;
-        j["category"] = r["category"].as<std::string>();
-        j["enabled"] = r["is_enabled"].as<bool>();
+        j["category"] = r.getValueOfCategory();
+        j["enabled"] = r.getValueOfIsEnabled();
         list.append(j);
     }
     co_return list;
@@ -719,11 +844,17 @@ drogon::Task<Json::Value> SystemConfigService::updateExternalEventConfig(
     const std::string category = asStringOr(body, "category", "ALL");
     const bool enabled = asBoolOr(body, "enabled", false);
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    co_await txn->execSqlCoro(
-        "INSERT INTO external_event_configuration (category, is_enabled, modified_at) "
-        "VALUES ($1, $2, now()) "
-        "ON CONFLICT (category) DO UPDATE SET is_enabled = EXCLUDED.is_enabled, modified_at = now()",
-        category, enabled);
+    Mapper<m::ExternalEventConfiguration> mapper(txn);
+    m::ExternalEventConfiguration row;
+    row.setCategory(category);
+    row.setIsEnabled(enabled);
+    row.setModifiedAt(Date::now());
+    try {
+        co_await mapper.findByPrimaryKey(category);
+        co_await mapper.update(row);
+    } catch (const UnexpectedRows &) {
+        co_await mapper.insert(row);
+    }
     co_await turbo::outbox::writeEvent(txn, ctx, "externalevents", category,
                                        "externalevents.updated", body);
     co_return co_await listExternalEventConfig(ctx);
@@ -737,18 +868,16 @@ drogon::Task<Json::Value> SystemConfigService::getFieldConfiguration(const turbo
                                                                     const std::string &entity) {
     requirePermission(ctx, "READ_FIELDCONFIGURATION");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows = co_await txn->execSqlCoro(
-        "SELECT field_name, is_enabled, is_mandatory, validation_regex FROM field_configuration "
-        "WHERE entity = $1 ORDER BY field_name",
-        entity);
+    auto rows = co_await Mapper<m::FieldConfiguration>(txn)
+                    .orderBy(m::FieldConfiguration::Cols::_field_name)
+                    .findBy(Criteria(m::FieldConfiguration::Cols::_entity, entity));
     Json::Value list(Json::arrayValue);
     for (const auto &r : rows) {
         Json::Value j;
-        j["fieldName"] = r["field_name"].as<std::string>();
-        j["isEnabled"] = r["is_enabled"].as<bool>();
-        j["isMandatory"] = r["is_mandatory"].as<bool>();
-        j["validationRegex"] =
-            r["validation_regex"].isNull() ? "" : r["validation_regex"].as<std::string>();
+        j["fieldName"] = r.getValueOfFieldName();
+        j["isEnabled"] = r.getValueOfIsEnabled();
+        j["isMandatory"] = r.getValueOfIsMandatory();
+        j["validationRegex"] = r.getValidationRegex() ? r.getValueOfValidationRegex() : "";
         list.append(j);
     }
     co_return list;
@@ -756,24 +885,22 @@ drogon::Task<Json::Value> SystemConfigService::getFieldConfiguration(const turbo
 
 // ---------------------------------------------------------------------------
 // datatables engine
+//
+// The registry (tl_datatable_registry) is a regular table and goes through
+// CoroMapper<TlDatatableRegistry> like everything else. The *physical*
+// per-datatable tables (dt_<name>) cannot have a generated Model — their
+// column set is only known at runtime — so DDL/DML against them still goes
+// through turbo::db-scoped raw execSqlCoro, same as before.
 // ---------------------------------------------------------------------------
 
 drogon::Task<Json::Value> SystemConfigService::listDatatables(const turbo::RequestContext &ctx) {
     requirePermission(ctx, "READ_DATATABLE");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows = co_await txn->execSqlCoro(
-        "SELECT datatable_name, apptable_name, category, is_multi_row, columns::text AS columns "
-        "FROM tl_datatable_registry ORDER BY datatable_name");
+    auto rows = co_await Mapper<m::TlDatatableRegistry>(txn)
+                    .orderBy(m::TlDatatableRegistry::Cols::_datatable_name)
+                    .findAll();
     Json::Value list(Json::arrayValue);
-    for (const auto &r : rows) {
-        Json::Value j;
-        j["registeredTableName"] = r["datatable_name"].as<std::string>();
-        j["applicationTableName"] = r["apptable_name"].as<std::string>();
-        j["category"] = r["category"].as<int>();
-        j["multiRow"] = r["is_multi_row"].as<bool>();
-        j["columnHeaderData"] = parseJsonOrEmpty(r["columns"].as<std::string>(), Json::arrayValue);
-        list.append(j);
-    }
+    for (const auto &r : rows) list.append(datatableJson(r));
     co_return list;
 }
 
@@ -781,21 +908,12 @@ drogon::Task<Json::Value> SystemConfigService::getDatatable(const turbo::Request
                                                             const std::string &name) {
     requirePermission(ctx, "READ_DATATABLE");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows = co_await txn->execSqlCoro(
-        "SELECT datatable_name, apptable_name, category, is_multi_row, columns::text AS columns "
-        "FROM tl_datatable_registry WHERE datatable_name = $1",
-        name);
-    if (rows.size() == 0)
+    try {
+        co_return datatableJson(co_await Mapper<m::TlDatatableRegistry>(txn).findByPrimaryKey(name));
+    } catch (const UnexpectedRows &) {
         throw ApiError(drogon::k404NotFound, "Datatable not found",
                        "error.msg.systemconfig.datatable.not.found");
-    const auto &r = rows[0];
-    Json::Value j;
-    j["registeredTableName"] = r["datatable_name"].as<std::string>();
-    j["applicationTableName"] = r["apptable_name"].as<std::string>();
-    j["category"] = r["category"].as<int>();
-    j["multiRow"] = r["is_multi_row"].as<bool>();
-    j["columnHeaderData"] = parseJsonOrEmpty(r["columns"].as<std::string>(), Json::arrayValue);
-    co_return j;
+    }
 }
 
 drogon::Task<Json::Value> SystemConfigService::createDatatable(const turbo::RequestContext &ctx,
@@ -810,9 +928,8 @@ drogon::Task<Json::Value> SystemConfigService::createDatatable(const turbo::Requ
     const std::string tableIdent = physicalTableIdent(name);  // validates identifier safety
 
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto existing =
-        co_await txn->execSqlCoro("SELECT 1 FROM tl_datatable_registry WHERE datatable_name = $1", name);
-    if (existing.size() > 0)
+    Mapper<m::TlDatatableRegistry> registry(txn);
+    if (co_await registry.count(Criteria(m::TlDatatableRegistry::Cols::_datatable_name, name)) > 0)
         throw ApiError(drogon::k409Conflict, "A datatable with this name already exists",
                        "error.msg.systemconfig.datatable.duplicate");
 
@@ -833,11 +950,14 @@ drogon::Task<Json::Value> SystemConfigService::createDatatable(const turbo::Requ
 
     co_await txn->execSqlCoro(ddl);
     co_await txn->execSqlCoro("CREATE INDEX ON " + tableIdent + " (apptable_id)");
-    co_await txn->execSqlCoro(
-        "INSERT INTO tl_datatable_registry (datatable_name, apptable_name, category, is_multi_row, "
-        "  columns) VALUES ($1, $2, $3, $4, $5::jsonb)",
-        name, apptable, asIntOr(body, "category", 0), asBoolOr(body, "multiRow", true),
-        jsonCompact(body["columns"]));
+
+    m::TlDatatableRegistry row;
+    row.setDatatableName(name);
+    row.setApptableName(apptable);
+    row.setCategory(asIntOr(body, "category", 0));
+    row.setIsMultiRow(asBoolOr(body, "multiRow", true));
+    row.setColumns(jsonCompact(body["columns"]));
+    co_await registry.insert(row);
     co_await turbo::outbox::writeEvent(txn, ctx, "datatable", name, "datatable.created", body);
     co_return co_await getDatatable(ctx, name);
 }
@@ -846,7 +966,6 @@ drogon::Task<Json::Value> SystemConfigService::registerDatatable(const turbo::Re
                                                                  const std::string &datatable,
                                                                  const std::string &apptable) {
     requirePermission(ctx, "CREATE_DATATABLE");
-    const std::string tableIdent = physicalTableIdent(datatable);
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
     auto exists = co_await txn->execSqlCoro(
         "SELECT 1 FROM information_schema.tables WHERE table_schema = current_schema() "
@@ -868,12 +987,18 @@ drogon::Task<Json::Value> SystemConfigService::registerDatatable(const turbo::Re
         cj["type"] = c["data_type"].as<std::string>();
         cols.append(cj);
     }
-    (void)tableIdent;
-    co_await txn->execSqlCoro(
-        "INSERT INTO tl_datatable_registry (datatable_name, apptable_name, columns) "
-        "VALUES ($1, $2, $3::jsonb) ON CONFLICT (datatable_name) DO UPDATE SET "
-        "  apptable_name = EXCLUDED.apptable_name, columns = EXCLUDED.columns",
-        datatable, apptable, jsonCompact(cols));
+
+    Mapper<m::TlDatatableRegistry> registry(txn);
+    m::TlDatatableRegistry row;
+    row.setDatatableName(datatable);
+    row.setApptableName(apptable);
+    row.setColumns(jsonCompact(cols));
+    try {
+        co_await registry.findByPrimaryKey(datatable);
+        co_await registry.update(row);
+    } catch (const UnexpectedRows &) {
+        co_await registry.insert(row);
+    }
     co_await turbo::outbox::writeEvent(txn, ctx, "datatable", datatable, "datatable.registered",
                                        Json::Value(Json::objectValue));
     co_return co_await getDatatable(ctx, datatable);
@@ -883,10 +1008,9 @@ drogon::Task<void> SystemConfigService::deregisterDatatable(const turbo::Request
                                                             const std::string &datatable) {
     requirePermission(ctx, "DELETE_DATATABLE");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows = co_await txn->execSqlCoro(
-        "DELETE FROM tl_datatable_registry WHERE datatable_name = $1 RETURNING datatable_name",
-        datatable);
-    if (rows.size() == 0)
+    auto affected =
+        co_await Mapper<m::TlDatatableRegistry>(txn).deleteByPrimaryKey(datatable);
+    if (affected == 0)
         throw ApiError(drogon::k404NotFound, "Datatable not found",
                        "error.msg.systemconfig.datatable.not.found");
     co_await turbo::outbox::writeEvent(txn, ctx, "datatable", datatable, "datatable.deregistered",
@@ -900,12 +1024,15 @@ drogon::Task<Json::Value> SystemConfigService::updateDatatable(const turbo::Requ
     requirePermission(ctx, "UPDATE_DATATABLE");
     const std::string tableIdent = physicalTableIdent(name);
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto reg = co_await txn->execSqlCoro(
-        "SELECT columns::text AS columns FROM tl_datatable_registry WHERE datatable_name = $1", name);
-    if (reg.size() == 0)
+    Mapper<m::TlDatatableRegistry> registry(txn);
+    m::TlDatatableRegistry reg;
+    try {
+        reg = co_await registry.findByPrimaryKey(name);
+    } catch (const UnexpectedRows &) {
         throw ApiError(drogon::k404NotFound, "Datatable not found",
                        "error.msg.systemconfig.datatable.not.found");
-    Json::Value columns = parseJsonOrEmpty(reg[0]["columns"].as<std::string>(), Json::arrayValue);
+    }
+    Json::Value columns = parseJsonOrEmpty(reg.getValueOfColumns(), Json::arrayValue);
 
     if (body.isMember("addColumns") && body["addColumns"].isArray()) {
         for (const auto &col : body["addColumns"]) {
@@ -929,9 +1056,8 @@ drogon::Task<Json::Value> SystemConfigService::updateDatatable(const turbo::Requ
             columns = kept;
         }
     }
-    co_await txn->execSqlCoro(
-        "UPDATE tl_datatable_registry SET columns = $2::jsonb WHERE datatable_name = $1", name,
-        jsonCompact(columns));
+    reg.setColumns(jsonCompact(columns));
+    co_await registry.update(reg);
     co_await turbo::outbox::writeEvent(txn, ctx, "datatable", name, "datatable.updated", body);
     co_return co_await getDatatable(ctx, name);
 }
@@ -941,9 +1067,8 @@ drogon::Task<void> SystemConfigService::deleteDatatable(const turbo::RequestCont
     requirePermission(ctx, "DELETE_DATATABLE");
     const std::string tableIdent = physicalTableIdent(name);
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows = co_await txn->execSqlCoro(
-        "DELETE FROM tl_datatable_registry WHERE datatable_name = $1 RETURNING datatable_name", name);
-    if (rows.size() == 0)
+    auto affected = co_await Mapper<m::TlDatatableRegistry>(txn).deleteByPrimaryKey(name);
+    if (affected == 0)
         throw ApiError(drogon::k404NotFound, "Datatable not found",
                        "error.msg.systemconfig.datatable.not.found");
     co_await txn->execSqlCoro("DROP TABLE IF EXISTS " + tableIdent);
@@ -954,17 +1079,17 @@ drogon::Task<void> SystemConfigService::deleteDatatable(const turbo::RequestCont
 
 drogon::Task<Json::Value> SystemConfigService::requireDatatableColumns(Txn txn,
                                                                        const std::string &name) {
-    auto rows = co_await txn->execSqlCoro(
-        "SELECT apptable_name, is_multi_row, columns::text AS columns FROM tl_datatable_registry "
-        "WHERE datatable_name = $1",
-        name);
-    if (rows.size() == 0)
+    m::TlDatatableRegistry reg;
+    try {
+        reg = co_await Mapper<m::TlDatatableRegistry>(txn).findByPrimaryKey(name);
+    } catch (const UnexpectedRows &) {
         throw ApiError(drogon::k404NotFound, "Datatable not found",
                        "error.msg.systemconfig.datatable.not.found");
+    }
     Json::Value out;
-    out["apptableName"] = rows[0]["apptable_name"].as<std::string>();
-    out["multiRow"] = rows[0]["is_multi_row"].as<bool>();
-    out["columns"] = parseJsonOrEmpty(rows[0]["columns"].as<std::string>(), Json::arrayValue);
+    out["apptableName"] = reg.getValueOfApptableName();
+    out["multiRow"] = reg.getValueOfIsMultiRow();
+    out["columns"] = parseJsonOrEmpty(reg.getValueOfColumns(), Json::arrayValue);
     co_return out;
 }
 
@@ -972,13 +1097,12 @@ drogon::Task<Json::Value> SystemConfigService::queryDatatable(const turbo::Reque
                                                               const std::string &name,
                                                               const Json::Value &filters) {
     // NOTE: filters are applied client-side (post-fetch) rather than folded into a
-    // dynamic SQL WHERE clause. Drogon's SqlBinder streaming interface (used to bind a
-    // runtime-determined number of parameters) is callback-based only and is not
-    // co_await-able, so a single query with N dynamically-bound predicates cannot be
-    // expressed through the coroutine execSqlCoro API (which requires the parameter
-    // count to be known at compile time). Datatables are tenant-scoped, small,
-    // custom-attribute tables, so an in-process filter over the full result set is an
-    // acceptable, injection-safe simplification for this ad-hoc query endpoint.
+    // dynamic SQL WHERE clause. Drogon's coroutine SQL API (execSqlCoro, and the
+    // CoroMapper built on top of it) requires the bound-parameter count to be known
+    // at compile time, so a single query with N dynamically-bound predicates can't be
+    // expressed for these runtime-defined dt_<name> tables. Datatables are
+    // tenant-scoped, small, custom-attribute tables, so an in-process filter over the
+    // full result set is an acceptable, injection-safe simplification here.
     requirePermission(ctx, "READ_DATATABLE");
     const std::string tableIdent = physicalTableIdent(name);
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
@@ -1037,8 +1161,7 @@ drogon::Task<Json::Value> SystemConfigService::createDatatableEntry(const turbo:
 
     // Insert the row skeleton first (fixed 1-parameter statement), then set each
     // provided, allowlisted column with its own fixed-arity single-column UPDATE.
-    // See queryDatatable() for why a single dynamic-arity INSERT isn't used: Drogon's
-    // execSqlCoro requires the parameter count to be known at compile time.
+    // See queryDatatable() for why a single dynamic-arity INSERT isn't used.
     auto insertRows = co_await txn->execSqlCoro(
         "INSERT INTO " + tableIdent + " (apptable_id) VALUES ($1) RETURNING id::text AS id", apptableId);
     const std::string id = insertRows[0]["id"].as<std::string>();
@@ -1072,8 +1195,6 @@ drogon::Task<Json::Value> SystemConfigService::updateDatatableEntry(const turbo:
                        "This datatable is multi-row; update a specific row via its id instead",
                        "error.msg.systemconfig.datatable.multirow");
 
-    // One fixed-arity (2-parameter) single-column UPDATE per provided, allowlisted
-    // column — see queryDatatable() for why a single dynamic-arity UPDATE isn't used.
     for (const auto &c : reg["columns"]) {
         const std::string colName = asStringOr(c, "name");
         if (colName.empty() || !body.isMember(colName)) continue;
@@ -1133,8 +1254,6 @@ drogon::Task<Json::Value> SystemConfigService::updateDatatableRow(const turbo::R
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
     auto reg = co_await requireDatatableColumns(txn, name);
 
-    // One fixed-arity (3-parameter) single-column UPDATE per provided, allowlisted
-    // column — see queryDatatable() for why a single dynamic-arity UPDATE isn't used.
     for (const auto &c : reg["columns"]) {
         const std::string colName = asStringOr(c, "name");
         if (colName.empty() || !body.isMember(colName)) continue;
@@ -1177,19 +1296,12 @@ drogon::Task<Json::Value> SystemConfigService::listEntityDatatableChecks(
     const turbo::RequestContext &ctx) {
     requirePermission(ctx, "READ_ENTITYDATATABLECHECK");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows = co_await txn->execSqlCoro(
-        "SELECT id::text AS id, entity, status_code, datatable_name, product_id "
-        "FROM tl_entity_datatable_check ORDER BY entity, status_code");
+    auto rows = co_await Mapper<m::TlEntityDatatableCheck>(txn)
+                    .orderBy(m::TlEntityDatatableCheck::Cols::_entity)
+                    .orderBy(m::TlEntityDatatableCheck::Cols::_status_code)
+                    .findAll();
     Json::Value list(Json::arrayValue);
-    for (const auto &r : rows) {
-        Json::Value j;
-        j["id"] = r["id"].as<std::string>();
-        j["entity"] = r["entity"].as<std::string>();
-        j["status"] = r["status_code"].as<std::string>();
-        j["datatableName"] = r["datatable_name"].as<std::string>();
-        j["productId"] = r["product_id"].isNull() ? "" : r["product_id"].as<std::string>();
-        list.append(j);
-    }
+    for (const auto &r : rows) list.append(entityDatatableCheckJson(r));
     co_return list;
 }
 
@@ -1204,16 +1316,17 @@ drogon::Task<Json::Value> SystemConfigService::createEntityDatatableCheck(
                        "'entity', 'status' and 'datatableName' are required",
                        "error.msg.systemconfig.entitydatatablecheck.validation");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
+    m::TlEntityDatatableCheck row;
+    row.setEntity(entity);
+    row.setStatusCode(status);
+    row.setDatatableName(datatableName);
+    if (!asStringOr(body, "productId").empty()) row.setProductId(asStringOr(body, "productId"));
     try {
-        auto rows = co_await txn->execSqlCoro(
-            "INSERT INTO tl_entity_datatable_check (entity, status_code, datatable_name, product_id) "
-            "VALUES ($1, $2, $3, NULLIF($4, '')) RETURNING id::text AS id",
-            entity, status, datatableName, asStringOr(body, "productId"));
-        const std::string id = rows[0]["id"].as<std::string>();
-        co_await turbo::outbox::writeEvent(txn, ctx, "entitydatatablecheck", id,
+        auto inserted = co_await Mapper<m::TlEntityDatatableCheck>(txn).insert(row);
+        co_await turbo::outbox::writeEvent(txn, ctx, "entitydatatablecheck", inserted.getValueOfId(),
                                            "entitydatatablecheck.created", body);
         Json::Value out;
-        out["resourceId"] = id;
+        out["resourceId"] = inserted.getValueOfId();
         co_return out;
     } catch (const DrogonDbException &) {
         throw ApiError(drogon::k409Conflict, "This entity-datatable check already exists",
@@ -1225,9 +1338,8 @@ drogon::Task<void> SystemConfigService::deleteEntityDatatableCheck(const turbo::
                                                                    const std::string &id) {
     requirePermission(ctx, "DELETE_ENTITYDATATABLECHECK");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows = co_await txn->execSqlCoro(
-        "DELETE FROM tl_entity_datatable_check WHERE id::text = $1 RETURNING id", id);
-    if (rows.size() == 0)
+    auto affected = co_await Mapper<m::TlEntityDatatableCheck>(txn).deleteByPrimaryKey(id);
+    if (affected == 0)
         throw ApiError(drogon::k404NotFound, "Entity-datatable check not found",
                        "error.msg.systemconfig.entitydatatablecheck.not.found");
     co_await turbo::outbox::writeEvent(txn, ctx, "entitydatatablecheck", id,
@@ -1250,43 +1362,14 @@ drogon::Task<Json::Value> SystemConfigService::listImports(const turbo::RequestC
                                                            const std::string &entityType) {
     requirePermission(ctx, "READ_IMPORT");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    std::string sql =
-        "SELECT id::text AS id, entity_type, file_name, import_time::text AS import_time, "
-        "  end_time::text AS end_time, total_records, successful_count, failed_count, status "
-        "FROM tl_import_document";
+    Mapper<m::TlImportDocument> mapper(txn);
+    mapper.orderBy(m::TlImportDocument::Cols::_import_time, drogon::orm::SortOrder::DESC);
+    auto rows = entityType.empty()
+                    ? co_await mapper.findAll()
+                    : co_await mapper.findBy(
+                          Criteria(m::TlImportDocument::Cols::_entity_type, entityType));
     Json::Value list(Json::arrayValue);
-    if (entityType.empty()) {
-        auto r = co_await txn->execSqlCoro(sql + " ORDER BY import_time DESC");
-        for (const auto &row : r) {
-            Json::Value j;
-            j["id"] = row["id"].as<std::string>();
-            j["entityType"] = row["entity_type"].as<std::string>();
-            j["fileName"] = row["file_name"].as<std::string>();
-            j["importTime"] = row["import_time"].as<std::string>();
-            j["endTime"] = row["end_time"].isNull() ? "" : row["end_time"].as<std::string>();
-            j["totalRecords"] = row["total_records"].as<int>();
-            j["successCount"] = row["successful_count"].as<int>();
-            j["failureCount"] = row["failed_count"].as<int>();
-            j["status"] = row["status"].as<std::string>();
-            list.append(j);
-        }
-        co_return list;
-    }
-    auto r = co_await txn->execSqlCoro(sql + " WHERE entity_type = $1 ORDER BY import_time DESC",
-                                       entityType);
-    for (const auto &row : r) {
-        Json::Value j;
-        j["id"] = row["id"].as<std::string>();
-        j["entityType"] = row["entity_type"].as<std::string>();
-        j["fileName"] = row["file_name"].as<std::string>();
-        j["importTime"] = row["import_time"].as<std::string>();
-        j["endTime"] = row["end_time"].isNull() ? "" : row["end_time"].as<std::string>();
-        j["totalRecords"] = row["total_records"].as<int>();
-        j["successCount"] = row["successful_count"].as<int>();
-        j["failureCount"] = row["failed_count"].as<int>();
-        j["status"] = row["status"].as<std::string>();
-        list.append(j);
-    }
+    for (const auto &r : rows) list.append(importJson(r));
     co_return list;
 }
 
@@ -1300,42 +1383,17 @@ Json::Value SystemConfigService::importOutputTemplateLocation(const turbo::Reque
 // generic entity: documents
 // ---------------------------------------------------------------------------
 
-drogon::Task<Json::Value> SystemConfigService::documentToJson(Txn txn, const std::string &id,
-                                                              bool includeContent) {
-    auto rows = co_await txn->execSqlCoro(
-        "SELECT id::text AS id, entity_type, entity_id, name, file_name, content_type, description, "
-        "  size_bytes, encode(content, 'base64') AS content_b64, created_by, "
-        "  created_at::text AS created_at "
-        "FROM tl_document WHERE id::text = $1",
-        id);
-    if (rows.size() == 0)
-        throw ApiError(drogon::k404NotFound, "Document not found",
-                       "error.msg.systemconfig.document.not.found");
-    const auto &r = rows[0];
-    Json::Value j;
-    j["id"] = r["id"].as<std::string>();
-    j["parentEntityType"] = r["entity_type"].as<std::string>();
-    j["parentEntityId"] = r["entity_id"].as<std::string>();
-    j["name"] = r["name"].as<std::string>();
-    j["fileName"] = r["file_name"].as<std::string>();
-    j["type"] = r["content_type"].isNull() ? "" : r["content_type"].as<std::string>();
-    j["description"] = r["description"].isNull() ? "" : r["description"].as<std::string>();
-    j["size"] = r["size_bytes"].as<int64_t>();
-    if (includeContent) j["content"] = r["content_b64"].isNull() ? "" : r["content_b64"].as<std::string>();
-    co_return j;
-}
-
 drogon::Task<Json::Value> SystemConfigService::listDocuments(const turbo::RequestContext &ctx,
                                                              const std::string &entityType,
                                                              const std::string &entityId) {
     requirePermission(ctx, "READ_DOCUMENT");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows = co_await txn->execSqlCoro(
-        "SELECT id::text AS id FROM tl_document WHERE entity_type = $1 AND entity_id = $2 "
-        "ORDER BY created_at",
-        entityType, entityId);
+    auto rows = co_await Mapper<m::TlDocument>(txn)
+                    .orderBy(m::TlDocument::Cols::_created_at)
+                    .findBy(Criteria(m::TlDocument::Cols::_entity_type, entityType) &&
+                            Criteria(m::TlDocument::Cols::_entity_id, entityId));
     Json::Value list(Json::arrayValue);
-    for (const auto &r : rows) list.append(co_await documentToJson(txn, r["id"].as<std::string>(), false));
+    for (const auto &r : rows) list.append(documentJson(r, false));
     co_return list;
 }
 
@@ -1344,10 +1402,15 @@ drogon::Task<Json::Value> SystemConfigService::getDocument(const turbo::RequestC
                                                            const std::string &entityId,
                                                            const std::string &documentId) {
     requirePermission(ctx, "READ_DOCUMENT");
-    auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
     (void)entityType;
     (void)entityId;
-    co_return co_await documentToJson(txn, documentId, false);
+    auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
+    try {
+        co_return documentJson(co_await Mapper<m::TlDocument>(txn).findByPrimaryKey(documentId), false);
+    } catch (const UnexpectedRows &) {
+        throw ApiError(drogon::k404NotFound, "Document not found",
+                       "error.msg.systemconfig.document.not.found");
+    }
 }
 
 drogon::Task<Json::Value> SystemConfigService::createDocument(const turbo::RequestContext &ctx,
@@ -1359,19 +1422,24 @@ drogon::Task<Json::Value> SystemConfigService::createDocument(const turbo::Reque
     if (fileName.empty())
         throw ApiError(drogon::k400BadRequest, "'fileName' is required",
                        "error.msg.systemconfig.document.validation");
+    const std::string contentB64 = asStringOr(body, "content");
+    std::vector<char> bytes =
+        contentB64.empty() ? std::vector<char>() : drogon::utils::base64DecodeToVector(contentB64);
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows = co_await txn->execSqlCoro(
-        "INSERT INTO tl_document (entity_type, entity_id, name, file_name, content_type, description, "
-        "  size_bytes, content, created_by) "
-        "VALUES ($1, $2, $3, $4, NULLIF($5, ''), NULLIF($6, ''), $7, decode(NULLIF($8, ''), 'base64'), "
-        "  $9) RETURNING id::text AS id",
-        entityType, entityId, asStringOr(body, "name", fileName), fileName,
-        asStringOr(body, "contentType"), asStringOr(body, "description"),
-        static_cast<int64_t>(asStringOr(body, "content").size() / 4 * 3), asStringOr(body, "content"),
-        ctx.username);
-    const std::string id = rows[0]["id"].as<std::string>();
-    co_await turbo::outbox::writeEvent(txn, ctx, "document", id, "document.created", body);
-    co_return co_await documentToJson(txn, id, false);
+    m::TlDocument row;
+    row.setEntityType(entityType);
+    row.setEntityId(entityId);
+    row.setName(asStringOr(body, "name", fileName));
+    row.setFileName(fileName);
+    if (!asStringOr(body, "contentType").empty()) row.setContentType(asStringOr(body, "contentType"));
+    if (!asStringOr(body, "description").empty()) row.setDescription(asStringOr(body, "description"));
+    row.setSizeBytes(static_cast<int64_t>(bytes.size()));
+    row.setContent(bytes);
+    row.setCreatedBy(ctx.username);
+    auto inserted = co_await Mapper<m::TlDocument>(txn).insert(row);
+    co_await turbo::outbox::writeEvent(txn, ctx, "document", inserted.getValueOfId(), "document.created",
+                                       body);
+    co_return documentJson(inserted, false);
 }
 
 drogon::Task<Json::Value> SystemConfigService::updateDocument(const turbo::RequestContext &ctx,
@@ -1380,28 +1448,29 @@ drogon::Task<Json::Value> SystemConfigService::updateDocument(const turbo::Reque
                                                               const std::string &documentId,
                                                               const Json::Value &body) {
     requirePermission(ctx, "UPDATE_DOCUMENT");
-    auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    co_await documentToJson(txn, documentId, false);
     (void)entityType;
     (void)entityId;
-    if (body.isMember("content")) {
-        co_await txn->execSqlCoro(
-            "UPDATE tl_document SET name = COALESCE(NULLIF($2, ''), name), "
-            "  file_name = COALESCE(NULLIF($3, ''), file_name), "
-            "  content_type = COALESCE(NULLIF($4, ''), content_type), "
-            "  description = COALESCE(NULLIF($5, ''), description), "
-            "  content = decode($6, 'base64') WHERE id::text = $1",
-            documentId, asStringOr(body, "name"), asStringOr(body, "fileName"),
-            asStringOr(body, "contentType"), asStringOr(body, "description"),
-            asStringOr(body, "content"));
-    } else {
-        co_await txn->execSqlCoro(
-            "UPDATE tl_document SET name = COALESCE(NULLIF($2, ''), name), "
-            "  description = COALESCE(NULLIF($3, ''), description) WHERE id::text = $1",
-            documentId, asStringOr(body, "name"), asStringOr(body, "description"));
+    auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
+    Mapper<m::TlDocument> mapper(txn);
+    m::TlDocument row;
+    try {
+        row = co_await mapper.findByPrimaryKey(documentId);
+    } catch (const UnexpectedRows &) {
+        throw ApiError(drogon::k404NotFound, "Document not found",
+                       "error.msg.systemconfig.document.not.found");
     }
+    if (!asStringOr(body, "name").empty()) row.setName(asStringOr(body, "name"));
+    if (!asStringOr(body, "description").empty()) row.setDescription(asStringOr(body, "description"));
+    if (body.isMember("content")) {
+        if (!asStringOr(body, "fileName").empty()) row.setFileName(asStringOr(body, "fileName"));
+        if (!asStringOr(body, "contentType").empty()) row.setContentType(asStringOr(body, "contentType"));
+        auto bytes = drogon::utils::base64DecodeToVector(asStringOr(body, "content"));
+        row.setSizeBytes(static_cast<int64_t>(bytes.size()));
+        row.setContent(bytes);
+    }
+    co_await mapper.update(row);
     co_await turbo::outbox::writeEvent(txn, ctx, "document", documentId, "document.updated", body);
-    co_return co_await documentToJson(txn, documentId, false);
+    co_return documentJson(row, false);
 }
 
 drogon::Task<void> SystemConfigService::deleteDocument(const turbo::RequestContext &ctx,
@@ -1412,9 +1481,8 @@ drogon::Task<void> SystemConfigService::deleteDocument(const turbo::RequestConte
     (void)entityType;
     (void)entityId;
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows =
-        co_await txn->execSqlCoro("DELETE FROM tl_document WHERE id::text = $1 RETURNING id", documentId);
-    if (rows.size() == 0)
+    auto affected = co_await Mapper<m::TlDocument>(txn).deleteByPrimaryKey(documentId);
+    if (affected == 0)
         throw ApiError(drogon::k404NotFound, "Document not found",
                        "error.msg.systemconfig.document.not.found");
     co_await turbo::outbox::writeEvent(txn, ctx, "document", documentId, "document.deleted",
@@ -1430,41 +1498,29 @@ drogon::Task<Json::Value> SystemConfigService::getDocumentContent(const turbo::R
     (void)entityType;
     (void)entityId;
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    co_return co_await documentToJson(txn, documentId, true);
+    try {
+        co_return documentJson(co_await Mapper<m::TlDocument>(txn).findByPrimaryKey(documentId), true);
+    } catch (const UnexpectedRows &) {
+        throw ApiError(drogon::k404NotFound, "Document not found",
+                       "error.msg.systemconfig.document.not.found");
+    }
 }
 
 // ---------------------------------------------------------------------------
 // generic entity: notes
 // ---------------------------------------------------------------------------
 
-drogon::Task<Json::Value> SystemConfigService::noteToJson(Txn txn, const std::string &id) {
-    auto rows = co_await txn->execSqlCoro(
-        "SELECT id::text AS id, resource_type, resource_id, note, created_by, "
-        "  created_at::text AS created_at FROM tl_note WHERE id::text = $1",
-        id);
-    if (rows.size() == 0)
-        throw ApiError(drogon::k404NotFound, "Note not found", "error.msg.systemconfig.note.not.found");
-    const auto &r = rows[0];
-    Json::Value j;
-    j["id"] = r["id"].as<std::string>();
-    j["resourceType"] = r["resource_type"].as<std::string>();
-    j["resourceId"] = r["resource_id"].as<std::string>();
-    j["note"] = r["note"].as<std::string>();
-    j["createdByUsername"] = r["created_by"].isNull() ? "" : r["created_by"].as<std::string>();
-    co_return j;
-}
-
 drogon::Task<Json::Value> SystemConfigService::listNotes(const turbo::RequestContext &ctx,
                                                          const std::string &resourceType,
                                                          const std::string &resourceId) {
     requirePermission(ctx, "READ_NOTE");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows = co_await txn->execSqlCoro(
-        "SELECT id::text AS id FROM tl_note WHERE resource_type = $1 AND resource_id = $2 "
-        "ORDER BY created_at DESC",
-        resourceType, resourceId);
+    auto rows = co_await Mapper<m::TlNote>(txn)
+                    .orderBy(m::TlNote::Cols::_created_at, drogon::orm::SortOrder::DESC)
+                    .findBy(Criteria(m::TlNote::Cols::_resource_type, resourceType) &&
+                            Criteria(m::TlNote::Cols::_resource_id, resourceId));
     Json::Value list(Json::arrayValue);
-    for (const auto &r : rows) list.append(co_await noteToJson(txn, r["id"].as<std::string>()));
+    for (const auto &r : rows) list.append(noteJson(r));
     co_return list;
 }
 
@@ -1476,7 +1532,11 @@ drogon::Task<Json::Value> SystemConfigService::getNote(const turbo::RequestConte
     (void)resourceType;
     (void)resourceId;
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    co_return co_await noteToJson(txn, noteId);
+    try {
+        co_return noteJson(co_await Mapper<m::TlNote>(txn).findByPrimaryKey(noteId));
+    } catch (const UnexpectedRows &) {
+        throw ApiError(drogon::k404NotFound, "Note not found", "error.msg.systemconfig.note.not.found");
+    }
 }
 
 drogon::Task<Json::Value> SystemConfigService::createNote(const turbo::RequestContext &ctx,
@@ -1489,13 +1549,14 @@ drogon::Task<Json::Value> SystemConfigService::createNote(const turbo::RequestCo
         throw ApiError(drogon::k400BadRequest, "'note' is required",
                        "error.msg.systemconfig.note.validation");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows = co_await txn->execSqlCoro(
-        "INSERT INTO tl_note (resource_type, resource_id, note, created_by) VALUES ($1, $2, $3, $4) "
-        "RETURNING id::text AS id",
-        resourceType, resourceId, note, ctx.username);
-    const std::string id = rows[0]["id"].as<std::string>();
-    co_await turbo::outbox::writeEvent(txn, ctx, "note", id, "note.created", body);
-    co_return co_await noteToJson(txn, id);
+    m::TlNote row;
+    row.setResourceType(resourceType);
+    row.setResourceId(resourceId);
+    row.setNote(note);
+    row.setCreatedBy(ctx.username);
+    auto inserted = co_await Mapper<m::TlNote>(txn).insert(row);
+    co_await turbo::outbox::writeEvent(txn, ctx, "note", inserted.getValueOfId(), "note.created", body);
+    co_return noteJson(inserted);
 }
 
 drogon::Task<Json::Value> SystemConfigService::updateNote(const turbo::RequestContext &ctx,
@@ -1507,12 +1568,18 @@ drogon::Task<Json::Value> SystemConfigService::updateNote(const turbo::RequestCo
     (void)resourceType;
     (void)resourceId;
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    co_await noteToJson(txn, noteId);
-    co_await txn->execSqlCoro(
-        "UPDATE tl_note SET note = $2, modified_at = now() WHERE id::text = $1", noteId,
-        asStringOr(body, "note"));
+    Mapper<m::TlNote> mapper(txn);
+    m::TlNote row;
+    try {
+        row = co_await mapper.findByPrimaryKey(noteId);
+    } catch (const UnexpectedRows &) {
+        throw ApiError(drogon::k404NotFound, "Note not found", "error.msg.systemconfig.note.not.found");
+    }
+    row.setNote(asStringOr(body, "note"));
+    row.setModifiedAt(Date::now());
+    co_await mapper.update(row);
     co_await turbo::outbox::writeEvent(txn, ctx, "note", noteId, "note.updated", body);
-    co_return co_await noteToJson(txn, noteId);
+    co_return noteJson(row);
 }
 
 drogon::Task<void> SystemConfigService::deleteNote(const turbo::RequestContext &ctx,
@@ -1523,8 +1590,8 @@ drogon::Task<void> SystemConfigService::deleteNote(const turbo::RequestContext &
     (void)resourceType;
     (void)resourceId;
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows = co_await txn->execSqlCoro("DELETE FROM tl_note WHERE id::text = $1 RETURNING id", noteId);
-    if (rows.size() == 0)
+    auto affected = co_await Mapper<m::TlNote>(txn).deleteByPrimaryKey(noteId);
+    if (affected == 0)
         throw ApiError(drogon::k404NotFound, "Note not found", "error.msg.systemconfig.note.not.found");
     co_await turbo::outbox::writeEvent(txn, ctx, "note", noteId, "note.deleted",
                                        Json::Value(Json::objectValue));
@@ -1532,7 +1599,7 @@ drogon::Task<void> SystemConfigService::deleteNote(const turbo::RequestContext &
 }
 
 // ---------------------------------------------------------------------------
-// generic entity: images (singleton per entity)
+// generic entity: images (singleton per entity, composite primary key)
 // ---------------------------------------------------------------------------
 
 drogon::Task<Json::Value> SystemConfigService::getImage(const turbo::RequestContext &ctx,
@@ -1540,19 +1607,21 @@ drogon::Task<Json::Value> SystemConfigService::getImage(const turbo::RequestCont
                                                         const std::string &entityId) {
     requirePermission(ctx, "READ_IMAGE");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows = co_await txn->execSqlCoro(
-        "SELECT content_type, encode(content, 'base64') AS content_b64, modified_at::text AS modified_at "
-        "FROM tl_image WHERE entity_type = $1 AND entity_id = $2",
-        entity, entityId);
-    if (rows.size() == 0)
+    try {
+        auto row = co_await Mapper<m::TlImage>(txn).findOne(
+            Criteria(m::TlImage::Cols::_entity_type, entity) &&
+            Criteria(m::TlImage::Cols::_entity_id, entityId));
+        Json::Value j;
+        j["entityType"] = entity;
+        j["entityId"] = entityId;
+        j["contentType"] = row.getContentType() ? row.getValueOfContentType() : "";
+        const auto &bytes = row.getValueOfContent();
+        j["content"] = drogon::utils::base64Encode(
+            reinterpret_cast<const unsigned char *>(bytes.data()), bytes.size());
+        co_return j;
+    } catch (const UnexpectedRows &) {
         throw ApiError(drogon::k404NotFound, "Image not found", "error.msg.systemconfig.image.not.found");
-    const auto &r = rows[0];
-    Json::Value j;
-    j["entityType"] = entity;
-    j["entityId"] = entityId;
-    j["contentType"] = r["content_type"].isNull() ? "" : r["content_type"].as<std::string>();
-    j["content"] = r["content_b64"].isNull() ? "" : r["content_b64"].as<std::string>();
-    co_return j;
+    }
 }
 
 drogon::Task<Json::Value> SystemConfigService::putImage(const turbo::RequestContext &ctx,
@@ -1564,13 +1633,22 @@ drogon::Task<Json::Value> SystemConfigService::putImage(const turbo::RequestCont
     if (content.empty())
         throw ApiError(drogon::k400BadRequest, "'content' (base64) is required",
                        "error.msg.systemconfig.image.validation");
+    auto bytes = drogon::utils::base64DecodeToVector(content);
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    co_await txn->execSqlCoro(
-        "INSERT INTO tl_image (entity_type, entity_id, content_type, content, modified_at) "
-        "VALUES ($1, $2, NULLIF($3, ''), decode($4, 'base64'), now()) "
-        "ON CONFLICT (entity_type, entity_id) DO UPDATE SET "
-        "  content_type = EXCLUDED.content_type, content = EXCLUDED.content, modified_at = now()",
-        entity, entityId, asStringOr(body, "contentType"), content);
+    Mapper<m::TlImage> mapper(txn);
+    m::TlImage row;
+    row.setEntityType(entity);
+    row.setEntityId(entityId);
+    if (!asStringOr(body, "contentType").empty()) row.setContentType(asStringOr(body, "contentType"));
+    row.setContent(bytes);
+    row.setModifiedAt(Date::now());
+    try {
+        co_await mapper.findOne(Criteria(m::TlImage::Cols::_entity_type, entity) &&
+                                Criteria(m::TlImage::Cols::_entity_id, entityId));
+        co_await mapper.update(row);
+    } catch (const UnexpectedRows &) {
+        co_await mapper.insert(row);
+    }
     co_await turbo::outbox::writeEvent(txn, ctx, "image", entity + ":" + entityId, "image.updated",
                                        Json::Value(Json::objectValue));
     Json::Value out;
@@ -1583,10 +1661,10 @@ drogon::Task<void> SystemConfigService::deleteImage(const turbo::RequestContext 
                                                    const std::string &entityId) {
     requirePermission(ctx, "DELETE_IMAGE");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows = co_await txn->execSqlCoro(
-        "DELETE FROM tl_image WHERE entity_type = $1 AND entity_id = $2 RETURNING entity_id", entity,
-        entityId);
-    if (rows.size() == 0)
+    auto affected =
+        co_await Mapper<m::TlImage>(txn).deleteBy(Criteria(m::TlImage::Cols::_entity_type, entity) &&
+                                                  Criteria(m::TlImage::Cols::_entity_id, entityId));
+    if (affected == 0)
         throw ApiError(drogon::k404NotFound, "Image not found", "error.msg.systemconfig.image.not.found");
     co_await turbo::outbox::writeEvent(txn, ctx, "image", entity + ":" + entityId, "image.deleted",
                                        Json::Value(Json::objectValue));
@@ -1597,42 +1675,17 @@ drogon::Task<void> SystemConfigService::deleteImage(const turbo::RequestContext 
 // generic entity: calendars
 // ---------------------------------------------------------------------------
 
-drogon::Task<Json::Value> SystemConfigService::calendarToJson(Txn txn, const std::string &id) {
-    auto rows = co_await txn->execSqlCoro(
-        "SELECT id::text AS id, entity_type, entity_id, title, description, location, "
-        "  start_date::text AS start_date, end_date::text AS end_date, calendar_type, recurrence, "
-        "  remind_by_days FROM tl_calendar WHERE id::text = $1",
-        id);
-    if (rows.size() == 0)
-        throw ApiError(drogon::k404NotFound, "Calendar not found",
-                       "error.msg.systemconfig.calendar.not.found");
-    const auto &r = rows[0];
-    Json::Value j;
-    j["id"] = r["id"].as<std::string>();
-    j["entityType"] = r["entity_type"].as<std::string>();
-    j["entityId"] = r["entity_id"].as<std::string>();
-    j["title"] = r["title"].as<std::string>();
-    j["description"] = r["description"].isNull() ? "" : r["description"].as<std::string>();
-    j["location"] = r["location"].isNull() ? "" : r["location"].as<std::string>();
-    j["startDate"] = r["start_date"].as<std::string>();
-    j["endDate"] = r["end_date"].isNull() ? "" : r["end_date"].as<std::string>();
-    j["calendarType"] = r["calendar_type"].as<std::string>();
-    j["recurrence"] = r["recurrence"].isNull() ? "" : r["recurrence"].as<std::string>();
-    j["remindByDays"] = r["remind_by_days"].isNull() ? 0 : r["remind_by_days"].as<int>();
-    co_return j;
-}
-
 drogon::Task<Json::Value> SystemConfigService::listCalendars(const turbo::RequestContext &ctx,
                                                              const std::string &entityType,
                                                              const std::string &entityId) {
     requirePermission(ctx, "READ_CALENDAR");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows = co_await txn->execSqlCoro(
-        "SELECT id::text AS id FROM tl_calendar WHERE entity_type = $1 AND entity_id = $2 "
-        "ORDER BY start_date",
-        entityType, entityId);
+    auto rows = co_await Mapper<m::TlCalendar>(txn)
+                    .orderBy(m::TlCalendar::Cols::_start_date)
+                    .findBy(Criteria(m::TlCalendar::Cols::_entity_type, entityType) &&
+                            Criteria(m::TlCalendar::Cols::_entity_id, entityId));
     Json::Value list(Json::arrayValue);
-    for (const auto &r : rows) list.append(co_await calendarToJson(txn, r["id"].as<std::string>()));
+    for (const auto &r : rows) list.append(calendarJson(r));
     co_return list;
 }
 
@@ -1650,7 +1703,12 @@ drogon::Task<Json::Value> SystemConfigService::getCalendar(const turbo::RequestC
     (void)entityType;
     (void)entityId;
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    co_return co_await calendarToJson(txn, calendarId);
+    try {
+        co_return calendarJson(co_await Mapper<m::TlCalendar>(txn).findByPrimaryKey(calendarId));
+    } catch (const UnexpectedRows &) {
+        throw ApiError(drogon::k404NotFound, "Calendar not found",
+                       "error.msg.systemconfig.calendar.not.found");
+    }
 }
 
 drogon::Task<Json::Value> SystemConfigService::createCalendar(const turbo::RequestContext &ctx,
@@ -1664,18 +1722,21 @@ drogon::Task<Json::Value> SystemConfigService::createCalendar(const turbo::Reque
         throw ApiError(drogon::k400BadRequest, "'title' and 'startDate' are required",
                        "error.msg.systemconfig.calendar.validation");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows = co_await txn->execSqlCoro(
-        "INSERT INTO tl_calendar (entity_type, entity_id, title, description, location, start_date, "
-        "  end_date, calendar_type, recurrence, remind_by_days) "
-        "VALUES ($1, $2, $3, NULLIF($4, ''), NULLIF($5, ''), $6::date, NULLIF($7, '')::date, "
-        "  COALESCE(NULLIF($8, ''), 'COLLECTION'), NULLIF($9, ''), NULLIF($10, '')::int) "
-        "RETURNING id::text AS id",
-        entityType, entityId, title, asStringOr(body, "description"), asStringOr(body, "location"),
-        startDate, asStringOr(body, "endDate"), asStringOr(body, "calendarType"),
-        asStringOr(body, "recurrence"), asStringOr(body, "remindByDays"));
-    const std::string id = rows[0]["id"].as<std::string>();
-    co_await turbo::outbox::writeEvent(txn, ctx, "calendar", id, "calendar.created", body);
-    co_return co_await calendarToJson(txn, id);
+    m::TlCalendar row;
+    row.setEntityType(entityType);
+    row.setEntityId(entityId);
+    row.setTitle(title);
+    if (!asStringOr(body, "description").empty()) row.setDescription(asStringOr(body, "description"));
+    if (!asStringOr(body, "location").empty()) row.setLocation(asStringOr(body, "location"));
+    row.setStartDate(dateOr(startDate, Date::now()));
+    if (!asStringOr(body, "endDate").empty()) row.setEndDate(dateOr(asStringOr(body, "endDate"), Date()));
+    row.setCalendarType(asStringOr(body, "calendarType", "COLLECTION"));
+    if (!asStringOr(body, "recurrence").empty()) row.setRecurrence(asStringOr(body, "recurrence"));
+    if (asIntOr(body, "remindByDays", 0) != 0) row.setRemindByDays(asIntOr(body, "remindByDays", 0));
+    auto inserted = co_await Mapper<m::TlCalendar>(txn).insert(row);
+    co_await turbo::outbox::writeEvent(txn, ctx, "calendar", inserted.getValueOfId(), "calendar.created",
+                                       body);
+    co_return calendarJson(inserted);
 }
 
 drogon::Task<Json::Value> SystemConfigService::updateCalendar(const turbo::RequestContext &ctx,
@@ -1687,23 +1748,27 @@ drogon::Task<Json::Value> SystemConfigService::updateCalendar(const turbo::Reque
     (void)entityType;
     (void)entityId;
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    co_await calendarToJson(txn, calendarId);
-    co_await txn->execSqlCoro(
-        "UPDATE tl_calendar SET title = COALESCE(NULLIF($2, ''), title), "
-        "  description = COALESCE(NULLIF($3, ''), description), "
-        "  location = COALESCE(NULLIF($4, ''), location), "
-        "  start_date = COALESCE(NULLIF($5, '')::date, start_date), "
-        "  end_date = COALESCE(NULLIF($6, '')::date, end_date), "
-        "  calendar_type = COALESCE(NULLIF($7, ''), calendar_type), "
-        "  recurrence = COALESCE(NULLIF($8, ''), recurrence), "
-        "  remind_by_days = COALESCE(NULLIF($9, '')::int, remind_by_days), modified_at = now() "
-        "WHERE id::text = $1",
-        calendarId, asStringOr(body, "title"), asStringOr(body, "description"),
-        asStringOr(body, "location"), asStringOr(body, "startDate"), asStringOr(body, "endDate"),
-        asStringOr(body, "calendarType"), asStringOr(body, "recurrence"),
-        asStringOr(body, "remindByDays"));
+    Mapper<m::TlCalendar> mapper(txn);
+    m::TlCalendar row;
+    try {
+        row = co_await mapper.findByPrimaryKey(calendarId);
+    } catch (const UnexpectedRows &) {
+        throw ApiError(drogon::k404NotFound, "Calendar not found",
+                       "error.msg.systemconfig.calendar.not.found");
+    }
+    if (!asStringOr(body, "title").empty()) row.setTitle(asStringOr(body, "title"));
+    if (!asStringOr(body, "description").empty()) row.setDescription(asStringOr(body, "description"));
+    if (!asStringOr(body, "location").empty()) row.setLocation(asStringOr(body, "location"));
+    if (!asStringOr(body, "startDate").empty())
+        row.setStartDate(dateOr(asStringOr(body, "startDate"), Date::now()));
+    if (!asStringOr(body, "endDate").empty()) row.setEndDate(dateOr(asStringOr(body, "endDate"), Date()));
+    if (!asStringOr(body, "calendarType").empty()) row.setCalendarType(asStringOr(body, "calendarType"));
+    if (!asStringOr(body, "recurrence").empty()) row.setRecurrence(asStringOr(body, "recurrence"));
+    if (asIntOr(body, "remindByDays", 0) != 0) row.setRemindByDays(asIntOr(body, "remindByDays", 0));
+    row.setModifiedAt(Date::now());
+    co_await mapper.update(row);
     co_await turbo::outbox::writeEvent(txn, ctx, "calendar", calendarId, "calendar.updated", body);
-    co_return co_await calendarToJson(txn, calendarId);
+    co_return calendarJson(row);
 }
 
 drogon::Task<void> SystemConfigService::deleteCalendar(const turbo::RequestContext &ctx,
@@ -1714,9 +1779,8 @@ drogon::Task<void> SystemConfigService::deleteCalendar(const turbo::RequestConte
     (void)entityType;
     (void)entityId;
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows = co_await txn->execSqlCoro("DELETE FROM tl_calendar WHERE id::text = $1 RETURNING id",
-                                          calendarId);
-    if (rows.size() == 0)
+    auto affected = co_await Mapper<m::TlCalendar>(txn).deleteByPrimaryKey(calendarId);
+    if (affected == 0)
         throw ApiError(drogon::k404NotFound, "Calendar not found",
                        "error.msg.systemconfig.calendar.not.found");
     co_await turbo::outbox::writeEvent(txn, ctx, "calendar", calendarId, "calendar.deleted",
@@ -1728,37 +1792,17 @@ drogon::Task<void> SystemConfigService::deleteCalendar(const turbo::RequestConte
 // generic entity: meetings
 // ---------------------------------------------------------------------------
 
-drogon::Task<Json::Value> SystemConfigService::meetingToJson(Txn txn, const std::string &id) {
-    auto rows = co_await txn->execSqlCoro(
-        "SELECT id::text AS id, entity_type, entity_id, calendar_id::text AS calendar_id, "
-        "  meeting_date::text AS meeting_date, notes, status FROM tl_meeting WHERE id::text = $1",
-        id);
-    if (rows.size() == 0)
-        throw ApiError(drogon::k404NotFound, "Meeting not found",
-                       "error.msg.systemconfig.meeting.not.found");
-    const auto &r = rows[0];
-    Json::Value j;
-    j["id"] = r["id"].as<std::string>();
-    j["entityType"] = r["entity_type"].as<std::string>();
-    j["entityId"] = r["entity_id"].as<std::string>();
-    j["calendarId"] = r["calendar_id"].isNull() ? "" : r["calendar_id"].as<std::string>();
-    j["meetingDate"] = r["meeting_date"].as<std::string>();
-    j["notes"] = r["notes"].isNull() ? "" : r["notes"].as<std::string>();
-    j["status"] = r["status"].as<std::string>();
-    co_return j;
-}
-
 drogon::Task<Json::Value> SystemConfigService::listMeetings(const turbo::RequestContext &ctx,
                                                             const std::string &entityType,
                                                             const std::string &entityId) {
     requirePermission(ctx, "READ_MEETING");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows = co_await txn->execSqlCoro(
-        "SELECT id::text AS id FROM tl_meeting WHERE entity_type = $1 AND entity_id = $2 "
-        "ORDER BY meeting_date DESC",
-        entityType, entityId);
+    auto rows = co_await Mapper<m::TlMeeting>(txn)
+                    .orderBy(m::TlMeeting::Cols::_meeting_date, drogon::orm::SortOrder::DESC)
+                    .findBy(Criteria(m::TlMeeting::Cols::_entity_type, entityType) &&
+                            Criteria(m::TlMeeting::Cols::_entity_id, entityId));
     Json::Value list(Json::arrayValue);
-    for (const auto &r : rows) list.append(co_await meetingToJson(txn, r["id"].as<std::string>()));
+    for (const auto &r : rows) list.append(meetingJson(r));
     co_return list;
 }
 
@@ -1776,7 +1820,12 @@ drogon::Task<Json::Value> SystemConfigService::getMeeting(const turbo::RequestCo
     (void)entityType;
     (void)entityId;
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    co_return co_await meetingToJson(txn, meetingId);
+    try {
+        co_return meetingJson(co_await Mapper<m::TlMeeting>(txn).findByPrimaryKey(meetingId));
+    } catch (const UnexpectedRows &) {
+        throw ApiError(drogon::k404NotFound, "Meeting not found",
+                       "error.msg.systemconfig.meeting.not.found");
+    }
 }
 
 drogon::Task<Json::Value> SystemConfigService::createMeeting(const turbo::RequestContext &ctx,
@@ -1789,15 +1838,17 @@ drogon::Task<Json::Value> SystemConfigService::createMeeting(const turbo::Reques
         throw ApiError(drogon::k400BadRequest, "'meetingDate' is required",
                        "error.msg.systemconfig.meeting.validation");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows = co_await txn->execSqlCoro(
-        "INSERT INTO tl_meeting (entity_type, entity_id, calendar_id, meeting_date, notes, status) "
-        "VALUES ($1, $2, NULLIF($3, '')::uuid, $4::date, NULLIF($5, ''), "
-        "  COALESCE(NULLIF($6, ''), 'SCHEDULED')) RETURNING id::text AS id",
-        entityType, entityId, asStringOr(body, "calendarId"), meetingDate, asStringOr(body, "notes"),
-        asStringOr(body, "status"));
-    const std::string id = rows[0]["id"].as<std::string>();
-    co_await turbo::outbox::writeEvent(txn, ctx, "meeting", id, "meeting.created", body);
-    co_return co_await meetingToJson(txn, id);
+    m::TlMeeting row;
+    row.setEntityType(entityType);
+    row.setEntityId(entityId);
+    if (!asStringOr(body, "calendarId").empty()) row.setCalendarId(asStringOr(body, "calendarId"));
+    row.setMeetingDate(dateOr(meetingDate, Date::now()));
+    if (!asStringOr(body, "notes").empty()) row.setNotes(asStringOr(body, "notes"));
+    row.setStatus(asStringOr(body, "status", "SCHEDULED"));
+    auto inserted = co_await Mapper<m::TlMeeting>(txn).insert(row);
+    co_await turbo::outbox::writeEvent(txn, ctx, "meeting", inserted.getValueOfId(), "meeting.created",
+                                       body);
+    co_return meetingJson(inserted);
 }
 
 drogon::Task<Json::Value> SystemConfigService::updateMeeting(const turbo::RequestContext &ctx,
@@ -1809,15 +1860,22 @@ drogon::Task<Json::Value> SystemConfigService::updateMeeting(const turbo::Reques
     (void)entityType;
     (void)entityId;
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    co_await meetingToJson(txn, meetingId);
-    co_await txn->execSqlCoro(
-        "UPDATE tl_meeting SET meeting_date = COALESCE(NULLIF($2, '')::date, meeting_date), "
-        "  notes = COALESCE(NULLIF($3, ''), notes), status = COALESCE(NULLIF($4, ''), status), "
-        "  modified_at = now() WHERE id::text = $1",
-        meetingId, asStringOr(body, "meetingDate"), asStringOr(body, "notes"),
-        asStringOr(body, "status"));
+    Mapper<m::TlMeeting> mapper(txn);
+    m::TlMeeting row;
+    try {
+        row = co_await mapper.findByPrimaryKey(meetingId);
+    } catch (const UnexpectedRows &) {
+        throw ApiError(drogon::k404NotFound, "Meeting not found",
+                       "error.msg.systemconfig.meeting.not.found");
+    }
+    if (!asStringOr(body, "meetingDate").empty())
+        row.setMeetingDate(dateOr(asStringOr(body, "meetingDate"), Date::now()));
+    if (!asStringOr(body, "notes").empty()) row.setNotes(asStringOr(body, "notes"));
+    if (!asStringOr(body, "status").empty()) row.setStatus(asStringOr(body, "status"));
+    row.setModifiedAt(Date::now());
+    co_await mapper.update(row);
     co_await turbo::outbox::writeEvent(txn, ctx, "meeting", meetingId, "meeting.updated", body);
-    co_return co_await meetingToJson(txn, meetingId);
+    co_return meetingJson(row);
 }
 
 drogon::Task<void> SystemConfigService::deleteMeeting(const turbo::RequestContext &ctx,
@@ -1828,9 +1886,8 @@ drogon::Task<void> SystemConfigService::deleteMeeting(const turbo::RequestContex
     (void)entityType;
     (void)entityId;
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    auto rows =
-        co_await txn->execSqlCoro("DELETE FROM tl_meeting WHERE id::text = $1 RETURNING id", meetingId);
-    if (rows.size() == 0)
+    auto affected = co_await Mapper<m::TlMeeting>(txn).deleteByPrimaryKey(meetingId);
+    if (affected == 0)
         throw ApiError(drogon::k404NotFound, "Meeting not found",
                        "error.msg.systemconfig.meeting.not.found");
     co_await turbo::outbox::writeEvent(txn, ctx, "meeting", meetingId, "meeting.deleted",
@@ -1848,7 +1905,14 @@ drogon::Task<Json::Value> SystemConfigService::meetingCommand(const turbo::Reque
     (void)entityType;
     (void)entityId;
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    co_await meetingToJson(txn, meetingId);
+    Mapper<m::TlMeeting> mapper(txn);
+    m::TlMeeting row;
+    try {
+        row = co_await mapper.findByPrimaryKey(meetingId);
+    } catch (const UnexpectedRows &) {
+        throw ApiError(drogon::k404NotFound, "Meeting not found",
+                       "error.msg.systemconfig.meeting.not.found");
+    }
     std::string newStatus;
     if (command == "held" || command == "close")
         newStatus = "HELD";
@@ -1859,10 +1923,11 @@ drogon::Task<Json::Value> SystemConfigService::meetingCommand(const turbo::Reque
     else
         throw ApiError(drogon::k400BadRequest, "Unsupported meeting command: " + command,
                        "error.msg.systemconfig.meeting.command.unsupported");
-    co_await txn->execSqlCoro("UPDATE tl_meeting SET status = $2, modified_at = now() WHERE id::text = $1",
-                              meetingId, newStatus);
+    row.setStatus(newStatus);
+    row.setModifiedAt(Date::now());
+    co_await mapper.update(row);
     co_await turbo::outbox::writeEvent(txn, ctx, "meeting", meetingId, "meeting." + command, body);
-    co_return co_await meetingToJson(txn, meetingId);
+    co_return meetingJson(row);
 }
 
 }  // namespace turbo_ledger_systemconfig
