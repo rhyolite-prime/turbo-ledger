@@ -1,84 +1,118 @@
 #include "OfficeController.h"
 
-#include "plugins/OrganizationServicePlugin.h"
+#include "services/OrganizationService.h"
+#include "turbo/ApiResponse.h"
+#include "turbo/RequestContext.h"
 
+using turbo::ApiResponse;
+using turbo_ledger_organization::ApiError;
+using turbo_ledger_organization::OrganizationService;
+
+namespace {
+OrganizationService &svc() {
+    static OrganizationService instance;
+    return instance;
+}
+}  // namespace
 
 Task<HttpResponsePtr> OfficeController::getOffices(HttpRequestPtr req) {
-
-    int pageNo = 1;
-    int pageSize = 10;
-
-    auto pageNoStr = req->getParameter("pageNo");
-    if (!pageNoStr.empty()) {
-        pageNo = std::stoi(pageNoStr);
+    auto ctx = turbo::RequestContext::from(req);
+    if (!ctx) co_return ApiResponse::httpUnauthorized("Missing trusted context");
+    try {
+        co_return ApiResponse::httpOk(co_await svc().listOffices(*ctx));
+    } catch (const ApiError &e) {
+        co_return ApiResponse::httpError(e.status(), e.what(), e.globalisationCode());
+    } catch (const std::exception &e) {
+        co_return ApiResponse::httpError(k500InternalServerError, e.what());
     }
+}
 
-    auto pageSizeStr = req->getParameter("pageSize");
-    if (!pageSizeStr.empty()) {
-        pageSize = std::stoi(pageSizeStr);
+Task<HttpResponsePtr> OfficeController::getTemplate(HttpRequestPtr req) {
+    auto ctx = turbo::RequestContext::from(req);
+    if (!ctx) co_return ApiResponse::httpUnauthorized("Missing trusted context");
+    try {
+        co_return ApiResponse::httpOk(co_await svc().officeTemplate(*ctx));
+    } catch (const ApiError &e) {
+        co_return ApiResponse::httpError(e.status(), e.what(), e.globalisationCode());
+    } catch (const std::exception &e) {
+        co_return ApiResponse::httpError(k500InternalServerError, e.what());
     }
+}
 
-    std::string query = req->getParameter("query");
-    if (query.empty()) {
-        query = "";
-    }
+Task<HttpResponsePtr> OfficeController::downloadTemplate(HttpRequestPtr) {
+    co_return ApiResponse::httpNotImplemented("offices/downloadtemplate (bulk import, Phase 8)");
+}
 
-    auto plugin = drogon::app().getPlugin<organization::plugins::OrganizationServicePlugin>();
-    auto &officeService = plugin->getOfficeService();
-
-    auto result = co_await officeService.getAll(pageNo, pageSize, query);
-    auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
-    co_return resp;
-
+Task<HttpResponsePtr> OfficeController::uploadTemplate(HttpRequestPtr) {
+    co_return ApiResponse::httpNotImplemented("offices/uploadtemplate (bulk import, Phase 8)");
 }
 
 Task<HttpResponsePtr> OfficeController::createOffice(HttpRequestPtr req) {
-
-    auto jsonBody = req->getJsonObject();
-
-    organization::dto::OfficeDto dto;
-    dto.fromJson(*jsonBody);
-
-    auto plugin = app().getPlugin<organization::plugins::OrganizationServicePlugin>();
-    auto &clientService = plugin->getOfficeService();
-
-    auto result = co_await clientService.createAsync(dto);
-    auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
-    co_return resp;
+    auto ctx = turbo::RequestContext::from(req);
+    if (!ctx) co_return ApiResponse::httpUnauthorized("Missing trusted context");
+    auto body = req->getJsonObject();
+    if (!body) co_return ApiResponse::httpBadRequest("Invalid JSON body");
+    try {
+        auto resp = ApiResponse::httpOk(co_await svc().createOffice(*ctx, *body), "Office created");
+        resp->setStatusCode(k201Created);
+        co_return resp;
+    } catch (const ApiError &e) {
+        co_return ApiResponse::httpError(e.status(), e.what(), e.globalisationCode());
+    } catch (const std::exception &e) {
+        co_return ApiResponse::httpError(k500InternalServerError, e.what());
+    }
 }
 
-Task<HttpResponsePtr> OfficeController::getOfficeDetails(HttpRequestPtr req, std::string id) {
-
-    auto jsonBody = req->getJsonObject();
-
-    organization::dto::OfficeDto dto;
-    dto.fromJson(*jsonBody);
-
-    auto plugin = app().getPlugin<organization::plugins::OrganizationServicePlugin>();
-    auto &clientService = plugin->getOfficeService();
-
-    auto result = co_await clientService.updateAsync(dto, id);
-    auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
-    co_return resp;
-
+Task<HttpResponsePtr> OfficeController::getDetails(HttpRequestPtr req, std::string id) {
+    auto ctx = turbo::RequestContext::from(req);
+    if (!ctx) co_return ApiResponse::httpUnauthorized("Missing trusted context");
+    try {
+        co_return ApiResponse::httpOk(co_await svc().getOffice(*ctx, id));
+    } catch (const ApiError &e) {
+        co_return ApiResponse::httpError(e.status(), e.what(), e.globalisationCode());
+    } catch (const std::exception &e) {
+        co_return ApiResponse::httpError(k500InternalServerError, e.what());
+    }
 }
 
 Task<HttpResponsePtr> OfficeController::updateOffice(HttpRequestPtr req, std::string id) {
-
-    auto plugin = app().getPlugin<organization::plugins::OrganizationServicePlugin>();
-    auto &clientService = plugin->getOfficeService();
-
-    auto result = co_await clientService.getOfficeDetails(id);
-    auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
-    co_return resp;
+    auto ctx = turbo::RequestContext::from(req);
+    if (!ctx) co_return ApiResponse::httpUnauthorized("Missing trusted context");
+    auto body = req->getJsonObject();
+    if (!body) co_return ApiResponse::httpBadRequest("Invalid JSON body");
+    try {
+        co_return ApiResponse::httpOk(co_await svc().updateOffice(*ctx, id, *body), "Office updated");
+    } catch (const ApiError &e) {
+        co_return ApiResponse::httpError(e.status(), e.what(), e.globalisationCode());
+    } catch (const std::exception &e) {
+        co_return ApiResponse::httpError(k500InternalServerError, e.what());
+    }
 }
 
-Task<HttpResponsePtr> OfficeController::deleteOffice(HttpRequestPtr req, std::string id) {
+Task<HttpResponsePtr> OfficeController::getByExternalId(HttpRequestPtr req, std::string externalId) {
+    auto ctx = turbo::RequestContext::from(req);
+    if (!ctx) co_return ApiResponse::httpUnauthorized("Missing trusted context");
+    try {
+        co_return ApiResponse::httpOk(co_await svc().getOfficeByExternalId(*ctx, externalId));
+    } catch (const ApiError &e) {
+        co_return ApiResponse::httpError(e.status(), e.what(), e.globalisationCode());
+    } catch (const std::exception &e) {
+        co_return ApiResponse::httpError(k500InternalServerError, e.what());
+    }
+}
 
-    auto plugin = app().getPlugin<organization::plugins::OrganizationServicePlugin>();
-    auto &clientService = plugin->getOfficeService();
-
-    auto result = co_await clientService.deleteOffice(id);
-    auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
-    co_return resp;
+Task<HttpResponsePtr> OfficeController::updateByExternalId(HttpRequestPtr req,
+                                                            std::string externalId) {
+    auto ctx = turbo::RequestContext::from(req);
+    if (!ctx) co_return ApiResponse::httpUnauthorized("Missing trusted context");
+    auto body = req->getJsonObject();
+    if (!body) co_return ApiResponse::httpBadRequest("Invalid JSON body");
+    try {
+        co_return ApiResponse::httpOk(co_await svc().updateOfficeByExternalId(*ctx, externalId, *body),
+                                      "Office updated");
+    } catch (const ApiError &e) {
+        co_return ApiResponse::httpError(e.status(), e.what(), e.globalisationCode());
+    } catch (const std::exception &e) {
+        co_return ApiResponse::httpError(k500InternalServerError, e.what());
+    }
 }

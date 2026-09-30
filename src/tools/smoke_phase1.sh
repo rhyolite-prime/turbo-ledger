@@ -56,7 +56,7 @@ check "tenant is ACTIVE"              "ACTIVE" "$(echo "$CREATE" | jget result.s
 APW=$(echo "$CREATE" | jget result.adminPassword)
 check "one-time admin password returned" "yes" "$([[ -n "$APW" ]] && echo yes || echo no)"
 MIG=$(echo "$CREATE" | jget result.services.0.migrationsApplied)
-check "identity migrations applied"   "3"      "$MIG"
+check "identity migrations applied"   "4"      "$MIG"
 DUP=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$GW/api/v1/tenants/create" \
         -H 'TL-Tenant-Id: default' -H "Authorization: Bearer $HT" \
         -H 'Content-Type: application/json' -d "{\"id\":\"$TENANT\",\"name\":\"Dup\"}")

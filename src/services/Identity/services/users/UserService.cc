@@ -427,17 +427,45 @@ namespace turbo_ledger_identity::services
                     const std::string username =
                         u["username"].isNull() ? "" : u["username"].as<std::string>();
                     const std::string email = u["email"].as<std::string>();
-                    auto token = jwt::create()
-                                     .set_issuer(jwtIssuer)
-                                     .set_type("JWT")
-                                     .set_issued_at(std::chrono::system_clock::now())
-                                     .set_expires_at(std::chrono::system_clock::now() +
-                                                     std::chrono::hours(24))
-                                     .set_payload_claim("userId", jwt::claim(u["id"].as<std::string>()))
-                                     .set_payload_claim("username", jwt::claim(username))
-                                     .set_payload_claim("email", jwt::claim(email))
-                                     .set_payload_claim("tenantId", jwt::claim(tenantId))
-                                     .sign(jwt::algorithm::hs256{jwtSecurityKey});
+
+                    // Phase 2: resolve the caller's permission set once, at signin,
+                    // and embed it in the token so every downstream service can
+                    // enforce RBAC from the gateway-signed TL-Context alone — no
+                    // per-request round trip back to Identity (see plan §2.3/§2.4).
+                    std::string permClaim;
+                    bool superUser = false;
+                    try {
+                        auto permRows = co_await txn->execSqlCoro(
+                            "SELECT DISTINCT rp.permission_code FROM user_roles ur "
+                            "JOIN roles r ON r.id = ur.role_id AND NOT r.is_disabled "
+                            "JOIN role_permissions rp ON rp.role_id = r.id "
+                            "WHERE ur.user_id::text = $1",
+                            u["id"].as<std::string>());
+                        for (const auto &row : permRows) {
+                            const auto code = row["permission_code"].as<std::string>();
+                            if (code == "ALL_FUNCTIONS") superUser = true;
+                            if (!permClaim.empty()) permClaim += ",";
+                            permClaim += code;
+                        }
+                    } catch (...) {
+                        // permission tables may not exist yet on very old tenants —
+                        // fall back to an empty permission set rather than failing signin.
+                    }
+
+                    auto tokenBuilder =
+                        jwt::create()
+                            .set_issuer(jwtIssuer)
+                            .set_type("JWT")
+                            .set_issued_at(std::chrono::system_clock::now())
+                            .set_expires_at(std::chrono::system_clock::now() +
+                                            std::chrono::hours(24))
+                            .set_payload_claim("userId", jwt::claim(u["id"].as<std::string>()))
+                            .set_payload_claim("username", jwt::claim(username))
+                            .set_payload_claim("email", jwt::claim(email))
+                            .set_payload_claim("tenantId", jwt::claim(tenantId))
+                            .set_payload_claim("perm", jwt::claim(permClaim))
+                            .set_payload_claim("su", jwt::claim(std::string(superUser ? "1" : "0")));
+                    auto token = tokenBuilder.sign(jwt::algorithm::hs256{jwtSecurityKey});
                     response.success = true;
                     response.message = "Authentication successful";
                     response.result["token"] = token;
@@ -555,6 +583,8 @@ namespace turbo_ledger_identity::services
                 std::string jwtSecurityKey = customConfig["JwtBearer"]["JwtSecurityKey"].asString();
                 std::string jwtIssuer = customConfig["JwtBearer"]["JwtIssuer"].asString();
 
+                // Host operators (public.users) always resolve as tenant super-users
+                // (see RbacService::resolvePrincipal) — embed the same wildcard here.
                 auto token = jwt::create()
                         .set_issuer(jwtIssuer)
                         .set_type("JWT")
@@ -565,6 +595,8 @@ namespace turbo_ledger_identity::services
                         .set_payload_claim("username", jwt::claim(user.getValueOfUsername()))
                         .set_payload_claim("email", jwt::claim(user.getValueOfEmail()))
                         .set_payload_claim("tenantId", jwt::claim(jwtTenantClaim))
+                        .set_payload_claim("perm", jwt::claim(std::string("ALL_FUNCTIONS")))
+                        .set_payload_claim("su", jwt::claim(std::string("1")))
                         .sign(jwt::algorithm::hs256{jwtSecurityKey});
 
                 response.success = true;

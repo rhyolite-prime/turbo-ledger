@@ -201,6 +201,24 @@ drogon::Task<drogon::HttpResponsePtr> GatewayCore::handleAsync(drogon::HttpReque
                     ctx.userId = decoded.get_payload_claim("userId").as_string();
                 if (decoded.has_payload_claim("username"))
                     ctx.username = decoded.get_payload_claim("username").as_string();
+                // Phase 2: the token carries the caller's resolved permission set
+                // (embedded by Identity at signin) so every downstream service can
+                // enforce RBAC from the signed TL-Context alone — see plan §2.3/§2.4.
+                if (decoded.has_payload_claim("su") &&
+                    decoded.get_payload_claim("su").as_string() == "1") {
+                    ctx.permissions.push_back("ALL_FUNCTIONS");
+                } else if (decoded.has_payload_claim("perm")) {
+                    const auto permClaim = decoded.get_payload_claim("perm").as_string();
+                    size_t start = 0;
+                    while (start <= permClaim.size()) {
+                        auto comma = permClaim.find(',', start);
+                        auto code = permClaim.substr(
+                            start, comma == std::string::npos ? std::string::npos : comma - start);
+                        if (!code.empty()) ctx.permissions.push_back(code);
+                        if (comma == std::string::npos) break;
+                        start = comma + 1;
+                    }
+                }
                 // Cross-tenant replay protection: a token minted for one tenant
                 // must not be usable under another tenant's header.
                 if (decoded.has_payload_claim("tenantId")) {
