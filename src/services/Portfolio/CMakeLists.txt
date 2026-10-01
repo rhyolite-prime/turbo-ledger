@@ -1,38 +1,25 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.10)
 project(Portfolio CXX)
 
 include(CheckIncludeFileCXX)
 
-check_include_file_cxx(any HAS_ANY)
-check_include_file_cxx(string_view HAS_STRING_VIEW)
-check_include_file_cxx(coroutine HAS_COROUTINE)
-if (NOT "${CMAKE_CXX_STANDARD}" STREQUAL "")
-    # Do nothing
-elseif (HAS_ANY AND HAS_STRING_VIEW AND HAS_COROUTINE)
-    if ("cxx_std_23" IN_LIST CMAKE_CXX_COMPILE_FEATURES)
-        set(CMAKE_CXX_STANDARD 23)
-    else ()
-        set(CMAKE_CXX_STANDARD 20)
-    endif ()
-elseif (HAS_ANY AND HAS_STRING_VIEW)
-    set(CMAKE_CXX_STANDARD 17)
-else ()
-    set(CMAKE_CXX_STANDARD 14)
-endif ()
-
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# GCC < 13 needs -fcoroutines even in C++20/23 mode; GCC >= 13 and Clang enable
+# coroutines automatically (and Clang rejects the flag).
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 13)
+    add_compile_options(-fcoroutines)
+endif()
+
+add_compile_options("-include" "${CMAKE_CURRENT_SOURCE_DIR}/utils/codecvt_helper.h" "-Wno-deprecated-declarations")
+
+
+
 add_executable(${PROJECT_NAME} main.cc
-        controllers/LoanProductsController.h
         dto/BaseApiResponse.h
-        controllers/ChargesController.h
-        controllers/SavingsProductController.h
-        controllers/InterestRateChartsController.h
-        controllers/ProvisioningCriteriaController.h
-        controllers/FloatingRatesController.h
-        controllers/LoansController.h
-        controllers/RescheduleLoansController.h
+        utils/codecvt_helper.h
 )
 
 # ##############################################################################
