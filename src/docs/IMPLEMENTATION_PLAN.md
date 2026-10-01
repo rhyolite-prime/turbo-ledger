@@ -278,6 +278,57 @@ Largest phase — split into 6a (products+core lifecycle), 6b (repayment mechani
 - `tellers` (19: teller CRUD, cashier allocation/settlement, journals, transactions) + `cashiersjournal` + `officetransactions` cash management flow.
 - **Exit criteria:** center meeting collection sheet generate→save posts bulk repayments/deposits atomically.
 
+**Group domain — ✅ IMPLEMENTED (not build-verified — see below).** `groups`/`centers`/`grouplevels`/`collectionsheet`
+were originally scoped out of Phase 4 (Customer) for lack of a real Group entity — they are retroactively
+implemented here now that Phase 7 is the right home for them, and the Phase 5 `savingsaccounts/gsim*` (GSIM)
+stubs are retrofitted at the same time since GSIM composes Group + DepositAccountManagement.
+
+- Hand-authored models (`Group`, `GroupLevel`, `GroupClient`, `GroupRole`) in `src/services/Group/models/`,
+  matching drogon_ctl's generated-code shape byte-for-byte (same precedent as Organization's hand-authored
+  models in Phase 2), since this sandbox has no live Postgres for `drogon_ctl` to introspect against.
+  `src/services/Group/migrations/V003__phase7_group.sql` adds the backing tables.
+- One `GroupService` (mirrors the Organization/SystemConfig/Accounting monolithic-service-class,
+  per-resource-controller pattern) implementing: full CRUD for groups and centers (shared `*Entity` helpers
+  parameterized on `isCenter`), lifecycle commands (`activate`/`close` — close is blocked while the
+  group still has members or the center still has child groups), staff assignment, client↔group
+  membership (`associateClients`/`disassociateClients`/`transferClients`), group role assignment
+  (`assignRole`/`unassignRole`/`updateRole`), and center↔group association
+  (`associateGroups`/`disassociateGroups`), all via `CoroMapper<Model>`.
+- Four controllers follow the `ClientsController` convention exactly (`TrustedContextFilter`,
+  explicit-action-suffix routing, `ApiError`/`ApiResponse` try/catch triplet): `GroupsController` (13
+  endpoints), `CentersController` (10), `GroupLevelsController` (1, read-only), `CollectionSheetController`
+  (1, top-level `/api/v1/collectionsheet/submit`).
+- **Explicit scope trims, same precedent as every prior phase's cross-service-composition stubs:**
+  `accountsOverview`/`glimAccounts`/`gsimAccounts` (groups), `accountsOverview` (centers), and
+  `generateCollectionSheet`/`saveCollectionSheet` (both resources plus the top-level `collectionsheet`
+  endpoint) return `501 Not Implemented` — they compose Group + Portfolio/DepositAccountManagement data
+  or a dedicated bulk-collection posting engine that doesn't exist yet, exactly the same class of
+  omission as `clients/{id}/accounts` in Phase 4 and the CSV bulk-import endpoints in every phase.
+- **GSIM retrofit (`src/services/DepositAccountManagement`):** `createGsimAccount`/`updateGsimAccount`/
+  `handleGsimCommand` are now real implementations in `DepositAccountManagementService` (previously 501
+  stubs, since Group didn't exist yet when Phase 5 was built) — wired through
+  `SavingsAccountsController`'s existing `gsim/{1}/command/{2}` route. GLIM (Portfolio/Phase 6) needed no
+  equivalent rework — it was already implemented correctly without depending on a real Group entity.
+- Identity permission catalog: `src/services/Identity/migrations/V009__phase7_group_permissions.sql`
+  adds 18 permission codes (`grouping=group`) for GROUP/CENTER/GROUPLEVEL entities, granted to the
+  `Admin` role template, same precedent as every prior phase's permission migration.
+- Gateway routing (`src/services/ApiGateway/config.json`): new `group` upstream
+  (`http://127.0.0.1:7506`) and four route prefixes — `/api/v1/groups/`, `/api/v1/centers/`,
+  `/api/v1/grouplevels/`, `/api/v1/collectionsheet/` — checked for prefix collisions against every
+  other service's registered prefixes (none found, 77 total routes).
+- Service skeleton (`main.cc`, `CMakeLists.txt`, `utils/codecvt_helper.h`) rewritten from the DAM/Portfolio
+  templates; top-level `CMakeLists.txt` `TL_SERVICES` and `docker-compose.dev.yml` updated to include the
+  `group` service (port 7506).
+- **Not build-verified this session:** no C++ toolchain is present in this sandbox (same limitation as
+  Phase 6). Verification was static only: brace/paren balance checked on every new file, every
+  `svc().<method>(...)` call site cross-checked by script against `GroupService.h`'s declared signatures
+  (name + argument count), every `ADD_METHOD_TO` route's path-placeholder count cross-checked against its
+  handler's parameter count, every model accessor name (`getValueOfX`/`getX`/`setX`/`Cols::_x`) used in
+  `GroupService.cc` cross-checked against the hand-authored model headers, and the gateway route table
+  re-checked for collisions. This is **not** a substitute for an actual compile.
+- **Teller (`tellers`/`cashiers`/`cashiersjournal`, 21 endpoints) remains unimplemented** — this phase's
+  remaining scope, picked up next.
+
 ### Phase 8 — Operations backbone: jobs, batch, notifications, reporting (≈123 endpoints)
 
 - **HeartBeat:** `jobs` (14: list, run now, history, error log, enable/disable) + `scheduler` (2: pause/resume) as a durable per-tenant job framework (cron in Postgres, leader election via Redis); register all domain jobs (interest posting, accruals, delinquency, SI execution, report mailing).
