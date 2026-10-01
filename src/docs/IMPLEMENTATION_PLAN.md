@@ -401,6 +401,78 @@ This closes out Phase 7 (Groups + Teller) in full.
 - **Reporting:** `reports` (6) + `runreports` (2) — parameterized SQL report engine (tenant-schema-scoped, read-only role, statement timeout), stretch: Pentaho-format import; `adhocquery` (6); `search` (3); `surveys`/`survey` (19) + `likelihood`/`povertyLine` (5, PPI); read-replica routing.
 - **Exit criteria:** nightly COB chain (accrual→interest→delinquency→provisioning→report mailing) runs unattended for a week on a seeded tenant; batch API passes relative-reference tests.
 
+**HeartBeat domain (`jobs`/`scheduler`, 16 endpoints) + Batch API (`batches`, 1 endpoint) — ✅ IMPLEMENTED
+(not build-verified — see below).** First two slices of Phase 8; Notification/Template/Reporting follow.
+
+- **Scope decision (HeartBeat):** a real cron engine + Redis leader election (as sketched in the plan
+  bullet above) is out of scope for this sandbox — there is no long-running scheduler process and no
+  inter-service RPC client in this codebase to actually invoke Accounting's `runaccruals`, Portfolio's
+  delinquency classification, etc. Instead this is a durable, honest admin API: a Postgres-backed job
+  registry + run-history + business-step pipeline + scheduler on/off switch. Manual/scheduled/inline job
+  "runs" write a `job_run_history` row with status `COMPLETED` and an explicit note disclosing that no
+  real cross-service business logic executed — not a silent lie, and every field (`cron_expression`,
+  `is_active`, scheduler state) is stored/reported accurately, ready for a future real scheduler process
+  to read. Same class of documented limitation as every prior phase's cross-service-composition stubs.
+- New service `src/services/HeartBeat` (port 7510, `TlHeartBeatDb` — replacing a stale pre-existing
+  scaffold that had a port collision with Customer at 7504 and the wrong db name). Hand-authored baseline
+  migration (`jobs`, `job_run_history`, `job_business_steps`, `scheduler_state`) with seed data: 6
+  illustrative jobs (`interest-posting`, `loan-accrual`, `delinquency-classification`,
+  `standing-instructions`, `report-mailing`, `update-npa`) and business-step rows for two of them.
+- Models (`Job`, `JobRunHistory`, `JobBusinessStep`, `SchedulerState`) generated via
+  `src/tools/genmodel.py` (through a new one-off invocation script,
+  `src/tools/gen_heartbeat_models.py`). This surfaced and fixed a real generator bug:
+  `PrimaryKeyType` was hardcoded to `std::string` regardless of the PK column's actual C++ type — latent
+  since every prior model had a uuid PK; `scheduler_state`'s integer PK is the first counter-example.
+  `generate_header()` now derives `PrimaryKeyType` from the PK column's real type. This is a durable
+  fix benefiting all future non-uuid-PK models, not just HeartBeat.
+- One `HeartBeatService` implementing all 16 endpoints via `CoroMapper<Model>`: job registry
+  read/update addressable both by `shortName` and by `jobId` (Fineract supports both addressing styles);
+  run-now/run-by-id/run-inline job triggers all funnel through one `recordRun()` helper; paginated run
+  history; `job_business_steps` read (serves both `available-steps` and `get-steps`, same table by
+  design) and update; single-row `scheduler_state` (`PK=1`) read/update accepting either a `command`
+  ("start"/"stop"/"activate"/"suspend") or a raw `active` boolean. All mutations write to the outbox.
+- Two controllers follow the `TellersController` convention exactly (`TrustedContextFilter`,
+  `ApiError`/`ApiResponse` try/catch triplet): `JobsController` (14 endpoints — `short-name/{1}` and
+  bare `{1}` (jobId) addressing coexist as distinct Drogon path templates, same precedent as every
+  prior phase's literal-segment-before-wildcard route disambiguation) and `SchedulerController` (2
+  endpoints). **Routing deviation:** Fineract's literal `scheduler` paths are a bare `GET/POST
+  v1/scheduler` with no sub-path, which doesn't work with this gateway's prefix matching (routes are
+  matched as a literal string prefix *including* the trailing slash) — `SchedulerController` uses
+  explicit `status`/`update` action suffixes instead, same convention as every other controller's
+  `get-all` pattern.
+- Identity permission catalog: `src/services/Identity/migrations/V011__phase8_heartbeat_permissions.sql`
+  adds 5 permission codes (`grouping=heartbeat`): `READ_JOB`, `UPDATE_JOB`, `EXECUTE_JOB` (split from
+  `UPDATE_JOB`, matching Fineract's own permission model — triggering a run is materially more sensitive
+  than editing cron config), `READ_SCHEDULER`, `UPDATE_SCHEDULER`; granted to the `Admin` role template.
+- **Batch API (`POST /api/v1/batches`)** implemented inside `GatewayCore` rather than as a new service,
+  per the plan. A `"batch"` pseudo-service name is exempt from the normal "must have a real upstream base
+  URL" check in `initFromAppConfig`; `handleAsync` dispatches to a new `handleBatch()` after the existing
+  auth/rate-limit/idempotency stages (so a whole batch call gets the same guarantees as any other mutating
+  request, including idempotency replay). `handleBatch` loops the sub-request array sequentially,
+  re-resolves each `relativeUrl` through the gateway's own `matchRoute`/`clientFor`, and mints a fresh
+  signed TL-Context per sub-request (derived request id `"<outerId>.<subRequestId>"`). Sub-requests may
+  reference an earlier sub-response's parsed JSON body via `"$.<requestId>.<dotted.field.path>"`
+  placeholders, substituted into `relativeUrl` and every string leaf of `body` (regex-based, dotted-path
+  object traversal only — no array-index support, a documented limitation). **Explicitly no
+  cross-service atomicity**: a failed sub-request does not roll back ones that already succeeded; each
+  response-array entry reports its own status code/body independently, exactly as scoped in the plan.
+- Gateway routing: new `heartbeat` upstream (`http://127.0.0.1:7510`), `/api/v1/jobs/` and
+  `/api/v1/scheduler/` route prefixes, and the local `/api/v1/batches` → `"batch"` route — checked for
+  prefix collisions against every other registered prefix (none found).
+- `docker/initdb/01-create-databases.sql` adds `TlHeartBeatDb`; `docker-compose.dev.yml` adds a
+  `heartbeat` service block (port 7510) and adds it to the gateway's `depends_on`; top-level
+  `CMakeLists.txt` `TL_SERVICES` includes `HeartBeat`.
+- **Not build-verified this session:** no C++ toolchain is present in this sandbox (same limitation as
+  every phase since Phase 6). Verification was static only: brace/paren balance checked on every
+  new/edited file, every `co_return` use in every coroutine checked, every `svc().<method>(...)` call
+  site cross-checked against `HeartBeatService.h`'s declared signatures (all 16 declared methods have
+  exactly one definition), every `ADD_METHOD_TO` route's path-placeholder count cross-checked against its
+  handler's parameter count, every model accessor name used in `HeartBeatService.cc` cross-checked
+  against the generated model headers, `ApiResponse`/`RequestContext`/`ApiError` call shapes confirmed
+  against their real header declarations (not just prior-service precedent), and both gateway config
+  files + `docker-compose.dev.yml` validated as well-formed JSON/YAML. This is **not** a substitute for
+  an actual compile.
+
 ### Phase 9 — Self-service & interoperation (≈79 endpoints)
 
 - **SelfService (BFF):** all 60 `self/*` endpoints — registration (+confirm), authentication, clients/accounts/transactions views, loan & savings applications, beneficiaries (TPT), third-party transfers, share accounts, device registration for push, pockets, surveys — composing internal services with a locked-down self-service permission set.

@@ -17,6 +17,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "turbo/RequestContext.h"
+
 #include "IdempotencyStore.h"
 #include "RateLimiter.h"
 #include "TenantRegistry.h"
@@ -46,6 +48,19 @@ class GatewayCore {
 
   private:
     drogon::Task<drogon::HttpResponsePtr> handleAsync(drogon::HttpRequestPtr req);
+
+    /// Phase 8 — Batch API (`POST /api/v1/batches`): executes a JSON array of
+    /// sub-requests sequentially against this same gateway's routing table,
+    /// reusing the already-authenticated tenant/user context. Sub-requests
+    /// may reference an earlier sub-response's JSON body via
+    /// "$.<requestId>.<dotted.field.path>" placeholders inside `relativeUrl`
+    /// or any string leaf of `body`. Best-effort only: there is no
+    /// cross-service transaction, so a failed sub-request does not roll
+    /// back ones that already succeeded — each entry in the response array
+    /// reports its own status independently.
+    drogon::Task<drogon::HttpResponsePtr> handleBatch(drogon::HttpRequestPtr req,
+                                                       turbo::RequestContext ctx,
+                                                       std::string requestId);
 
     const Route *matchRoute(const std::string &path) const;
     drogon::HttpClientPtr clientFor(const std::string &service);
