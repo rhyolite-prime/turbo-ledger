@@ -124,6 +124,20 @@ services:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
 
+  depositaccountmanagement:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.service
+      args: { SERVICE: DepositAccountManagement }
+    environment:
+      TL_DB_HOST: postgres
+      TL_REDIS_HOST: redis
+    ports:
+      - "7507:7507"
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
   gateway:
     build:
       context: .
@@ -138,6 +152,7 @@ services:
       - systemconfig
       - provisioner
       - customer
+      - depositaccountmanagement
 
 volumes:
   pgdata:

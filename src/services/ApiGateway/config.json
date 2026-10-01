@@ -34,7 +34,8 @@
    "organization": "http://127.0.0.1:7503",
       "systemconfig": "http://127.0.0.1:7509",
       "provisioner": "http://127.0.0.1:7512",
-      "customer": "http://127.0.0.1:7504"
+      "customer": "http://127.0.0.1:7504",
+      "depositaccountmanagement": "http://127.0.0.1:7507"
     },
   "provisioner": {
    "base_url": "http://127.0.0.1:7512",
@@ -86,7 +87,19 @@
                 { "prefix": "/api/v1/clients/", "service": "customer" },
                 { "prefix": "/api/v1/client/", "service": "customer" },
                 { "prefix": "/api/v1/collateral-management/", "service": "customer" },
-                { "prefix": "/api/v2/clients/", "service": "customer" }
+                { "prefix": "/api/v2/clients/", "service": "customer" },
+                { "prefix": "/api/v1/savingsaccounts/", "service": "depositaccountmanagement" },
+                { "prefix": "/api/v1/savingsproducts/", "service": "depositaccountmanagement" },
+                { "prefix": "/api/v1/fixeddepositaccounts/", "service": "depositaccountmanagement" },
+                { "prefix": "/api/v1/fixeddepositproducts/", "service": "depositaccountmanagement" },
+                { "prefix": "/api/v1/recurringdepositaccounts/", "service": "depositaccountmanagement" },
+                { "prefix": "/api/v1/recurringdepositproducts/", "service": "depositaccountmanagement" },
+                { "prefix": "/api/v1/interestratecharts/", "service": "depositaccountmanagement" },
+                { "prefix": "/api/v1/accounttransfers/", "service": "depositaccountmanagement" },
+                { "prefix": "/api/v1/standinginstructions/", "service": "depositaccountmanagement" },
+                { "prefix": "/api/v1/standinginstructionrunhistory/", "service": "depositaccountmanagement" },
+                { "prefix": "/api/v1/accountnumberformats/", "service": "depositaccountmanagement" },
+                { "prefix": "/api/v1/charges/", "service": "depositaccountmanagement" }
             ],
             "tenants": [
                 { "id": "default", "name": "Default Tenant", "status": "ACTIVE" },
