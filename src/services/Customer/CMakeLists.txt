@@ -13,9 +13,12 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_L
     add_compile_options(-fcoroutines)
 endif()
 
+add_compile_options("-include" "${CMAKE_CURRENT_SOURCE_DIR}/utils/codecvt_helper.h" "-Wno-deprecated-declarations")
+
 add_executable(${PROJECT_NAME} main.cc
         services/CustomerService.h
-        services/CustomerService.cc)
+        services/CustomerService.cc
+        utils/codecvt_helper.h)
 
 # ##############################################################################
 # If you include the drogon source code locally in your project, use this method
