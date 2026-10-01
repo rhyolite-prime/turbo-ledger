@@ -1,10 +1,12 @@
+
 {
+
     "listeners": [
         {
             //address: Ip address,0.0.0.0 by default
             "address": "0.0.0.0",
             //port: Port number
-            "port": 7504,
+            "port": 7510,
             //https: If true, use https for security,false by default
             "https": false
         }
@@ -22,7 +24,7 @@
             //port: Server port, 5432 by default
             "port": 5432,
             //dbname: Database name
-            "dbname": "TurboLedgerHeartBeat",
+            "dbname": "TlHeartBeatDb",
             //user: 'postgres' by default
             "user": "postgres",
             //passwd: '' by default
@@ -326,6 +328,12 @@
             "JwtAudience" : "TurboLedgerIdentity",
             "JwtExpirationTime" : 3600
         },
-        "PrivateKey": "ca01ca76-3866-4d44-9881-d9e365b81473"
+        "PrivateKey": "ca01ca76-3866-4d44-9881-d9e365b81473",
+        "ServiceIdentity": {
+            "Name" : "heartbeat",
+            "Alias" : "",
+            "Version" : "0.1",
+            "Description" : "heartbeat"
+        }
     }
 }

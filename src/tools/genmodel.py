@@ -238,7 +238,7 @@ def generate_header(spec: ModelSpec) -> str:
     lines.append("    static const std::string tableName;")
     lines.append("    static const bool hasPrimaryKey;")
     lines.append("    static const std::string primaryKeyName;")
-    lines.append("    using PrimaryKeyType = std::string;")
+    lines.append(f"    using PrimaryKeyType = {cpp_type(spec.columns[spec.pk_index])};")
     lines.append("    const PrimaryKeyType &getPrimaryKey() const;")
     lines.append("")
     lines.append("    explicit " + spec.class_name + "(const drogon::orm::Row &r, const ssize_t indexOffset = 0) noexcept;")

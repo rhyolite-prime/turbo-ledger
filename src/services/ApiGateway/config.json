@@ -38,7 +38,8 @@
         "depositaccountmanagement": "http://127.0.0.1:7507",
         "portfolio": "http://127.0.0.1:7502",
         "group": "http://127.0.0.1:7506",
-        "teller": "http://127.0.0.1:7508"
+        "teller": "http://127.0.0.1:7508",
+        "heartbeat": "http://127.0.0.1:7510"
       },
       "provisioner": {
         "base_url": "http://127.0.0.1:7512",
@@ -365,6 +366,14 @@
         {
           "prefix": "/api/v1/cashiersjournal/",
           "service": "teller"
+        },
+        {
+          "prefix": "/api/v1/jobs/",
+          "service": "heartbeat"
+        },
+        {
+          "prefix": "/api/v1/scheduler/",
+          "service": "heartbeat"
         }
       ],
       "tenants": [
