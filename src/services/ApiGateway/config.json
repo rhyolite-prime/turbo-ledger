@@ -39,7 +39,8 @@
         "portfolio": "http://127.0.0.1:7502",
         "group": "http://127.0.0.1:7506",
         "teller": "http://127.0.0.1:7508",
-        "heartbeat": "http://127.0.0.1:7510"
+        "heartbeat": "http://127.0.0.1:7510",
+        "template": "http://127.0.0.1:7514"
       },
       "provisioner": {
         "base_url": "http://127.0.0.1:7512",
@@ -378,6 +379,10 @@
         {
           "prefix": "/api/v1/batches",
           "service": "batch"
+        },
+        {
+          "prefix": "/api/v1/templates",
+          "service": "template"
         }
       ],
       "tenants": [

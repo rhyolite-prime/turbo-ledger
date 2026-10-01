@@ -194,6 +194,20 @@ services:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
 
+  template:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.service
+      args: { SERVICE: Template }
+    environment:
+      TL_DB_HOST: postgres
+      TL_REDIS_HOST: redis
+    ports:
+      - "7514:7514"
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
   gateway:
     build:
       context: .
@@ -213,6 +227,7 @@ services:
       - group
       - teller
       - heartbeat
+      - template
 
 volumes:
   pgdata:
