@@ -3900,11 +3900,6 @@ drogon::Task<void> PortfolioService::deleteShareProductDividend(const turbo::Req
 // ---- share accounts --------------------------------------------------------
 
 namespace {
-constexpr int kShareSubmitted = 100;
-constexpr int kShareApproved = 200;
-constexpr int kShareActive = 300;
-constexpr int kShareRejected = 400;
-constexpr int kShareClosed = 600;
 
 Json::Value shareAccountJson(const m::ShareAccount &a) {
     Json::Value j;
@@ -3972,7 +3967,7 @@ drogon::Task<Json::Value> PortfolioService::createShareAccount(const turbo::Requ
     row.setCurrencyCode(product.getValueOfCurrencyCode());
     row.setSubmittedDate(dateOr(asStringOr(body, "submittedDate"), Date::now()));
     row.setSubmittedBy(userIdOr(ctx));
-    row.setStatus(kShareSubmitted);
+    row.setStatus(kShareStatusSubmittedAndPendingApproval);
     row.setRequestedShares(static_cast<int64_t>(
         asIntOr(body, "requestedShares", static_cast<int>(product.getValueOfDefaultShares()))));
     row.setApprovedShares(0);
@@ -4007,7 +4002,7 @@ drogon::Task<Json::Value> PortfolioService::updateShareAccount(const turbo::Requ
     } catch (const UnexpectedRows &) {
         throw ApiError(drogon::k404NotFound, "Share account not found", "error.msg.shareaccount.not.found");
     }
-    if (row.getValueOfStatus() != kShareSubmitted)
+    if (row.getValueOfStatus() != kShareStatusSubmittedAndPendingApproval)
         throw ApiError(drogon::k403Forbidden, "Only submitted-and-pending-approval share accounts can be edited",
                        "error.msg.shareaccount.not.in.submitted.state");
     if (body.isMember("requestedShares"))
@@ -4035,25 +4030,25 @@ drogon::Task<Json::Value> PortfolioService::handleShareAccountCommand(const turb
     }
     if (command == "approve") {
         requirePermission(ctx, "APPROVE_SHAREACCOUNT");
-        row.setStatus(kShareApproved);
+        row.setStatus(kShareStatusApproved);
         row.setApprovedDate(dateOr(asStringOr(body, "approvedDate"), Date::now()));
         row.setApprovedBy(userIdOr(ctx));
         row.setApprovedShares(static_cast<int64_t>(
             asIntOr(body, "approvedShares", static_cast<int>(row.getValueOfRequestedShares()))));
     } else if (command == "undoApproval") {
         requirePermission(ctx, "APPROVE_SHAREACCOUNT");
-        row.setStatus(kShareSubmitted);
+        row.setStatus(kShareStatusSubmittedAndPendingApproval);
     } else if (command == "reject") {
         requirePermission(ctx, "APPROVE_SHAREACCOUNT");
-        row.setStatus(kShareRejected);
+        row.setStatus(kShareStatusRejected);
         row.setRejectedDate(dateOr(asStringOr(body, "rejectedDate"), Date::now()));
     } else if (command == "activate") {
         requirePermission(ctx, "ACTIVATE_SHAREACCOUNT");
-        row.setStatus(kShareActive);
+        row.setStatus(kShareStatusActive);
         row.setActivatedDate(dateOr(asStringOr(body, "activatedDate"), Date::now()));
     } else if (command == "close") {
         requirePermission(ctx, "CLOSE_SHAREACCOUNT");
-        row.setStatus(kShareClosed);
+        row.setStatus(kShareStatusClosed);
         row.setClosedDate(dateOr(asStringOr(body, "closedDate"), Date::now()));
     } else if (command == "applyadditionalshares") {
         requirePermission(ctx, "UPDATE_SHAREACCOUNT");
