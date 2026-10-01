@@ -21,7 +21,7 @@ option(TL_BUILD_TESTS "Build unit tests" ON)
 
 # Services built by default in Phase 0. Add more as they are implemented,
 # e.g. -DTL_SERVICES="Identity;Accounting;ApiGateway;Provisioner;Customer".
-set(TL_SERVICES "Identity;Accounting;ApiGateway;Provisioner;Organization;SystemConfig;Customer;DepositAccountManagement;Portfolio;Group" CACHE STRING
+set(TL_SERVICES "Identity;Accounting;ApiGateway;Provisioner;Organization;SystemConfig;Customer;DepositAccountManagement;Portfolio;Group;Teller" CACHE STRING
     "Semicolon-separated list of services to build")
 
 # Shared platform library first.

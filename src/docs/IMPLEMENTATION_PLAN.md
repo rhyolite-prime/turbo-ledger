@@ -326,8 +326,72 @@ stubs are retrofitted at the same time since GSIM composes Group + DepositAccoun
   handler's parameter count, every model accessor name (`getValueOfX`/`getX`/`setX`/`Cols::_x`) used in
   `GroupService.cc` cross-checked against the hand-authored model headers, and the gateway route table
   re-checked for collisions. This is **not** a substitute for an actual compile.
-- **Teller (`tellers`/`cashiers`/`cashiersjournal`, 21 endpoints) remains unimplemented** — this phase's
-  remaining scope, picked up next.
+**Teller domain (`tellers`/`cashiers`/`cashiersjournal`, 21 endpoints) — ✅ IMPLEMENTED (not build-verified —
+see below).** Completes Phase 7.
+
+- New service `src/services/Teller` (port 7508, `TlTellerDb`), following the exact Group/DAM/Portfolio
+  scaffold (`main.cc` CORS + `/health`, `CMakeLists.txt` linking `turbo::turbo`, `utils/codecvt_helper.h`,
+  `config.json`/`config.yaml` copied from Group's templates with only port/dbname/service-identity
+  substituted).
+- Hand-authored models (`Teller`, `Cashier`, `CashierTransaction`) in `src/services/Teller/models/`,
+  generated via `src/tools/genmodel.py` against `src/services/Teller/migrations/V001__baseline.sql`
+  (mirrors Fineract's own `m_teller`/`m_cashiers`/`m_cashier_transactions` three-table shape: a teller
+  belongs to an office, one or more cashiers are staff rostered to that teller for a date range or time
+  window, cash movements between the teller's vault and a cashier are logged as cashier transactions).
+  `V002__platform.sql` adds the standard `tl_outbox` table.
+- One `TellerService` (`src/services/Teller/services/TellerService.{h,cc}`) implementing: full CRUD for
+  tellers; teller-level transaction/journal views (OR-chained across the teller's cashier ids, since
+  `CoroMapper` has no join support in this codebase — same precedent as every prior phase); full CRUD for
+  cashiers nested under a teller (`isFullDay` XOR explicit `startTime`/`endTime` validated, delete blocked
+  409 if the cashier already has transactions); cashier transaction history + a synchronous
+  `cashierTransactionTemplate`; `allocateCash`/`settleCash` sharing one free-function implementation
+  (`postCashierTransaction`) that validates amounts via `turbo::Money` and blocks settlement that would
+  exceed the cashier's net allocated balance in that currency (sum of allocations minus prior
+  settlements); `cashierSummaryAndTransactions` (sumCashAllocation/sumCashSettlement/netCash computed via
+  `turbo::Money` arithmetic); and the two top-level global views, `listCashiersGlobal` (filters
+  officeId/staffId/tellerId, plus an on-duty `date` filter applied in C++ after an unpaginated fetch
+  rather than via an unverified `CompareOperator::IsNull`, since no such precedent exists anywhere in this
+  codebase) and `cashiersJournal` (filters cashierId/tellerId/currencyCode/fromDate-toDate). All mutating
+  methods write to the outbox (`turbo::outbox::writeEvent`).
+- Three controllers follow the `GroupsController` convention exactly (`TrustedContextFilter`,
+  explicit-action-suffix routing, `ApiError`/`ApiResponse` try/catch triplet): `TellersController` (19
+  endpoints — core CRUD, teller-level views, nested cashier CRUD/template, cashier
+  transactions/allocate/settle), `CashiersController` (1, the standalone global `GET /api/v1/cashiers`),
+  `CashiersJournalController` (1, the standalone global `GET /api/v1/cashiersjournal`).
+- **No scope trims needed this phase** — unlike Group, every one of the 21 endpoints in this domain is a
+  same-service CRUD/query/command operation with no cross-service composition dependency, so there are no
+  `501 Not Implemented` stubs in the Teller domain (txn_type codes 103/104 = Cash In/Cash Out, which would
+  need a DepositAccountManagement teller-transaction posting integration, are out of this 21-endpoint
+  scope and simply not wired, matching Fineract's own separation of concerns).
+- Identity permission catalog: `src/services/Identity/migrations/V010__phase7_teller_permissions.sql`
+  adds 11 permission codes (`grouping=teller`) for TELLER/CASHIER/CASHIERTRANSACTION entities (including a
+  fine-grained `ALLOCATECASH_CASHIER`/`SETTLECASH_CASHIER` split, matching Fineract's own permission
+  model), granted to the `Admin` role template, same precedent as every prior phase's permission
+  migration.
+- Gateway routing (`src/services/ApiGateway/config.json`): new `teller` upstream
+  (`http://127.0.0.1:7508`) and three route prefixes — `/api/v1/tellers/`, `/api/v1/cashiers/`,
+  `/api/v1/cashiersjournal/` — checked for prefix collisions against every other service's registered
+  prefixes (none found; `/api/v1/cashiersjournal/` does not collide with `/api/v1/cashiers/` since prefix
+  matching requires the literal trailing slash).
+- `docker/initdb/01-create-databases.sql` adds `TlTellerDb`; `docker-compose.dev.yml` adds a `teller`
+  service block (port 7508) and adds it to the gateway's `depends_on`; top-level `CMakeLists.txt`
+  `TL_SERVICES` includes `Teller`.
+- **Not build-verified this session:** no C++ toolchain is present in this sandbox (same limitation as
+  every phase since Phase 6). Verification was static only: brace/paren balance checked on every new/
+  edited file, every `return`/`co_return` use in every `drogon::Task<...>` coroutine body checked by
+  script, every `svc().<method>(...)` call site cross-checked against `TellerService.h`'s declared
+  signatures (all 21 declared methods have exactly one definition, no stragglers), every `ADD_METHOD_TO`
+  route's path-placeholder count cross-checked against its handler's parameter count, every model accessor
+  name (`getValueOfX`/`getX`/`setX`/`setXToNull`/`Cols::_x`) used in `TellerService.cc` cross-checked
+  against the hand-authored model headers (including per-function checks that `tellerToJson`/
+  `cashierToJson`/`transactionToJson` only call accessors that exist on their respective model), the
+  `ApiResponse`/`ApiError`/`turbo::outbox::writeEvent`/`turbo::db::beginTenantTxn`/`turbo::Money`/
+  `turbo::pagedResult`/`Criteria` 3-arg-with-`CompareOperator` call shapes all individually confirmed
+  against real precedent elsewhere in the codebase, and both new config.json files diffed against Group's
+  working originals to confirm only the intended substitutions changed. This is **not** a substitute for
+  an actual compile.
+
+This closes out Phase 7 (Groups + Teller) in full.
 
 ### Phase 8 — Operations backbone: jobs, batch, notifications, reporting (≈123 endpoints)
 
