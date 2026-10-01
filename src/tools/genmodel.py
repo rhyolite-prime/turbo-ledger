@@ -77,6 +77,7 @@ TYPE_MAP = {
     "uuid": ("std::string", "uuid", 0),
     "varchar": ("std::string", "character varying", None),  # length supplied per-column
     "text": ("std::string", "text", 0),
+    "jsonb": ("std::string", "jsonb", 0),
     "int": ("int32_t", "integer", 4),
     "bigint": ("int64_t", "bigint", 8),
     "bool": ("bool", "boolean", 1),
