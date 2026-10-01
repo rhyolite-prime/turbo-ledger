@@ -302,11 +302,6 @@
             }
         },
         {
-            "name": "turbo_ledger_customer::plugins::CustomerServicePlugin",
-            "dependencies": [],
-            "config": {}
-        },
-        {
             "name": "drogon::plugin::AccessLogger",
             "dependencies": [],
             "config": {

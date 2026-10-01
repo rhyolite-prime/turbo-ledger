@@ -303,11 +303,6 @@
             }
         },
         {
-            "name": "turbo_ledger_accounting::plugins::AccountingServicePlugin",
-            "dependencies": [],
-            "config": {}
-        },
-        {
             "name": "drogon::plugin::AccessLogger",
             "dependencies": [],
             "config": {
