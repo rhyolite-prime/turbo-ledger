@@ -473,6 +473,68 @@ This closes out Phase 7 (Groups + Teller) in full.
   files + `docker-compose.dev.yml` validated as well-formed JSON/YAML. This is **not** a substitute for
   an actual compile.
 
+**Template domain (`templates`, 8 endpoints) — ✅ IMPLEMENTED.** Standalone service (port 7514,
+`TlTemplateDb`), kept separate from Notification rather than merged as the port-map table originally
+sketched — Fineract's `templates` resource (mustache-style notification/report templates: name, text,
+macros, entity/type classification) has no functional coupling to `sms`/`email`/`reportmailingjobs` at
+the data-model level, so splitting it out avoids growing Notification into an oversized, multi-concern
+service for no isolation benefit in the other direction either. `TemplateService` + `TemplatesController`
+follow the established single-service, `TrustedContextFilter`/`ApiResponse`/`ApiError` pattern.
+
+**Notification domain (`notifications` 2, `sms` 6, `smscampaigns` 8, `email` 20, `reportmailingjobs` 6 +
+`reportmailingjobrunhistory` 1 = 43 endpoints) — ✅ IMPLEMENTED AND BUILD-VERIFIED.** New service (port
+7515, `TlNotificationDb`). One `NotificationService` implements all 43 methods; five controllers
+(`NotificationsController`, `SmsController`, `SmsCampaignsController`, `EmailController`,
+`ReportMailingJobsController`) follow the bare-`{1}`-differentiated-by-HTTP-method convention (same as
+Template/HeartBeat, not Teller's older `{1}/update`-suffix style).
+- **Scope decisions:** real SMTP/SMS provider dispatch is stubbed/logged only (pluggable-provider
+  placeholder, no real network send) — same disclosed-no-op precedent as HeartBeat's job "runs"; campaign
+  `activate`/`close` commands flip a status field only, no real recurrence/scheduling engine;
+  `reportmailingjobs` links a report by free-text name + JSON params blob since the Reporting service
+  doesn't exist yet (built after Notification) and no report ever actually executes here; `PUT` on
+  `sms`/`email` messages additionally allows manual status transitions beyond strict Fineract parity, to
+  make the stubbed dispatch flow testable end-to-end.
+- **Command-dispatch convention:** `POST {prefix}{1}` (smscampaigns/email campaign activate/close) reads
+  the command from the JSON body (`{"command": "..."}`), with a `?command=` query-parameter fallback
+  matching Fineract's own literal API shape for these specific endpoints. This intentionally differs from
+  Group's `POST {prefix}{1}/command/{2}` path-segment convention — Group's richer, more varied command set
+  benefits from an explicit path segment; smscampaigns/email campaigns have exactly two commands
+  (activate/close) on a literal single-POST-per-id Fineract path, so the simpler body/query convention was
+  kept instead of introducing a path segment Fineract itself doesn't have here.
+- Identity permission catalog: `src/services/Identity/migrations/V013__phase8_notification_permissions.sql`
+  adds 26 permission codes (`grouping=notification`) covering notifications/sms/smscampaigns/
+  emailconfiguration/emailcampaign/email/reportmailingjob, granted to the `Admin` role template.
+- Gateway routing: new `notification` upstream (`http://127.0.0.1:7515`) and six route prefixes
+  (`/api/v1/notifications`, `/api/v1/smscampaigns`, `/api/v1/sms`, `/api/v1/email`,
+  `/api/v1/reportmailingjobrunhistory`, `/api/v1/reportmailingjobs`) — safe under `GatewayCore`'s
+  longest-prefix-first route matching (routes are sorted by prefix length descending before matching), so
+  `/api/v1/sms` cannot shadow `/api/v1/smscampaigns`.
+- `docker/initdb/01-create-databases.sql` adds `TlNotificationDb`; `docker-compose.dev.yml` adds a
+  `notification` service block (port 7515) and adds it to the gateway's `depends_on`; top-level
+  `CMakeLists.txt` `TL_SERVICES` includes `Notification`.
+- **Build-verified this session** — the first phase-8 (and first since Phase 6) session with an actual
+  working C++ toolchain. No `apt`/package-manager network access is available in this sandbox (only
+  `github.com`/`codeload.github.com` and `pypi.org` are reachable), so the full dependency chain was
+  bootstrapped from source instead of pre-installed packages: `cmake`/`ninja` via `pip` into a venv;
+  OpenSSL 3.2.6 built from the upstream git source into `/usr/local/ssl` (system only ships a bare
+  `libssl.so.3` runtime lib with no headers); `jsoncpp` 1.9.5 built from source (not the `main` branch tip
+  1.10.0 — Drogon's `FindJsoncpp.cmake` does a lexicographic, not numeric, version-string compare against
+  `1.7` and spuriously rejects any `1.10.x`); `libuuid`'s public header copied from the `util-linux` source
+  tree to pair with the system's existing `libuuid.so.1` runtime lib; Drogon v1.9.8 built from source with
+  `-DBUILD_POSTGRESQL=OFF -DBUILD_MYSQL=OFF -DBUILD_SQLITE=OFF -DBUILD_REDIS=OFF` (no DB driver headers are
+  available in-sandbox either; the ORM's generic template layer — `Mapper<T>`, `Criteria`, `DbClient` —
+  compiles identically regardless of which backend driver is linked in, so this doesn't weaken the
+  verification of our own service code, only means `DbClientManagerSkipped.cc` is linked instead of the
+  real postgres driver). With that toolchain, `HeartBeat`, `Template`, `Notification`, and `ApiGateway`
+  (covering every Phase 8 component) were all configured and built from a clean tree with **zero compiler
+  errors**; `ctest` (libturbo unit tests) and `check_coroutines.py` both pass. The `Notification` binary
+  was additionally smoke-tested standalone (DB clients stripped from its config, since no postgres is
+  reachable in-sandbox): it starts, binds port 7515, serves `/health` with `200`, returns `401` from every
+  one of its route prefixes with no trusted context (confirming `TrustedContextFilter` + all `ADD_METHOD_TO`
+  routes registered correctly), and `404`s an unknown path. This is real binary-level verification of
+  routing/filter wiring, though not a full DB-backed integration test (no postgres instance is available
+  in this sandbox).
+
 ### Phase 9 — Self-service & interoperation (≈79 endpoints)
 
 - **SelfService (BFF):** all 60 `self/*` endpoints — registration (+confirm), authentication, clients/accounts/transactions views, loan & savings applications, beneficiaries (TPT), third-party transfers, share accounts, device registration for push, pockets, surveys — composing internal services with a locked-down self-service permission set.

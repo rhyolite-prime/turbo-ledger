@@ -40,7 +40,8 @@
         "group": "http://127.0.0.1:7506",
         "teller": "http://127.0.0.1:7508",
         "heartbeat": "http://127.0.0.1:7510",
-        "template": "http://127.0.0.1:7514"
+        "template": "http://127.0.0.1:7514",
+        "notification": "http://127.0.0.1:7515"
       },
       "provisioner": {
         "base_url": "http://127.0.0.1:7512",
@@ -383,6 +384,30 @@
         {
           "prefix": "/api/v1/templates",
           "service": "template"
+        },
+        {
+          "prefix": "/api/v1/notifications",
+          "service": "notification"
+        },
+        {
+          "prefix": "/api/v1/smscampaigns",
+          "service": "notification"
+        },
+        {
+          "prefix": "/api/v1/sms",
+          "service": "notification"
+        },
+        {
+          "prefix": "/api/v1/email",
+          "service": "notification"
+        },
+        {
+          "prefix": "/api/v1/reportmailingjobrunhistory",
+          "service": "notification"
+        },
+        {
+          "prefix": "/api/v1/reportmailingjobs",
+          "service": "notification"
         }
       ],
       "tenants": [
