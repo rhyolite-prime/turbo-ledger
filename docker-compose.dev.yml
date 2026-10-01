@@ -152,6 +152,20 @@ services:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
 
+  group:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.service
+      args: { SERVICE: Group }
+    environment:
+      TL_DB_HOST: postgres
+      TL_REDIS_HOST: redis
+    ports:
+      - "7506:7506"
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
   gateway:
     build:
       context: .
@@ -168,6 +182,7 @@ services:
       - customer
       - depositaccountmanagement
       - portfolio
+      - group
 
 volumes:
   pgdata:

@@ -57,13 +57,17 @@ class SavingsAccountsController : public drogon::HttpController<SavingsAccountsC
         ADD_METHOD_TO(SavingsAccountsController::commandByExternalId,
                      std::string(PREFIX) + "external-id/{1}/command/{2}", Post, Options, FILTER);
 
-        // ---- GSIM (thin 501 stubs — see header note) ---------------------------
+        // ---- GSIM (Group Savings Integrated Monitoring — real as of Phase 7's
+        // Group service; route reshaped to this codebase's {id}/command/{name}
+        // convention instead of the original stub's literal Fineract
+        // `gsimcommands/{id}?command=` shape, since nothing depended on the
+        // stub's route yet) ------------------------------------------------------
         ADD_METHOD_TO(SavingsAccountsController::gsimCreate, std::string(PREFIX) + "gsim/create", Post,
                      Options, FILTER);
         ADD_METHOD_TO(SavingsAccountsController::gsimUpdate, std::string(PREFIX) + "gsim/{1}/update", Put,
                      Options, FILTER);
-        ADD_METHOD_TO(SavingsAccountsController::gsimCommand, std::string(PREFIX) + "gsimcommands/{1}", Post,
-                     Options, FILTER);
+        ADD_METHOD_TO(SavingsAccountsController::gsimCommand, std::string(PREFIX) + "gsim/{1}/command/{2}",
+                     Post, Options, FILTER);
 
         // ---- charges sub-resource -----------------------------------------------
         ADD_METHOD_TO(SavingsAccountsController::chargesGetAll, std::string(PREFIX) + "{1}/charges/get-all",
@@ -119,7 +123,7 @@ class SavingsAccountsController : public drogon::HttpController<SavingsAccountsC
 
     Task<HttpResponsePtr> gsimCreate(HttpRequestPtr req);
     Task<HttpResponsePtr> gsimUpdate(HttpRequestPtr req, std::string parentAccountId);
-    Task<HttpResponsePtr> gsimCommand(HttpRequestPtr req, std::string parentAccountId);
+    Task<HttpResponsePtr> gsimCommand(HttpRequestPtr req, std::string parentAccountId, std::string cmd);
 
     Task<HttpResponsePtr> chargesGetAll(HttpRequestPtr req, std::string accountId);
     Task<HttpResponsePtr> chargesCreate(HttpRequestPtr req, std::string accountId);

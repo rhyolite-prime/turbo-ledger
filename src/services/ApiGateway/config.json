@@ -36,7 +36,8 @@
         "provisioner": "http://127.0.0.1:7512",
         "customer": "http://127.0.0.1:7504",
         "depositaccountmanagement": "http://127.0.0.1:7507",
-        "portfolio": "http://127.0.0.1:7502"
+        "portfolio": "http://127.0.0.1:7502",
+        "group": "http://127.0.0.1:7506"
       },
       "provisioner": {
         "base_url": "http://127.0.0.1:7512",
@@ -335,6 +336,22 @@
         {
           "prefix": "/api/v1/creditBureauIntegration/",
           "service": "portfolio"
+        },
+        {
+          "prefix": "/api/v1/groups/",
+          "service": "group"
+        },
+        {
+          "prefix": "/api/v1/centers/",
+          "service": "group"
+        },
+        {
+          "prefix": "/api/v1/grouplevels/",
+          "service": "group"
+        },
+        {
+          "prefix": "/api/v1/collectionsheet/",
+          "service": "group"
         }
       ],
       "tenants": [

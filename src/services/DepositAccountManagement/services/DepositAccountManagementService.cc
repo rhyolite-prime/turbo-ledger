@@ -1758,6 +1758,135 @@ drogon::Task<Json::Value> DepositAccountManagementService::handleAccountCommandB
 }
 
 // -----------------------------------------------------------------------------
+// GSIM (Group Savings Integrated Monitoring) — previously a documented 501
+// scope trim (see this service's header, old wording) because the Group
+// domain didn't exist yet. Now that Phase 7 ships a Group service
+// (client/group membership, group/center CRUD) this is implemented for
+// real: one *parent* savings_account (is_gsim_parent=true, group_id set,
+// client_id null, no own transactions — a pure rollup placeholder) plus one
+// *child* savings_account per group member (parent_account_id = parent's
+// id, client_id = member, is_gsim_parent=false), each driven through the
+// exact same lifecycle state machine as a regular savings account. Every
+// child is created/approved/activated/closed by literally calling the
+// existing single-account create/update/command methods — no duplicated
+// lifecycle logic — exactly mirroring the GLIM (Group Loan Individual
+// Monitoring) pattern already used by Portfolio's handleGlimCommand.
+//
+// Request/response shape is this codebase's own (documented) JSON, not an
+// attempt to byte-match Fineract's GSIM wire format (which encodes child
+// accounts as an ad hoc delimited string) — see the GroupsController /
+// Group service note for the parallel "own clean JSON over literal Fineract
+// wire compat" precedent used throughout this codebase for non-`charges`
+// style sub-resources.
+//
+// groupId/clientMembers[*] are cross-service ids (-> Group service) trusted
+// as given, same as every other cross-service id in this codebase (no
+// inter-service RPC client exists) — this service does not verify the
+// group or its membership actually exist in the Group service.
+// -----------------------------------------------------------------------------
+
+drogon::Task<Json::Value> DepositAccountManagementService::createGsimAccount(
+    const turbo::RequestContext &ctx, Json::Value body) {
+    const auto groupId = asStringOr(body, "groupId");
+    if (groupId.empty())
+        throw ApiError(drogon::k400BadRequest, "groupId is required", "error.msg.gsim.group.required");
+    const Json::Value &members = body["clientMembers"];
+    if (!members.isArray() || members.empty())
+        throw ApiError(drogon::k400BadRequest,
+                       "clientMembers must be a non-empty array of client ids (optionally "
+                       "{\"clientId\":..,\"minRequiredOpeningBalance\":..} objects for per-member overrides)",
+                       "error.msg.gsim.members.required");
+
+    // Parent: group-owned rollup account, no client, flagged is_gsim_parent.
+    Json::Value parentBody = body;
+    parentBody.removeMember("clientMembers");
+    parentBody.removeMember("clientId");
+    parentBody["groupId"] = groupId;
+    auto parentJson = co_await createAccount(ctx, kDepositTypeSavings, parentBody);
+    const auto parentId = parentJson["id"].asString();
+    {
+        auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
+        Mapper<m::SavingsAccount> mapper(txn);
+        auto row = co_await mapper.findByPrimaryKey(parentId);
+        row.setIsGsimParent(true);
+        row.setUpdatedBy(userIdOr(ctx));
+        co_await mapper.update(row);
+    }
+
+    Json::Value childAccounts(Json::arrayValue);
+    for (const auto &member : members) {
+        const auto memberClientId = member.isString() ? member.asString() : asStringOr(member, "clientId");
+        if (memberClientId.empty()) continue;
+
+        Json::Value childBody = body;
+        childBody.removeMember("clientMembers");
+        childBody.removeMember("groupId");
+        childBody["clientId"] = memberClientId;
+        if (member.isObject() && member.isMember("minRequiredOpeningBalance"))
+            childBody["minRequiredOpeningBalance"] = member["minRequiredOpeningBalance"];
+        if (member.isObject() && member.isMember("externalId")) childBody["externalId"] = member["externalId"];
+
+        auto childJson = co_await createAccount(ctx, kDepositTypeSavings, childBody);
+        const auto childId = childJson["id"].asString();
+        {
+            auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
+            Mapper<m::SavingsAccount> mapper(txn);
+            auto row = co_await mapper.findByPrimaryKey(childId);
+            row.setParentAccountId(parentId);
+            row.setUpdatedBy(userIdOr(ctx));
+            co_await mapper.update(row);
+        }
+        childAccounts.append(co_await getAccount(ctx, kDepositTypeSavings, childId));
+    }
+
+    auto result = co_await getAccount(ctx, kDepositTypeSavings, parentId);
+    result["childAccounts"] = childAccounts;
+    co_return result;
+}
+
+drogon::Task<Json::Value> DepositAccountManagementService::updateGsimAccount(
+    const turbo::RequestContext &ctx, std::string parentAccountId, Json::Value body) {
+    // Only the parent-level application fields are editable here (matching
+    // Fineract: GSIM edits are pre-approval application-level corrections,
+    // not a bulk per-member field editor) — each child account can still be
+    // edited individually via the regular savingsaccounts/{id}/update route.
+    body.removeMember("clientMembers");
+    body.removeMember("groupId");
+    body.removeMember("clientId");
+    auto result = co_await updateAccount(ctx, kDepositTypeSavings, parentAccountId, body);
+
+    auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
+    auto children = co_await Mapper<m::SavingsAccount>(txn).findBy(
+        Criteria(m::SavingsAccount::Cols::_parent_account_id, parentAccountId));
+    Json::Value childAccounts(Json::arrayValue);
+    for (const auto &c : children) childAccounts.append(co_await accountToJson(txn, c.getValueOfId()));
+    result["childAccounts"] = childAccounts;
+    co_return result;
+}
+
+drogon::Task<Json::Value> DepositAccountManagementService::handleGsimCommand(
+    const turbo::RequestContext &ctx, std::string parentAccountId, std::string command, Json::Value body) {
+    Txn probeTxn = co_await turbo::db::beginTenantTxn(db(), ctx);
+    auto children = co_await Mapper<m::SavingsAccount>(probeTxn)
+                        .findBy(Criteria(m::SavingsAccount::Cols::_parent_account_id, parentAccountId));
+    probeTxn.reset();
+
+    // Fan the same command out to the parent and every member child — each
+    // call drives the regular single-account state machine
+    // (applyAccountCommand) in its own transaction, exactly mirroring
+    // Portfolio's GLIM (handleGlimCommand) fan-out.
+    auto result = co_await handleAccountCommand(ctx, kDepositTypeSavings, parentAccountId, command, body);
+    Json::Value childAccounts(Json::arrayValue);
+    for (const auto &c : children) {
+        auto childResult =
+            co_await handleAccountCommand(ctx, kDepositTypeSavings, c.getValueOfId(), command, body);
+        childAccounts.append(childResult);
+    }
+    result["childAccounts"] = childAccounts;
+    co_return result;
+}
+
+// -----------------------------------------------------------------------------
 // account charges
 // -----------------------------------------------------------------------------
 

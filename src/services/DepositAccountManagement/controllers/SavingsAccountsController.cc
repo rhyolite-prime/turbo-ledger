@@ -199,23 +199,53 @@ Task<HttpResponsePtr> SavingsAccountsController::commandByExternalId(HttpRequest
     }
 }
 
-// ---- GSIM (documented scope trim — see DepositAccountManagementService.h) ---
+// ---- GSIM (Group Savings Integrated Monitoring — see DepositAccountManagementService.h) ---
 
 Task<HttpResponsePtr> SavingsAccountsController::gsimCreate(HttpRequestPtr req) {
-    co_return ApiResponse::httpNotImplemented(
-        "GSIM (Group Savings Integrated Monitoring) requires a Group service that does not exist yet");
+    auto ctx = turbo::RequestContext::from(req);
+    if (!ctx) co_return ApiResponse::httpUnauthorized("Missing trusted context");
+    auto body = req->getJsonObject();
+    if (!body) co_return ApiResponse::httpBadRequest("Invalid JSON body");
+    try {
+        auto resp = ApiResponse::httpOk(co_await svc().createGsimAccount(*ctx, *body),
+                                        "GSIM savings account created");
+        resp->setStatusCode(k201Created);
+        co_return resp;
+    } catch (const ApiError &e) {
+        co_return ApiResponse::httpError(e.status(), e.what(), e.globalisationCode());
+    } catch (const std::exception &e) {
+        co_return ApiResponse::httpError(k500InternalServerError, e.what());
+    }
 }
 
 Task<HttpResponsePtr> SavingsAccountsController::gsimUpdate(HttpRequestPtr req,
                                                             std::string parentAccountId) {
-    co_return ApiResponse::httpNotImplemented(
-        "GSIM (Group Savings Integrated Monitoring) requires a Group service that does not exist yet");
+    auto ctx = turbo::RequestContext::from(req);
+    if (!ctx) co_return ApiResponse::httpUnauthorized("Missing trusted context");
+    auto body = req->getJsonObject();
+    if (!body) co_return ApiResponse::httpBadRequest("Invalid JSON body");
+    try {
+        co_return ApiResponse::httpOk(co_await svc().updateGsimAccount(*ctx, parentAccountId, *body));
+    } catch (const ApiError &e) {
+        co_return ApiResponse::httpError(e.status(), e.what(), e.globalisationCode());
+    } catch (const std::exception &e) {
+        co_return ApiResponse::httpError(k500InternalServerError, e.what());
+    }
 }
 
 Task<HttpResponsePtr> SavingsAccountsController::gsimCommand(HttpRequestPtr req,
-                                                             std::string parentAccountId) {
-    co_return ApiResponse::httpNotImplemented(
-        "GSIM (Group Savings Integrated Monitoring) requires a Group service that does not exist yet");
+                                                             std::string parentAccountId, std::string cmd) {
+    auto ctx = turbo::RequestContext::from(req);
+    if (!ctx) co_return ApiResponse::httpUnauthorized("Missing trusted context");
+    auto body = req->getJsonObject();
+    Json::Value b = body ? *body : Json::Value(Json::objectValue);
+    try {
+        co_return ApiResponse::httpOk(co_await svc().handleGsimCommand(*ctx, parentAccountId, cmd, b));
+    } catch (const ApiError &e) {
+        co_return ApiResponse::httpError(e.status(), e.what(), e.globalisationCode());
+    } catch (const std::exception &e) {
+        co_return ApiResponse::httpError(k500InternalServerError, e.what());
+    }
 }
 
 // ---- charges sub-resource -----------------------------------------------------

@@ -44,10 +44,12 @@
 //     precedent. A future Accounting consumer can replay these events into
 //     real journal entries once that wiring exists.
 //   - GSIM (Group Savings Integrated Monitoring — 3 of the 32 savingsaccounts
-//     routes: gsim create/update/commands) are thin 501 stubs: a real GSIM
-//     implementation requires distributing a pooled deposit across group
-//     members, which requires a Group service that does not exist yet in
-//     this codebase. Documented scope trim, not a silent omission.
+//     routes: gsim create/update/commands) was originally a documented 501
+//     scope trim (a real GSIM implementation requires distributing a pooled
+//     deposit across group members, which requires a Group service that did
+//     not exist yet). Phase 7 added that Group service, so this is now
+//     implemented for real — see createGsimAccount/updateGsimAccount/
+//     handleGsimCommand below and their .cc section header.
 //   - Share-account routes present in the old pre-inventory scaffold
 //     (`ProductsController`/`AccountsController`) are dropped entirely —
 //     out of scope per ENDPOINT_INVENTORY.md (they belong to
@@ -191,6 +193,22 @@ class DepositAccountManagementService {
     /// GET fixeddepositaccounts/calculate-fd-interest — standalone calculator,
     /// no persisted account required.
     Json::Value calculateFdInterest(const turbo::RequestContext &ctx, const Json::Value &query);
+
+    // ---- GSIM (Group Savings Integrated Monitoring) — real implementation now
+    // that a Group service exists (Phase 7); see the .cc section header for
+    // the full design note. body.groupId + body.clientMembers[] drive a
+    // parent (group-owned, is_gsim_parent=true) + one child savings_account
+    // per member, every one going through the regular single-account
+    // create/update/command methods.
+    drogon::Task<Json::Value> createGsimAccount(const turbo::RequestContext &ctx, Json::Value body);
+    drogon::Task<Json::Value> updateGsimAccount(const turbo::RequestContext &ctx,
+                                                std::string parentAccountId, Json::Value body);
+    /// command: approve|undoApproval|reject|withdrawnByApplicant|activate|close
+    /// (same vocabulary as the regular savingsaccounts command — fanned out
+    /// to the parent + every child).
+    drogon::Task<Json::Value> handleGsimCommand(const turbo::RequestContext &ctx,
+                                                std::string parentAccountId, std::string command,
+                                                Json::Value body);
 
     // ---- account charges --------------------------------------------------------
     drogon::Task<Json::Value> listAccountCharges(const turbo::RequestContext &ctx,
