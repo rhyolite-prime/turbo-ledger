@@ -1,19 +1,22 @@
 #include "ApiKeysController.h"
-#include "dto/BaseApiResponse.h"
-#include "plugins/IdentityServicePlugin.h"
 #include "dto/ApiKeyDto.h"
-#include "dto/UserIdentityDto.h"
+#include "plugins/IdentityServicePlugin.h"
+#include "turbo/ApiResponse.h"
+#include "turbo/RequestContext.h"
 
 using namespace drogon;
 using namespace turbo_ledger_identity::plugins;
 using namespace turbo_ledger_identity::dto;
+using turbo::ApiResponse;
+using turbo_ledger_identity::services::ApiError;
 
 Task<HttpResponsePtr> ApiKeysController::getAll(HttpRequestPtr req) {
-    auto identity = turbo_ledger_identity::dto::UserIdentityDto::fromRequest(req);
+    auto ctx = turbo::RequestContext::from(req);
+    if (!ctx) co_return ApiResponse::httpUnauthorized("Missing trusted context");
 
     int pageNo = 1;
     int pageSize = 10;
-    std::string query = "";
+    std::string query;
 
     if (!req->getParameter("pageNo").empty()) {
         try { pageNo = std::stoi(req->getParameter("pageNo")); } catch (...) {}
@@ -21,131 +24,122 @@ Task<HttpResponsePtr> ApiKeysController::getAll(HttpRequestPtr req) {
     if (!req->getParameter("pageSize").empty()) {
         try { pageSize = std::stoi(req->getParameter("pageSize")); } catch (...) {}
     }
-    if (!req->getParameter("query").empty()) {
-        query = req->getParameter("query");
-    }
+    if (!req->getParameter("query").empty()) query = req->getParameter("query");
 
     auto plugin = drogon::app().getPlugin<IdentityServicePlugin>();
-    auto& service = plugin->getApiKeyService();
+    auto &service = plugin->getApiKeyService();
 
-    auto response = co_await service.getAll(identity, pageNo, pageSize, query);
-
-    auto resp = HttpResponse::newHttpJsonResponse(response.toJson());
-    resp->setStatusCode(response.success ? k200OK : k400BadRequest);
-    co_return resp;
+    try {
+        co_return ApiResponse::httpOk(co_await service.listApiKeys(*ctx, pageNo, pageSize, query),
+                                      "Tenant API keys retrieved successfully");
+    } catch (const ApiError &e) {
+        co_return ApiResponse::httpError(e.status(), e.what(), e.globalisationCode());
+    } catch (const std::exception &e) {
+        co_return ApiResponse::httpError(k500InternalServerError, e.what());
+    }
 }
 
 Task<HttpResponsePtr> ApiKeysController::createApiKey(HttpRequestPtr req) {
+    auto ctx = turbo::RequestContext::from(req);
+    if (!ctx) co_return ApiResponse::httpUnauthorized("Missing trusted context");
 
     auto json = req->getJsonObject();
-    if (!json) {
-        BaseApiResponse apiResponse;
-        apiResponse.success = false;
-        apiResponse.message = "Invalid JSON payload";
-        auto resp = HttpResponse::newHttpJsonResponse(apiResponse.toJson());
-        resp->setStatusCode(k400BadRequest);
-        co_return resp;
-    }
-
-    auto identity = turbo_ledger_identity::dto::UserIdentityDto::fromRequest(req);
+    if (!json) co_return ApiResponse::httpBadRequest("Invalid JSON payload");
 
     ApiKeyDto dto;
     dto.fromJson(*json);
 
-
     auto plugin = drogon::app().getPlugin<IdentityServicePlugin>();
-    auto& service = plugin->getApiKeyService();
+    auto &service = plugin->getApiKeyService();
 
-    auto result = co_await service.create(identity, dto);
-
-    auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
-    resp->setStatusCode(result.success ? k200OK : k400BadRequest);
-    co_return resp;
+    try {
+        auto resp = ApiResponse::httpOk(co_await service.createApiKey(*ctx, dto),
+                                        "Tenant API key created successfully");
+        resp->setStatusCode(k201Created);
+        co_return resp;
+    } catch (const ApiError &e) {
+        co_return ApiResponse::httpError(e.status(), e.what(), e.globalisationCode());
+    } catch (const std::exception &e) {
+        co_return ApiResponse::httpError(k500InternalServerError, e.what());
+    }
 }
-
 
 Task<HttpResponsePtr> ApiKeysController::validateApiKeys(HttpRequestPtr req) {
     auto json = req->getJsonObject();
-    if (!json) {
-        BaseApiResponse apiResponse;
-        apiResponse.success = false;
-        apiResponse.message = "Invalid JSON payload";
-        auto resp = HttpResponse::newHttpJsonResponse(apiResponse.toJson());
-        resp->setStatusCode(k400BadRequest);
-        co_return resp;
-    }
+    if (!json) co_return ApiResponse::httpBadRequest("Invalid JSON payload");
+    if (!json->isMember("clientId") || !json->isMember("clientSecret"))
+        co_return ApiResponse::httpBadRequest("clientId and clientSecret are required");
 
-    if (!json->isMember("clientId") || !json->isMember("clientSecret")) {
-        BaseApiResponse apiResponse;
-        apiResponse.success = false;
-        apiResponse.message = "clientId and clientSecret are required";
-        auto resp = HttpResponse::newHttpJsonResponse(apiResponse.toJson());
-        resp->setStatusCode(k400BadRequest);
-        co_return resp;
-    }
-
-    std::string clientId = (*json)["clientId"].asString();
-    std::string clientSecret = (*json)["clientSecret"].asString();
+    // Unauthenticated by design (this IS the credential check) — the caller
+    // asserts which tenant schema to look the key up in via TL-Tenant-Id,
+    // same convention as AuthController::signIn.
+    const std::string tenantId = req->getHeader(turbo::RequestContext::kTenantHeaderName);
+    const std::string clientId = (*json)["clientId"].asString();
+    const std::string clientSecret = (*json)["clientSecret"].asString();
 
     auto plugin = drogon::app().getPlugin<IdentityServicePlugin>();
-    auto& service = plugin->getApiKeyService();
+    auto &service = plugin->getApiKeyService();
 
-    auto result = co_await service.validateApiCredentials(clientId, clientSecret);
+    auto result = co_await service.validateApiCredentials(tenantId, clientId, clientSecret);
 
-    BaseApiResponse apiResponse;
     if (result.isValid) {
-        apiResponse.success = true;
-        apiResponse.message = "Valid credentials";
-        apiResponse.result["accountId"] = result.accountId;
-        apiResponse.result["businessId"] = result.businessId;
-    } else {
-        apiResponse.success = false;
-        apiResponse.message = result.errorMessage;
-        apiResponse.error["code"] = result.errorCode;
+        Json::Value body;
+        body["tenantId"] = result.tenantId;
+        co_return ApiResponse::httpOk(body, "Valid credentials");
     }
-
-    auto resp = HttpResponse::newHttpJsonResponse(apiResponse.toJson());
-    resp->setStatusCode(result.isValid ? k200OK : k401Unauthorized);
-    co_return resp;
+    co_return ApiResponse::httpError(
+        result.errorCode == drogon::k400BadRequest ? k400BadRequest
+            : (result.errorCode == drogon::k404NotFound ? k404NotFound : k401Unauthorized),
+        result.errorMessage, "error.msg.identity.apikey.invalid.credentials");
 }
 
-
-
 Task<HttpResponsePtr> ApiKeysController::revokeApiKey(HttpRequestPtr req, std::string id) {
-    auto identity = turbo_ledger_identity::dto::UserIdentityDto::fromRequest(req);
+    auto ctx = turbo::RequestContext::from(req);
+    if (!ctx) co_return ApiResponse::httpUnauthorized("Missing trusted context");
 
     auto plugin = drogon::app().getPlugin<IdentityServicePlugin>();
-    auto& service = plugin->getApiKeyService();
+    auto &service = plugin->getApiKeyService();
 
-    auto result = co_await service.revoke(identity, id);
-
-    auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
-    resp->setStatusCode(result.success ? k200OK : k400BadRequest);
-    co_return resp;
+    try {
+        co_return ApiResponse::httpOk(co_await service.revokeApiKey(*ctx, id),
+                                      "Tenant API key revoked successfully");
+    } catch (const ApiError &e) {
+        co_return ApiResponse::httpError(e.status(), e.what(), e.globalisationCode());
+    } catch (const std::exception &e) {
+        co_return ApiResponse::httpError(k500InternalServerError, e.what());
+    }
 }
 
 Task<HttpResponsePtr> ApiKeysController::activateApiKey(HttpRequestPtr req, std::string id) {
-    auto identity = turbo_ledger_identity::dto::UserIdentityDto::fromRequest(req);
+    auto ctx = turbo::RequestContext::from(req);
+    if (!ctx) co_return ApiResponse::httpUnauthorized("Missing trusted context");
 
     auto plugin = drogon::app().getPlugin<IdentityServicePlugin>();
-    auto& service = plugin->getApiKeyService();
+    auto &service = plugin->getApiKeyService();
 
-    auto result = co_await service.activate(identity, id);
-
-    auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
-    resp->setStatusCode(result.success ? k200OK : k400BadRequest);
-    co_return resp;
+    try {
+        co_return ApiResponse::httpOk(co_await service.activateApiKey(*ctx, id),
+                                      "Tenant API key activated successfully");
+    } catch (const ApiError &e) {
+        co_return ApiResponse::httpError(e.status(), e.what(), e.globalisationCode());
+    } catch (const std::exception &e) {
+        co_return ApiResponse::httpError(k500InternalServerError, e.what());
+    }
 }
 
 Task<HttpResponsePtr> ApiKeysController::deleteApiKey(HttpRequestPtr req, std::string id) {
-    auto identity = turbo_ledger_identity::dto::UserIdentityDto::fromRequest(req);
+    auto ctx = turbo::RequestContext::from(req);
+    if (!ctx) co_return ApiResponse::httpUnauthorized("Missing trusted context");
 
     auto plugin = drogon::app().getPlugin<IdentityServicePlugin>();
-    auto& service = plugin->getApiKeyService();
+    auto &service = plugin->getApiKeyService();
 
-    auto result = co_await service.deleteApiKey(identity, id);
-
-    auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
-    resp->setStatusCode(result.success ? k200OK : k400BadRequest);
-    co_return resp;
+    try {
+        co_await service.deleteApiKey(*ctx, id);
+        co_return ApiResponse::httpOk(Json::Value(Json::objectValue), "Tenant API key deleted successfully");
+    } catch (const ApiError &e) {
+        co_return ApiResponse::httpError(e.status(), e.what(), e.globalisationCode());
+    } catch (const std::exception &e) {
+        co_return ApiResponse::httpError(k500InternalServerError, e.what());
+    }
 }

@@ -17,7 +17,7 @@ namespace turbo_ledger_identity::services
     public:
         AuditScope(
             const std::string& actorId,
-            const std::string& businessId,
+            const std::string& tenantId,
             const std::string& entityType,
             const std::string& entityId,
             const std::string& action,
@@ -57,7 +57,7 @@ namespace turbo_ledger_identity::services
 
     private:
         std::string actorId_;
-        std::string businessId_;
+        std::string tenantId_;
         std::string entityType_;
         std::string entityId_;
         std::string action_;

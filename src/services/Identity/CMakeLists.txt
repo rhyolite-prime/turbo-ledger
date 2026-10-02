@@ -20,12 +20,7 @@ add_executable(${PROJECT_NAME} main.cc
         constants/ErrorCodes.h
         services/users/UserService.h
         services/users/UserService.cc
-        services/roles/RoleService.h
-        services/roles/RoleService.cc
         services/api_keys/ApiKeyService.h
-        services/business_accounts/BusinessAccountService.h
-        services/business_accounts/BusinessAccountService.cc
-        dto/BusinessAccountDto.h
         constants/StatusType.h
         utils/JsonUtils.h
         services/audit_logs/AuditLogService.h
@@ -36,13 +31,10 @@ add_executable(${PROJECT_NAME} main.cc
         services/api_keys/ApiKeyService.cc
         utils/IdGeneratorUtils.h
         utils/IdGeneratorUtils.cc
-        dto/RoleDto.h
-        dto/UserDto.h
         dto/SigninDto.h
         utils/PasswordUtils.h
         utils/PasswordUtils.cc
         utils/codecvt_helper.h
-        dto/UserIdentityDto.h
         services/redis/RedisCacheManager.h
         services/redis/RedisCacheManager.cc
 )
