@@ -541,6 +541,122 @@ Template/HeartBeat, not Teller's older `{1}/update`-suffix style).
 - **Payments v1:** `interoperation` (19) — Mojaloop-style parties/quotes/transfers/requests for wallet interop, plus **internal instant transfer API** with holds (`hold→commit/abort`) building on DAM.
 - **Exit criteria:** a demo mobile-banking flow (register → view accounts → transfer → loan application) runs purely against SelfService.
 
+**SelfService (60 `self/*` endpoints, port 7516, `TlSelfServiceDb`) + Interoperation (19
+`interoperation/*` endpoints, port 7517, `TlInteroperationDb`) — ✅ IMPLEMENTED AND BUILD/RUNTIME-VERIFIED
+(this session's toolchain was subsequently wiped by a sandbox reset — see the verification note at the
+end of this section for exactly what was and wasn't re-confirmed afterwards).**
+
+- **New composition mechanism — `turbo::InternalClient`** (`src/libs/turbo/include/turbo/InternalClient.h`,
+  `.../src/InternalClient.cc`): a thin wrapper around `drogon::HttpClient` that lets one service call
+  another's HTTP API in-process, used by SelfService and Interoperation to compose Customer, Portfolio and
+  DepositAccountManagement. Every composed call is made with a freshly-minted `TL-Context` built by a
+  per-service `systemCtx(callerCtx, permissions)` helper: `authScheme = "system"`, a **fixed, named,
+  per-call-site permission allow-list** (never the inbound caller's own permission set — a caller with only
+  `READ_LOAN` can never smuggle extra permissions into the composed call), and the caller's tenant id and a
+  **real (non-nil) random UUID** as the system actor id (see the bug writeup below for why the actor id
+  matters). This is the security model for all composition in Phase 9: trusted-service-to-service calls
+  carry their own minimum-necessary authority, not the originating user's.
+- **Scope-trim decisions** (same "disclosed stub, not faked data" precedent as every prior phase):
+  - `self/clients/:id/images` — local base64-blob storage in SelfService's own DB (Customer has no image
+    support to compose against).
+  - `self/runreports` and `self/surveys*` (4 endpoints: runreports, surveys, surveys/scorecards ×2) —
+    disclosed stubs (empty/`501`); Reporting and a PPI/scorecard engine were never built.
+  - `self/pockets` and `self/beneficiaries/tpt*` — pure local CRUD in SelfService's own DB, no composition
+    with any ledger service (Fineract's own semantics for these are client-side organizational concepts,
+    not postings).
+  - `self/registration`, `self/registration/user`, `self/authentication` — simplified local workflow: a
+    public registration submission writes a pending-request row; a separate (private, admin-only) linking
+    step creates the `self_service_user` row by directly referencing an **existing** Identity user id and
+    Customer client id, rather than re-implementing Identity's password-hashing/bcrypt pipeline inside
+    SelfService. A self-service user is modelled as a strict 1:1 link to exactly one Customer `client_id`;
+    every ownership check in SelfService/Interoperation compares the target resource's `clientId` against
+    that linked id before proxying/composing.
+  - Interoperation `parties/*` (6 endpoints) — pure local CRUD on an `interop_identifiers` table (no real
+    Mojaloop ALS/DFSP directory exists to resolve against).
+  - Interoperation `quotes`/`requests`/`transfers` (6 endpoints, excluding disburse/loanrepayment) — local
+    workflow-state tables with a genuinely-computed fee calculation, but no real inter-FSP settlement (there
+    is no second FSP in this sandbox to settle with) — disclosed-stub precedent, not faked balances.
+  - Interoperation `disburse`/`loanrepayment`/`accounts/:id/*` (6 endpoints) — **genuine** HTTP composition
+    with Portfolio and DepositAccountManagement via `InternalClient`; this is the slice that actually proves
+    the composition mechanism end-to-end (see smoke-test results below).
+- **Gateway routing split for `/api/v1/self/`:** Identity keeps its pre-existing Phase 1 exact-path routes
+  for `self/userdetails` and `self/change-password` ("my own profile" endpoints that predate SelfService);
+  every other `/api/v1/self/*` path now routes to the new `selfservice` upstream. Because `GatewayCore`
+  sorts routes by **prefix length descending** before matching (longest-prefix-wins, independent of JSON
+  array order — see `GatewayCore.cc`'s `initFromAppConfig`), this was implemented by (a) changing the
+  existing generic `/api/v1/self/` catch-all's target service from `identity` to `selfservice`, and (b)
+  adding longer, more specific prefixes that automatically take priority: `/api/v1/self/userdetails` →
+  identity, `/api/v1/self/change-password` → identity, `/api/v1/self/registration/user` → selfservice
+  (private — admin linking step), `/api/v1/self/registration` → selfservice **with `"public": true`** (the
+  bare submission step must work without a bearer token), `/api/v1/interoperation/` → interoperation. New
+  `services` map entries: `"selfservice": "http://127.0.0.1:7516"`,
+  `"interoperation": "http://127.0.0.1:7517"`.
+- Identity permission catalog: `src/services/Identity/migrations/V014__phase9_selfservice_permissions.sql`.
+- `docker/initdb/01-create-databases.sql` adds `TlSelfServiceDb`/`TlInteroperationDb`; `docker-compose.dev.yml`
+  adds `selfservice`/`interoperation` service blocks; top-level `CMakeLists.txt` `TL_SERVICES` includes both.
+- **No committed admin-user seed mechanism exists anywhere in this repo.** Every manual smoke test in every
+  phase so far has relied on an ad hoc, never-scripted bootstrap: start Identity, then directly `INSERT` a
+  first admin user row into `TlIdentity`'s tenant schema with a bcrypt hash produced by a one-off Python
+  venv (`python3 -m venv ...; pip install bcrypt; python3 -c "import bcrypt; print(bcrypt.hashpw(...))"`),
+  then grant it the `Super user` role. This gap should be closed with a small, committed
+  `src/tools/seed_admin.py` (or a `V001`-adjacent migration with a fixed dev-only admin) before any future
+  session needs to bootstrap a tenant from scratch again — tracked here rather than fixed in this session
+  because closing it safely needs the real bcrypt/Identity password-hashing parameters confirmed against a
+  running Identity instance, which requires the toolchain described below.
+- **Two real bugs were found and fixed via live smoke testing this session** (not caught by the
+  static-review-only verification method used in sandboxes without a toolchain):
+  1. **Nil-UUID `systemCtx()` actor id.** SelfService's and Interoperation's `systemCtx()` helpers
+     originally left the system-context actor/user id as a default-constructed (nil, all-zero) UUID.
+     Composed writes that use that id as a foreign key (e.g. Portfolio/DAM's `created_by`/`updated_by`
+     columns) failed because `00000000-0000-0000-0000-000000000000` is not a row in any `users` table.
+     Fixed by generating a real random UUID (`turbo::ids::newUuid()`) per composed call instead.
+  2. **Wrong permission code for Interoperation → Portfolio loan-repayment composition.**
+     `InteroperationService::loanRepayment()` requested `CREATE_LOANTRANSACTION` in its `systemCtx()`
+     allow-list when composing `POST /loans/{id}/transactions/command/repayment`, but Portfolio's
+     `createLoanTransaction()` actually checks `requirePermission(ctx, "UPDATE_LOAN")` — there is no
+     `CREATE_LOANTRANSACTION` permission code in Portfolio's catalog at all. Every repayment composition
+     call failed with `403 Missing permission: UPDATE_LOAN`. Fixed by requesting `UPDATE_LOAN` instead,
+     matching Portfolio's actual check (confirmed by reading `PortfolioService::createLoanTransaction`
+     directly, not just by precedent).
+- **Correct DepositAccountManagement deposit route, for anyone writing future smoke tests against this
+  API:** `POST /api/v1/savingsaccounts/{id}/transactions/command/deposit` (path-segment command form).
+  `POST /api/v1/savingsaccounts/{id}/transactions?command=deposit` (query-parameter form, which several
+  other Fineract-alike APIs accept) is **not** a registered route here and silently 200s with an empty body
+  — see `SavingsAccountsController.h`'s route table (`{1}/transactions/command/{2}`).
+- **Live smoke test performed this session** (against a from-source-built Postgres 16 + Drogon 1.9.8 +
+  hiredis stack, all 16 services + gateway running together on their real ports): created a client
+  ("Ama ..."), registered her as a self-service user (public submission → admin approval/linking), logged
+  in and fetched a bearer token, submitted a savings application via `self/savingsaccounts` (this is what
+  first caught bug #1 above), approved/activated it as admin, deposited $500 via DAM directly, confirmed
+  the $500 balance via `self/clients/{id}/accounts`; created a second client + savings account ("Kojo
+  ..."); transferred $150 Ama→Kojo via `POST self/accounttransfers` and confirmed **both** balances
+  actually moved (350.00 / 150.00) by reading `savings_account_transaction` rows directly from Postgres
+  as well as via the two read APIs (the first transfer attempt "succeeded" with a wrong `accountType`
+  value in the test script itself — `self/accounttransfers/template`'s `accountTypeOptions` correctly
+  documents `Savings = 2`, not `1`; once corrected, the transfer worked correctly on the first real
+  attempt, confirming this was a test-script mistake, not a product bug); created a loan product as admin,
+  submitted a loan application via `self/loans`, approved it as admin, then **disbursed it entirely through
+  Interoperation** (`POST interoperation/disburse/{loanId}` prepare → `POST
+  interoperation/disburse/{loanId}/transfer` commit), confirming the loan transitioned from status 100
+  (Submitted) → 200 (Approved) → 300 (Active) and `actualDisbursementDate` was set — this is the proof that
+  the genuine Portfolio-composition slice of Interoperation actually works end-to-end, not just that it
+  returns a well-formed response. Bug #2 above was caught by the matching `interoperation/loanrepayment`
+  call failing with `403` immediately afterward, before the fix.
+- **Verification-method note for future sessions:** this session had, for the first time in this project's
+  history, a complete working toolchain (Postgres 16, hiredis, Drogon 1.9.8 rebuilt against it, all 16
+  services compiled and actually running together) and used it to find and fix two real runtime bugs that
+  static review would not have caught. That toolchain and all `build/` artifacts were lost when the sandbox
+  container was reset mid-session (sandbox resets do not persist anything under the git-ignored `build/`
+  directory, nor anything installed outside the repo, e.g. a hand-built Postgres/Drogon under `~/.toolchain`).
+  **Rebuilding that toolchain from scratch requires bootstrapping Postgres, hiredis, and Drogon entirely
+  from source**, because this sandbox's `apt` package mirror is unreachable (only `github.com`/
+  `codeload.github.com`/`pypi.org`-style HTTPS endpoints are allowlisted — plain HTTP egress and
+  `deb.debian.org` over HTTPS both fail). Per user direction, this rebuild was **not** redone after the
+  reset; the bug fixes above were re-derived by static code reading (confirming the exact
+  `requirePermission` string Portfolio checks, etc.) but the fixed binaries were not re-run. A best-effort
+  capture of the from-source bootstrap recipe lives in `src/tools/bootstrap_toolchain.sh` for whoever next
+  has a reason to stand the stack back up.
+
 ### Phase 10 — Modern banking extensions ⭐
 
 Beyond Fineract parity; each is an independent workstream on the Phase 0 platform:
