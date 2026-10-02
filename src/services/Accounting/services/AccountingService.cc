@@ -24,6 +24,8 @@
 #include "models/FinancialActivityAccounts.h"
 #include "models/GlClosure.h"
 #include "models/JournalEntries.h"
+#include "models/ProvisioningEntry.h"
+#include "models/ProvisioningEntryDetail.h"
 
 using drogon::orm::CompareOperator;
 using drogon::orm::Criteria;
@@ -77,12 +79,17 @@ constexpr int kEntityTypeAccrual = 3;
 // uuid/std::string — see the header comment on AccountingRules.h).
 // `JournalEntries` is genuine drogon_ctl output hand-patched to add the
 // Phase 3 hash-chain columns (entry_seq/entry_hash/prev_hash — see the
-// header comment on JournalEntries.h). `AccountingRuleDebitAccount`,
-// `AccountingRuleCreditAccount`, `ProvisioningEntry` and
-// `ProvisioningEntryDetail` are hand-authored from scratch (new V003
+// header comment on JournalEntries.h). `AccountingRuleDebitAccounts` and
+// `AccountingRuleCreditAccounts` are genuine drogon_ctl output (regenerated
+// against the live V003 tables, which is also why they're named after
+// their plural table names rather than the earlier hand-authored
+// singular-named stand-ins). `ProvisioningEntry` and
+// `ProvisioningEntryDetail` are still hand-authored from scratch (new V003
 // tables) in the same drogon_ctl-shape-matching style established in
 // Phase 2 (see each model's own header comment for exactly what's omitted
-// and why).
+// and why) — a live `drogon_ctl create_model` run against these tables
+// never produced output here because V003 failed before creating them
+// (see the migration's REFERENCING-clause bug, fixed in this same commit).
 //
 // The only raw SQL in this file is a single `SELECT pg_advisory_xact_lock`
 // statement in lockJournalChain() — Postgres advisory locks have no table
@@ -540,14 +547,14 @@ drogon::Task<Json::Value> AccountingService::accountingRuleToJson(Txn txn, const
     if (row.getCreditAccountId()) j["creditAccountId"] = row.getValueOfCreditAccountId();
 
     Json::Value debitAccounts(Json::arrayValue);
-    for (const auto &r : co_await Mapper<m::AccountingRuleDebitAccount>(txn).findBy(
-             Criteria(m::AccountingRuleDebitAccount::Cols::_rule_id, id)))
+    for (const auto &r : co_await Mapper<m::AccountingRuleDebitAccounts>(txn).findBy(
+             Criteria(m::AccountingRuleDebitAccounts::Cols::_rule_id, id)))
         debitAccounts.append(r.getValueOfAccountId());
     j["debitAccounts"] = debitAccounts;
 
     Json::Value creditAccounts(Json::arrayValue);
-    for (const auto &r : co_await Mapper<m::AccountingRuleCreditAccount>(txn).findBy(
-             Criteria(m::AccountingRuleCreditAccount::Cols::_rule_id, id)))
+    for (const auto &r : co_await Mapper<m::AccountingRuleCreditAccounts>(txn).findBy(
+             Criteria(m::AccountingRuleCreditAccounts::Cols::_rule_id, id)))
         creditAccounts.append(r.getValueOfAccountId());
     j["creditAccounts"] = creditAccounts;
     co_return j;

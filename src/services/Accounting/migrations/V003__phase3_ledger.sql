@@ -161,21 +161,29 @@ END $$;
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION trg_fn_journal_entries_balanced() RETURNS trigger AS $$
 DECLARE
-    unbalanced_count integer;
+    diff numeric;
 BEGIN
-    SELECT count(*) INTO unbalanced_count
-    FROM (
-        SELECT je.transaction_id,
-               sum(CASE WHEN je.type_enum = 2 THEN je.amount ELSE 0 END) -
-               sum(CASE WHEN je.type_enum = 1 THEN je.amount ELSE 0 END) AS diff
-        FROM journal_entries je
-        WHERE je.transaction_id IN (SELECT DISTINCT transaction_id FROM new_rows)
-        GROUP BY je.transaction_id
-    ) totals
-    WHERE totals.diff <> 0;
+    -- Deferred to COMMIT (see the CONSTRAINT TRIGGER below), so by the time
+    -- any one row's check fires every leg of NEW.transaction_id has already
+    -- been inserted within this same transaction and is visible here
+    -- (ordinary MVCC read-your-own-writes) — no transition table needed.
+    -- NOTE: Postgres categorically disallows REFERENCING/transition tables
+    -- on constraint triggers ("This option [REFERENCING] is only allowed
+    -- for an AFTER trigger that is not a constraint trigger" — CREATE
+    -- TRIGGER docs); an earlier version of this trigger combined
+    -- `REFERENCING NEW TABLE ... FOR EACH STATEMENT` with `CREATE
+    -- CONSTRAINT TRIGGER` and Postgres rejected it outright with
+    -- `ERROR: syntax error at or near "REFERENCING"` at migration time.
+    -- This is FOR EACH ROW over NEW.transaction_id instead.
+    SELECT sum(CASE WHEN je.type_enum = 2 THEN je.amount ELSE 0 END) -
+           sum(CASE WHEN je.type_enum = 1 THEN je.amount ELSE 0 END)
+      INTO diff
+      FROM journal_entries je
+     WHERE je.transaction_id = NEW.transaction_id;
 
-    IF unbalanced_count > 0 THEN
-        RAISE EXCEPTION 'journal_entries: one or more transaction_id groups are unbalanced (sum(debits) <> sum(credits)) at commit'
+    IF diff IS DISTINCT FROM 0 THEN
+        RAISE EXCEPTION 'journal_entries: transaction_id % is unbalanced (sum(debits) <> sum(credits)) at commit',
+            NEW.transaction_id
             USING ERRCODE = 'check_violation';
     END IF;
     RETURN NULL;
@@ -186,8 +194,7 @@ DROP TRIGGER IF EXISTS trg_journal_entries_balanced ON journal_entries;
 CREATE CONSTRAINT TRIGGER trg_journal_entries_balanced
     AFTER INSERT ON journal_entries
     DEFERRABLE INITIALLY DEFERRED
-    REFERENCING NEW TABLE AS new_rows
-    FOR EACH STATEMENT
+    FOR EACH ROW
     EXECUTE FUNCTION trg_fn_journal_entries_balanced();
 
 -- ---------------------------------------------------------------------------
