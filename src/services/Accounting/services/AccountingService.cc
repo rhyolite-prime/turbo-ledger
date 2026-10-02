@@ -17,15 +17,13 @@
 #include "turbo/Pagination.h"
 #include "turbo/TenantDb.h"
 
-#include "models/AccountingRuleCreditAccount.h"
-#include "models/AccountingRuleDebitAccount.h"
+#include "models/AccountingRuleCreditAccounts.h"
+#include "models/AccountingRuleDebitAccounts.h"
 #include "models/AccountingRules.h"
 #include "models/Accounts.h"
 #include "models/FinancialActivityAccounts.h"
 #include "models/GlClosure.h"
 #include "models/JournalEntries.h"
-#include "models/ProvisioningEntry.h"
-#include "models/ProvisioningEntryDetail.h"
 
 using drogon::orm::CompareOperator;
 using drogon::orm::Criteria;
@@ -604,18 +602,18 @@ drogon::Task<Json::Value> AccountingService::createAccountingRule(const turbo::R
 
     if (allowMultiDebits && body.isMember("debitAccounts") && body["debitAccounts"].isArray()) {
         for (const auto &accId : body["debitAccounts"]) {
-            m::AccountingRuleDebitAccount link;
+            m::AccountingRuleDebitAccounts link;
             link.setRuleId(row.getValueOfId());
             link.setAccountId(accId.asString());
-            co_await Mapper<m::AccountingRuleDebitAccount>(txn).insert(link);
+            co_await Mapper<m::AccountingRuleDebitAccounts>(txn).insert(link);
         }
     }
     if (allowMultiCredits && body.isMember("creditAccounts") && body["creditAccounts"].isArray()) {
         for (const auto &accId : body["creditAccounts"]) {
-            m::AccountingRuleCreditAccount link;
+            m::AccountingRuleCreditAccounts link;
             link.setRuleId(row.getValueOfId());
             link.setAccountId(accId.asString());
-            co_await Mapper<m::AccountingRuleCreditAccount>(txn).insert(link);
+            co_await Mapper<m::AccountingRuleCreditAccounts>(txn).insert(link);
         }
     }
 
@@ -664,10 +662,10 @@ drogon::Task<void> AccountingService::deleteAccountingRule(const turbo::RequestC
     if (row.getValueOfSystemDefined())
         throw ApiError(drogon::k409Conflict, "System-defined accounting rules cannot be deleted",
                        "error.msg.accountingrule.system.defined");
-    co_await Mapper<m::AccountingRuleDebitAccount>(txn).deleteBy(
-        Criteria(m::AccountingRuleDebitAccount::Cols::_rule_id, id));
-    co_await Mapper<m::AccountingRuleCreditAccount>(txn).deleteBy(
-        Criteria(m::AccountingRuleCreditAccount::Cols::_rule_id, id));
+    co_await Mapper<m::AccountingRuleDebitAccounts>(txn).deleteBy(
+        Criteria(m::AccountingRuleDebitAccounts::Cols::_rule_id, id));
+    co_await Mapper<m::AccountingRuleCreditAccounts>(txn).deleteBy(
+        Criteria(m::AccountingRuleCreditAccounts::Cols::_rule_id, id));
     co_await mapper.deleteByPrimaryKey(id);
     co_await turbo::outbox::writeEvent(txn, ctx, "accountingrule", id, "accountingrule.deleted",
                                        Json::Value());
