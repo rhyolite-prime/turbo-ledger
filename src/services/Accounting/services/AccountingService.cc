@@ -24,8 +24,8 @@
 #include "models/FinancialActivityAccounts.h"
 #include "models/GlClosure.h"
 #include "models/JournalEntries.h"
-#include "models/ProvisioningEntry.h"
-#include "models/ProvisioningEntryDetail.h"
+#include "models/ProvisioningEntries.h"
+#include "models/ProvisioningEntriesDetail.h"
 
 using drogon::orm::CompareOperator;
 using drogon::orm::Criteria;
@@ -1394,8 +1394,8 @@ drogon::Task<Json::Value> AccountingService::recalculateRunningBalances(
 // ---------------------------------------------------------------------------
 
 drogon::Task<Json::Value> AccountingService::provisioningEntryToJson(Txn txn, const std::string &id) {
-    Mapper<m::ProvisioningEntry> mapper(txn);
-    m::ProvisioningEntry row;
+    Mapper<m::ProvisioningEntries> mapper(txn);
+    m::ProvisioningEntries row;
     try {
         row = co_await mapper.findByPrimaryKey(id);
     } catch (const UnexpectedRows &) {
@@ -1408,8 +1408,8 @@ drogon::Task<Json::Value> AccountingService::provisioningEntryToJson(Txn txn, co
     j["comments"] = row.getComments() ? row.getValueOfComments() : "";
     j["journalEntryCreated"] = row.getValueOfJournalEntryCreated();
 
-    auto details = co_await Mapper<m::ProvisioningEntryDetail>(txn).findBy(
-        Criteria(m::ProvisioningEntryDetail::Cols::_provisioning_entry_id, id));
+    auto details = co_await Mapper<m::ProvisioningEntriesDetail>(txn).findBy(
+        Criteria(m::ProvisioningEntriesDetail::Cols::_provisioning_entry_id, id));
     turbo::Money total = turbo::Money::fromUnits(0);
     Json::Value lines(Json::arrayValue);
     for (const auto &d : details) {
@@ -1432,9 +1432,9 @@ drogon::Task<Json::Value> AccountingService::listProvisioningEntries(const turbo
                                                                      int offset, int limit) {
     requirePermission(ctx, "READ_PROVISIONINGENTRY");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    Mapper<m::ProvisioningEntry> mapper(txn);
+    Mapper<m::ProvisioningEntries> mapper(txn);
     const auto total = co_await mapper.count();
-    mapper.orderBy(m::ProvisioningEntry::Cols::_created_date, SortOrder::DESC)
+    mapper.orderBy(m::ProvisioningEntries::Cols::_created_date, SortOrder::DESC)
         .limit(limit)
         .offset(offset);
     auto rows = co_await mapper.findAll();
@@ -1466,16 +1466,16 @@ drogon::Task<Json::Value> AccountingService::createProvisioningEntry(const turbo
     // posting) that will be unchanged once an automatic criteria engine
     // supplies those same lines instead of a human.
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    m::ProvisioningEntry row;
+    m::ProvisioningEntries row;
     row.setCreatedDate(dateOr(createdDate, Date()));
     if (body.isMember("comments")) row.setComments(asStringOr(body, "comments"));
     row.setJournalEntryCreated(false);
     if (!ctx.userId.empty()) row.setCreatedBy(ctx.userId);
-    row = co_await Mapper<m::ProvisioningEntry>(txn).insert(row);
+    row = co_await Mapper<m::ProvisioningEntries>(txn).insert(row);
 
     if (body.isMember("entries") && body["entries"].isArray()) {
         for (const auto &line : body["entries"]) {
-            m::ProvisioningEntryDetail detail;
+            m::ProvisioningEntriesDetail detail;
             detail.setProvisioningEntryId(row.getValueOfId());
             detail.setOfficeId(asStringOr(line, "officeId"));
             detail.setCurrencyCode(asStringOr(line, "currencyCode"));
@@ -1485,7 +1485,7 @@ drogon::Task<Json::Value> AccountingService::createProvisioningEntry(const turbo
             if (!amt) throw ApiError(drogon::k400BadRequest, "Invalid provisioning line amount",
                                      "error.msg.provisioningentry.invalid.amount");
             detail.setAmount(amt->toString(false));
-            co_await Mapper<m::ProvisioningEntryDetail>(txn).insert(detail);
+            co_await Mapper<m::ProvisioningEntriesDetail>(txn).insert(detail);
         }
     }
 
@@ -1502,9 +1502,9 @@ drogon::Task<Json::Value> AccountingService::recreateProvisioningEntry(
     const turbo::RequestContext &ctx, const std::string &id) {
     requirePermission(ctx, "CREATE_PROVISIONINGENTRY");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    m::ProvisioningEntry row;
+    m::ProvisioningEntries row;
     try {
-        row = co_await Mapper<m::ProvisioningEntry>(txn).findByPrimaryKey(id);
+        row = co_await Mapper<m::ProvisioningEntries>(txn).findByPrimaryKey(id);
     } catch (const UnexpectedRows &) {
         throw ApiError(drogon::k404NotFound, "Provisioning entry not found",
                        "error.msg.provisioningentry.not.found");
@@ -1523,10 +1523,10 @@ drogon::Task<Json::Value> AccountingService::listProvisioningEntryDetails(
     const turbo::RequestContext &ctx, const std::string &provisioningEntryId, int offset, int limit) {
     requirePermission(ctx, "READ_PROVISIONINGENTRY");
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    Mapper<m::ProvisioningEntryDetail> mapper(txn);
+    Mapper<m::ProvisioningEntriesDetail> mapper(txn);
     Criteria crit;
     if (!provisioningEntryId.empty())
-        crit = Criteria(m::ProvisioningEntryDetail::Cols::_provisioning_entry_id, provisioningEntryId);
+        crit = Criteria(m::ProvisioningEntriesDetail::Cols::_provisioning_entry_id, provisioningEntryId);
     const auto total = crit ? co_await mapper.count(crit) : co_await mapper.count();
     mapper.limit(limit).offset(offset);
     auto rows = crit ? co_await mapper.findBy(crit) : co_await mapper.findAll();
@@ -1547,8 +1547,8 @@ drogon::Task<Json::Value> AccountingService::listProvisioningEntryDetails(
 
 drogon::Task<void> AccountingService::createProvisioningJournalEntriesImpl(
     const std::string &provisioningEntryId, const turbo::RequestContext &ctx, Txn txn) {
-    auto details = co_await Mapper<m::ProvisioningEntryDetail>(txn).findBy(
-        Criteria(m::ProvisioningEntryDetail::Cols::_provisioning_entry_id, provisioningEntryId));
+    auto details = co_await Mapper<m::ProvisioningEntriesDetail>(txn).findBy(
+        Criteria(m::ProvisioningEntriesDetail::Cols::_provisioning_entry_id, provisioningEntryId));
     if (details.empty()) co_return;
 
     // A provisioning batch debits a "provisioning expense" account and
@@ -1564,7 +1564,7 @@ drogon::Task<void> AccountingService::createProvisioningJournalEntriesImpl(
                        "error.msg.provisioningentry.no.mapping");
     const std::string expenseAccountId = expenseMapping[0].getValueOfGlAccountId();
 
-    auto row = co_await Mapper<m::ProvisioningEntry>(txn).findByPrimaryKey(provisioningEntryId);
+    auto row = co_await Mapper<m::ProvisioningEntries>(txn).findByPrimaryKey(provisioningEntryId);
     const std::string entryDate = dateStr(row.getValueOfCreatedDate());
 
     std::map<std::pair<std::string, std::string>, turbo::Money> byOfficeCurrency;
@@ -1603,7 +1603,7 @@ drogon::Task<void> AccountingService::createProvisioningJournalEntriesImpl(
     }
 
     row.setJournalEntryCreated(true);
-    co_await Mapper<m::ProvisioningEntry>(txn).update(row);
+    co_await Mapper<m::ProvisioningEntries>(txn).update(row);
 }
 
 drogon::Task<void> AccountingService::createProvisioningJournalEntries(
