@@ -50,6 +50,7 @@ class Office
         static const std::string _external_id;
         static const std::string _name;
         static const std::string _opening_date;
+        static const std::string _updated_at;
     };
 
     static const int primaryKeyNumber;
@@ -118,7 +119,6 @@ class Office
     ///Set the value of the column parent_id
     void setParentId(const std::string &pParentId) noexcept;
     void setParentId(std::string &&pParentId) noexcept;
-    void setParentIdToNull() noexcept;
 
     /**  For column hierarchy  */
     ///Get the value of the column hierarchy, returns the default value if the column is null
@@ -157,8 +157,16 @@ class Office
     ///Set the value of the column opening_date
     void setOpeningDate(const ::trantor::Date &pOpeningDate) noexcept;
 
+    /**  For column updated_at  */
+    ///Get the value of the column updated_at, returns the default value if the column is null
+    const ::trantor::Date &getValueOfUpdatedAt() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<::trantor::Date> &getUpdatedAt() const noexcept;
+    ///Set the value of the column updated_at
+    void setUpdatedAt(const ::trantor::Date &pUpdatedAt) noexcept;
 
-    static size_t getColumnNumber() noexcept {  return 6;  }
+
+    static size_t getColumnNumber() noexcept {  return 7;  }
     static const std::string &getColumnName(size_t index) noexcept(false);
 
     Json::Value toJson() const;
@@ -186,6 +194,7 @@ class Office
     std::shared_ptr<std::string> externalId_;
     std::shared_ptr<std::string> name_;
     std::shared_ptr<::trantor::Date> openingDate_;
+    std::shared_ptr<::trantor::Date> updatedAt_;
     struct MetaData
     {
         const std::string colName_;
@@ -197,7 +206,7 @@ class Office
         const bool notNull_;
     };
     static const std::vector<MetaData> metaData_;
-    bool dirtyFlag_[6]={ false };
+    bool dirtyFlag_[7]={ false };
   public:
     static const std::string &sqlForFindingByPrimaryKey()
     {
@@ -221,10 +230,11 @@ class Office
         {
             needSelection=true;
         }
-        if(dirtyFlag_[1])
+        sql += "parent_id,";
+        ++parametersCount;
+        if(!dirtyFlag_[1])
         {
-            sql += "parent_id,";
-            ++parametersCount;
+            needSelection=true;
         }
         sql += "hierarchy,";
         ++parametersCount;
@@ -246,6 +256,11 @@ class Office
         if(dirtyFlag_[5])
         {
             sql += "opening_date,";
+            ++parametersCount;
+        }
+        if(dirtyFlag_[6])
+        {
+            sql += "updated_at,";
             ++parametersCount;
         }
         if(parametersCount > 0)
@@ -273,6 +288,10 @@ class Office
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
         }
+        else
+        {
+            sql +="default,";
+        }
         if(dirtyFlag_[2])
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
@@ -297,6 +316,11 @@ class Office
             sql.append(placeholderStr, n);
         }
         if(dirtyFlag_[5])
+        {
+            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
+            sql.append(placeholderStr, n);
+        }
+        if(dirtyFlag_[6])
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);

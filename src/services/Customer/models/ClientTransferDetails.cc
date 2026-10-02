@@ -14,6 +14,7 @@ using namespace drogon::orm;
 using namespace drogon_model::TlCustomerDb;
 
 const std::string ClientTransferDetails::Cols::_id = "\"id\"";
+const std::string ClientTransferDetails::Cols::_business_id = "\"business_id\"";
 const std::string ClientTransferDetails::Cols::_client_id = "\"client_id\"";
 const std::string ClientTransferDetails::Cols::_from_office_id = "\"from_office_id\"";
 const std::string ClientTransferDetails::Cols::_to_office_id = "\"to_office_id\"";
@@ -27,6 +28,7 @@ const std::string ClientTransferDetails::tableName = "\"client_transfer_details\
 
 const std::vector<typename ClientTransferDetails::MetaData> ClientTransferDetails::metaData_={
 {"id","std::string","uuid",0,0,1,1},
+{"business_id","std::string","uuid",0,0,0,0},
 {"client_id","std::string","uuid",0,0,0,1},
 {"from_office_id","std::string","uuid",0,0,0,1},
 {"to_office_id","std::string","uuid",0,0,0,1},
@@ -47,6 +49,10 @@ ClientTransferDetails::ClientTransferDetails(const Row &r, const ssize_t indexOf
         if(!r["id"].isNull())
         {
             id_=std::make_shared<std::string>(r["id"].as<std::string>());
+        }
+        if(!r["business_id"].isNull())
+        {
+            businessId_=std::make_shared<std::string>(r["business_id"].as<std::string>());
         }
         if(!r["client_id"].isNull())
         {
@@ -90,7 +96,7 @@ ClientTransferDetails::ClientTransferDetails(const Row &r, const ssize_t indexOf
     else
     {
         size_t offset = (size_t)indexOffset;
-        if(offset + 8 > r.size())
+        if(offset + 9 > r.size())
         {
             LOG_FATAL << "Invalid SQL result for this model";
             return;
@@ -104,19 +110,24 @@ ClientTransferDetails::ClientTransferDetails(const Row &r, const ssize_t indexOf
         index = offset + 1;
         if(!r[index].isNull())
         {
-            clientId_=std::make_shared<std::string>(r[index].as<std::string>());
+            businessId_=std::make_shared<std::string>(r[index].as<std::string>());
         }
         index = offset + 2;
         if(!r[index].isNull())
         {
-            fromOfficeId_=std::make_shared<std::string>(r[index].as<std::string>());
+            clientId_=std::make_shared<std::string>(r[index].as<std::string>());
         }
         index = offset + 3;
         if(!r[index].isNull())
         {
-            toOfficeId_=std::make_shared<std::string>(r[index].as<std::string>());
+            fromOfficeId_=std::make_shared<std::string>(r[index].as<std::string>());
         }
         index = offset + 4;
+        if(!r[index].isNull())
+        {
+            toOfficeId_=std::make_shared<std::string>(r[index].as<std::string>());
+        }
+        index = offset + 5;
         if(!r[index].isNull())
         {
             auto daysStr = r[index].as<std::string>();
@@ -126,12 +137,12 @@ ClientTransferDetails::ClientTransferDetails(const Row &r, const ssize_t indexOf
             time_t t = mktime(&stm);
             proposedTransferDate_=std::make_shared<::trantor::Date>(t*1000000);
         }
-        index = offset + 5;
+        index = offset + 6;
         if(!r[index].isNull())
         {
             transferType_=std::make_shared<int32_t>(r[index].as<int32_t>());
         }
-        index = offset + 6;
+        index = offset + 7;
         if(!r[index].isNull())
         {
             auto daysStr = r[index].as<std::string>();
@@ -141,7 +152,7 @@ ClientTransferDetails::ClientTransferDetails(const Row &r, const ssize_t indexOf
             time_t t = mktime(&stm);
             submittedOn_=std::make_shared<::trantor::Date>(t*1000000);
         }
-        index = offset + 7;
+        index = offset + 8;
         if(!r[index].isNull())
         {
             submittedBy_=std::make_shared<std::string>(r[index].as<std::string>());
@@ -152,7 +163,7 @@ ClientTransferDetails::ClientTransferDetails(const Row &r, const ssize_t indexOf
 
 ClientTransferDetails::ClientTransferDetails(const Json::Value &pJson, const std::vector<std::string> &pMasqueradingVector) noexcept(false)
 {
-    if(pMasqueradingVector.size() != 8)
+    if(pMasqueradingVector.size() != 9)
     {
         LOG_ERROR << "Bad masquerading vector";
         return;
@@ -170,7 +181,7 @@ ClientTransferDetails::ClientTransferDetails(const Json::Value &pJson, const std
         dirtyFlag_[1] = true;
         if(!pJson[pMasqueradingVector[1]].isNull())
         {
-            clientId_=std::make_shared<std::string>(pJson[pMasqueradingVector[1]].asString());
+            businessId_=std::make_shared<std::string>(pJson[pMasqueradingVector[1]].asString());
         }
     }
     if(!pMasqueradingVector[2].empty() && pJson.isMember(pMasqueradingVector[2]))
@@ -178,7 +189,7 @@ ClientTransferDetails::ClientTransferDetails(const Json::Value &pJson, const std
         dirtyFlag_[2] = true;
         if(!pJson[pMasqueradingVector[2]].isNull())
         {
-            fromOfficeId_=std::make_shared<std::string>(pJson[pMasqueradingVector[2]].asString());
+            clientId_=std::make_shared<std::string>(pJson[pMasqueradingVector[2]].asString());
         }
     }
     if(!pMasqueradingVector[3].empty() && pJson.isMember(pMasqueradingVector[3]))
@@ -186,7 +197,7 @@ ClientTransferDetails::ClientTransferDetails(const Json::Value &pJson, const std
         dirtyFlag_[3] = true;
         if(!pJson[pMasqueradingVector[3]].isNull())
         {
-            toOfficeId_=std::make_shared<std::string>(pJson[pMasqueradingVector[3]].asString());
+            fromOfficeId_=std::make_shared<std::string>(pJson[pMasqueradingVector[3]].asString());
         }
     }
     if(!pMasqueradingVector[4].empty() && pJson.isMember(pMasqueradingVector[4]))
@@ -194,12 +205,7 @@ ClientTransferDetails::ClientTransferDetails(const Json::Value &pJson, const std
         dirtyFlag_[4] = true;
         if(!pJson[pMasqueradingVector[4]].isNull())
         {
-            auto daysStr = pJson[pMasqueradingVector[4]].asString();
-            struct tm stm;
-            memset(&stm,0,sizeof(stm));
-            strptime(daysStr.c_str(),"%Y-%m-%d",&stm);
-            time_t t = mktime(&stm);
-            proposedTransferDate_=std::make_shared<::trantor::Date>(t*1000000);
+            toOfficeId_=std::make_shared<std::string>(pJson[pMasqueradingVector[4]].asString());
         }
     }
     if(!pMasqueradingVector[5].empty() && pJson.isMember(pMasqueradingVector[5]))
@@ -207,7 +213,12 @@ ClientTransferDetails::ClientTransferDetails(const Json::Value &pJson, const std
         dirtyFlag_[5] = true;
         if(!pJson[pMasqueradingVector[5]].isNull())
         {
-            transferType_=std::make_shared<int32_t>((int32_t)pJson[pMasqueradingVector[5]].asInt64());
+            auto daysStr = pJson[pMasqueradingVector[5]].asString();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            strptime(daysStr.c_str(),"%Y-%m-%d",&stm);
+            time_t t = mktime(&stm);
+            proposedTransferDate_=std::make_shared<::trantor::Date>(t*1000000);
         }
     }
     if(!pMasqueradingVector[6].empty() && pJson.isMember(pMasqueradingVector[6]))
@@ -215,12 +226,7 @@ ClientTransferDetails::ClientTransferDetails(const Json::Value &pJson, const std
         dirtyFlag_[6] = true;
         if(!pJson[pMasqueradingVector[6]].isNull())
         {
-            auto daysStr = pJson[pMasqueradingVector[6]].asString();
-            struct tm stm;
-            memset(&stm,0,sizeof(stm));
-            strptime(daysStr.c_str(),"%Y-%m-%d",&stm);
-            time_t t = mktime(&stm);
-            submittedOn_=std::make_shared<::trantor::Date>(t*1000000);
+            transferType_=std::make_shared<int32_t>((int32_t)pJson[pMasqueradingVector[6]].asInt64());
         }
     }
     if(!pMasqueradingVector[7].empty() && pJson.isMember(pMasqueradingVector[7]))
@@ -228,7 +234,20 @@ ClientTransferDetails::ClientTransferDetails(const Json::Value &pJson, const std
         dirtyFlag_[7] = true;
         if(!pJson[pMasqueradingVector[7]].isNull())
         {
-            submittedBy_=std::make_shared<std::string>(pJson[pMasqueradingVector[7]].asString());
+            auto daysStr = pJson[pMasqueradingVector[7]].asString();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            strptime(daysStr.c_str(),"%Y-%m-%d",&stm);
+            time_t t = mktime(&stm);
+            submittedOn_=std::make_shared<::trantor::Date>(t*1000000);
+        }
+    }
+    if(!pMasqueradingVector[8].empty() && pJson.isMember(pMasqueradingVector[8]))
+    {
+        dirtyFlag_[8] = true;
+        if(!pJson[pMasqueradingVector[8]].isNull())
+        {
+            submittedBy_=std::make_shared<std::string>(pJson[pMasqueradingVector[8]].asString());
         }
     }
 }
@@ -243,9 +262,17 @@ ClientTransferDetails::ClientTransferDetails(const Json::Value &pJson) noexcept(
             id_=std::make_shared<std::string>(pJson["id"].asString());
         }
     }
-    if(pJson.isMember("client_id"))
+    if(pJson.isMember("business_id"))
     {
         dirtyFlag_[1]=true;
+        if(!pJson["business_id"].isNull())
+        {
+            businessId_=std::make_shared<std::string>(pJson["business_id"].asString());
+        }
+    }
+    if(pJson.isMember("client_id"))
+    {
+        dirtyFlag_[2]=true;
         if(!pJson["client_id"].isNull())
         {
             clientId_=std::make_shared<std::string>(pJson["client_id"].asString());
@@ -253,7 +280,7 @@ ClientTransferDetails::ClientTransferDetails(const Json::Value &pJson) noexcept(
     }
     if(pJson.isMember("from_office_id"))
     {
-        dirtyFlag_[2]=true;
+        dirtyFlag_[3]=true;
         if(!pJson["from_office_id"].isNull())
         {
             fromOfficeId_=std::make_shared<std::string>(pJson["from_office_id"].asString());
@@ -261,7 +288,7 @@ ClientTransferDetails::ClientTransferDetails(const Json::Value &pJson) noexcept(
     }
     if(pJson.isMember("to_office_id"))
     {
-        dirtyFlag_[3]=true;
+        dirtyFlag_[4]=true;
         if(!pJson["to_office_id"].isNull())
         {
             toOfficeId_=std::make_shared<std::string>(pJson["to_office_id"].asString());
@@ -269,7 +296,7 @@ ClientTransferDetails::ClientTransferDetails(const Json::Value &pJson) noexcept(
     }
     if(pJson.isMember("proposed_transfer_date"))
     {
-        dirtyFlag_[4]=true;
+        dirtyFlag_[5]=true;
         if(!pJson["proposed_transfer_date"].isNull())
         {
             auto daysStr = pJson["proposed_transfer_date"].asString();
@@ -282,7 +309,7 @@ ClientTransferDetails::ClientTransferDetails(const Json::Value &pJson) noexcept(
     }
     if(pJson.isMember("transfer_type"))
     {
-        dirtyFlag_[5]=true;
+        dirtyFlag_[6]=true;
         if(!pJson["transfer_type"].isNull())
         {
             transferType_=std::make_shared<int32_t>((int32_t)pJson["transfer_type"].asInt64());
@@ -290,7 +317,7 @@ ClientTransferDetails::ClientTransferDetails(const Json::Value &pJson) noexcept(
     }
     if(pJson.isMember("submitted_on"))
     {
-        dirtyFlag_[6]=true;
+        dirtyFlag_[7]=true;
         if(!pJson["submitted_on"].isNull())
         {
             auto daysStr = pJson["submitted_on"].asString();
@@ -303,7 +330,7 @@ ClientTransferDetails::ClientTransferDetails(const Json::Value &pJson) noexcept(
     }
     if(pJson.isMember("submitted_by"))
     {
-        dirtyFlag_[7]=true;
+        dirtyFlag_[8]=true;
         if(!pJson["submitted_by"].isNull())
         {
             submittedBy_=std::make_shared<std::string>(pJson["submitted_by"].asString());
@@ -314,7 +341,7 @@ ClientTransferDetails::ClientTransferDetails(const Json::Value &pJson) noexcept(
 void ClientTransferDetails::updateByMasqueradedJson(const Json::Value &pJson,
                                             const std::vector<std::string> &pMasqueradingVector) noexcept(false)
 {
-    if(pMasqueradingVector.size() != 8)
+    if(pMasqueradingVector.size() != 9)
     {
         LOG_ERROR << "Bad masquerading vector";
         return;
@@ -331,7 +358,7 @@ void ClientTransferDetails::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[1] = true;
         if(!pJson[pMasqueradingVector[1]].isNull())
         {
-            clientId_=std::make_shared<std::string>(pJson[pMasqueradingVector[1]].asString());
+            businessId_=std::make_shared<std::string>(pJson[pMasqueradingVector[1]].asString());
         }
     }
     if(!pMasqueradingVector[2].empty() && pJson.isMember(pMasqueradingVector[2]))
@@ -339,7 +366,7 @@ void ClientTransferDetails::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[2] = true;
         if(!pJson[pMasqueradingVector[2]].isNull())
         {
-            fromOfficeId_=std::make_shared<std::string>(pJson[pMasqueradingVector[2]].asString());
+            clientId_=std::make_shared<std::string>(pJson[pMasqueradingVector[2]].asString());
         }
     }
     if(!pMasqueradingVector[3].empty() && pJson.isMember(pMasqueradingVector[3]))
@@ -347,7 +374,7 @@ void ClientTransferDetails::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[3] = true;
         if(!pJson[pMasqueradingVector[3]].isNull())
         {
-            toOfficeId_=std::make_shared<std::string>(pJson[pMasqueradingVector[3]].asString());
+            fromOfficeId_=std::make_shared<std::string>(pJson[pMasqueradingVector[3]].asString());
         }
     }
     if(!pMasqueradingVector[4].empty() && pJson.isMember(pMasqueradingVector[4]))
@@ -355,12 +382,7 @@ void ClientTransferDetails::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[4] = true;
         if(!pJson[pMasqueradingVector[4]].isNull())
         {
-            auto daysStr = pJson[pMasqueradingVector[4]].asString();
-            struct tm stm;
-            memset(&stm,0,sizeof(stm));
-            strptime(daysStr.c_str(),"%Y-%m-%d",&stm);
-            time_t t = mktime(&stm);
-            proposedTransferDate_=std::make_shared<::trantor::Date>(t*1000000);
+            toOfficeId_=std::make_shared<std::string>(pJson[pMasqueradingVector[4]].asString());
         }
     }
     if(!pMasqueradingVector[5].empty() && pJson.isMember(pMasqueradingVector[5]))
@@ -368,7 +390,12 @@ void ClientTransferDetails::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[5] = true;
         if(!pJson[pMasqueradingVector[5]].isNull())
         {
-            transferType_=std::make_shared<int32_t>((int32_t)pJson[pMasqueradingVector[5]].asInt64());
+            auto daysStr = pJson[pMasqueradingVector[5]].asString();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            strptime(daysStr.c_str(),"%Y-%m-%d",&stm);
+            time_t t = mktime(&stm);
+            proposedTransferDate_=std::make_shared<::trantor::Date>(t*1000000);
         }
     }
     if(!pMasqueradingVector[6].empty() && pJson.isMember(pMasqueradingVector[6]))
@@ -376,12 +403,7 @@ void ClientTransferDetails::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[6] = true;
         if(!pJson[pMasqueradingVector[6]].isNull())
         {
-            auto daysStr = pJson[pMasqueradingVector[6]].asString();
-            struct tm stm;
-            memset(&stm,0,sizeof(stm));
-            strptime(daysStr.c_str(),"%Y-%m-%d",&stm);
-            time_t t = mktime(&stm);
-            submittedOn_=std::make_shared<::trantor::Date>(t*1000000);
+            transferType_=std::make_shared<int32_t>((int32_t)pJson[pMasqueradingVector[6]].asInt64());
         }
     }
     if(!pMasqueradingVector[7].empty() && pJson.isMember(pMasqueradingVector[7]))
@@ -389,7 +411,20 @@ void ClientTransferDetails::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[7] = true;
         if(!pJson[pMasqueradingVector[7]].isNull())
         {
-            submittedBy_=std::make_shared<std::string>(pJson[pMasqueradingVector[7]].asString());
+            auto daysStr = pJson[pMasqueradingVector[7]].asString();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            strptime(daysStr.c_str(),"%Y-%m-%d",&stm);
+            time_t t = mktime(&stm);
+            submittedOn_=std::make_shared<::trantor::Date>(t*1000000);
+        }
+    }
+    if(!pMasqueradingVector[8].empty() && pJson.isMember(pMasqueradingVector[8]))
+    {
+        dirtyFlag_[8] = true;
+        if(!pJson[pMasqueradingVector[8]].isNull())
+        {
+            submittedBy_=std::make_shared<std::string>(pJson[pMasqueradingVector[8]].asString());
         }
     }
 }
@@ -403,9 +438,17 @@ void ClientTransferDetails::updateByJson(const Json::Value &pJson) noexcept(fals
             id_=std::make_shared<std::string>(pJson["id"].asString());
         }
     }
-    if(pJson.isMember("client_id"))
+    if(pJson.isMember("business_id"))
     {
         dirtyFlag_[1] = true;
+        if(!pJson["business_id"].isNull())
+        {
+            businessId_=std::make_shared<std::string>(pJson["business_id"].asString());
+        }
+    }
+    if(pJson.isMember("client_id"))
+    {
+        dirtyFlag_[2] = true;
         if(!pJson["client_id"].isNull())
         {
             clientId_=std::make_shared<std::string>(pJson["client_id"].asString());
@@ -413,7 +456,7 @@ void ClientTransferDetails::updateByJson(const Json::Value &pJson) noexcept(fals
     }
     if(pJson.isMember("from_office_id"))
     {
-        dirtyFlag_[2] = true;
+        dirtyFlag_[3] = true;
         if(!pJson["from_office_id"].isNull())
         {
             fromOfficeId_=std::make_shared<std::string>(pJson["from_office_id"].asString());
@@ -421,7 +464,7 @@ void ClientTransferDetails::updateByJson(const Json::Value &pJson) noexcept(fals
     }
     if(pJson.isMember("to_office_id"))
     {
-        dirtyFlag_[3] = true;
+        dirtyFlag_[4] = true;
         if(!pJson["to_office_id"].isNull())
         {
             toOfficeId_=std::make_shared<std::string>(pJson["to_office_id"].asString());
@@ -429,7 +472,7 @@ void ClientTransferDetails::updateByJson(const Json::Value &pJson) noexcept(fals
     }
     if(pJson.isMember("proposed_transfer_date"))
     {
-        dirtyFlag_[4] = true;
+        dirtyFlag_[5] = true;
         if(!pJson["proposed_transfer_date"].isNull())
         {
             auto daysStr = pJson["proposed_transfer_date"].asString();
@@ -442,7 +485,7 @@ void ClientTransferDetails::updateByJson(const Json::Value &pJson) noexcept(fals
     }
     if(pJson.isMember("transfer_type"))
     {
-        dirtyFlag_[5] = true;
+        dirtyFlag_[6] = true;
         if(!pJson["transfer_type"].isNull())
         {
             transferType_=std::make_shared<int32_t>((int32_t)pJson["transfer_type"].asInt64());
@@ -450,7 +493,7 @@ void ClientTransferDetails::updateByJson(const Json::Value &pJson) noexcept(fals
     }
     if(pJson.isMember("submitted_on"))
     {
-        dirtyFlag_[6] = true;
+        dirtyFlag_[7] = true;
         if(!pJson["submitted_on"].isNull())
         {
             auto daysStr = pJson["submitted_on"].asString();
@@ -463,7 +506,7 @@ void ClientTransferDetails::updateByJson(const Json::Value &pJson) noexcept(fals
     }
     if(pJson.isMember("submitted_by"))
     {
-        dirtyFlag_[7] = true;
+        dirtyFlag_[8] = true;
         if(!pJson["submitted_by"].isNull())
         {
             submittedBy_=std::make_shared<std::string>(pJson["submitted_by"].asString());
@@ -498,6 +541,33 @@ const typename ClientTransferDetails::PrimaryKeyType & ClientTransferDetails::ge
     return *id_;
 }
 
+const std::string &ClientTransferDetails::getValueOfBusinessId() const noexcept
+{
+    static const std::string defaultValue = std::string();
+    if(businessId_)
+        return *businessId_;
+    return defaultValue;
+}
+const std::shared_ptr<std::string> &ClientTransferDetails::getBusinessId() const noexcept
+{
+    return businessId_;
+}
+void ClientTransferDetails::setBusinessId(const std::string &pBusinessId) noexcept
+{
+    businessId_ = std::make_shared<std::string>(pBusinessId);
+    dirtyFlag_[1] = true;
+}
+void ClientTransferDetails::setBusinessId(std::string &&pBusinessId) noexcept
+{
+    businessId_ = std::make_shared<std::string>(std::move(pBusinessId));
+    dirtyFlag_[1] = true;
+}
+void ClientTransferDetails::setBusinessIdToNull() noexcept
+{
+    businessId_.reset();
+    dirtyFlag_[1] = true;
+}
+
 const std::string &ClientTransferDetails::getValueOfClientId() const noexcept
 {
     static const std::string defaultValue = std::string();
@@ -512,12 +582,12 @@ const std::shared_ptr<std::string> &ClientTransferDetails::getClientId() const n
 void ClientTransferDetails::setClientId(const std::string &pClientId) noexcept
 {
     clientId_ = std::make_shared<std::string>(pClientId);
-    dirtyFlag_[1] = true;
+    dirtyFlag_[2] = true;
 }
 void ClientTransferDetails::setClientId(std::string &&pClientId) noexcept
 {
     clientId_ = std::make_shared<std::string>(std::move(pClientId));
-    dirtyFlag_[1] = true;
+    dirtyFlag_[2] = true;
 }
 
 const std::string &ClientTransferDetails::getValueOfFromOfficeId() const noexcept
@@ -534,12 +604,12 @@ const std::shared_ptr<std::string> &ClientTransferDetails::getFromOfficeId() con
 void ClientTransferDetails::setFromOfficeId(const std::string &pFromOfficeId) noexcept
 {
     fromOfficeId_ = std::make_shared<std::string>(pFromOfficeId);
-    dirtyFlag_[2] = true;
+    dirtyFlag_[3] = true;
 }
 void ClientTransferDetails::setFromOfficeId(std::string &&pFromOfficeId) noexcept
 {
     fromOfficeId_ = std::make_shared<std::string>(std::move(pFromOfficeId));
-    dirtyFlag_[2] = true;
+    dirtyFlag_[3] = true;
 }
 
 const std::string &ClientTransferDetails::getValueOfToOfficeId() const noexcept
@@ -556,12 +626,12 @@ const std::shared_ptr<std::string> &ClientTransferDetails::getToOfficeId() const
 void ClientTransferDetails::setToOfficeId(const std::string &pToOfficeId) noexcept
 {
     toOfficeId_ = std::make_shared<std::string>(pToOfficeId);
-    dirtyFlag_[3] = true;
+    dirtyFlag_[4] = true;
 }
 void ClientTransferDetails::setToOfficeId(std::string &&pToOfficeId) noexcept
 {
     toOfficeId_ = std::make_shared<std::string>(std::move(pToOfficeId));
-    dirtyFlag_[3] = true;
+    dirtyFlag_[4] = true;
 }
 
 const ::trantor::Date &ClientTransferDetails::getValueOfProposedTransferDate() const noexcept
@@ -578,12 +648,12 @@ const std::shared_ptr<::trantor::Date> &ClientTransferDetails::getProposedTransf
 void ClientTransferDetails::setProposedTransferDate(const ::trantor::Date &pProposedTransferDate) noexcept
 {
     proposedTransferDate_ = std::make_shared<::trantor::Date>(pProposedTransferDate.roundDay());
-    dirtyFlag_[4] = true;
+    dirtyFlag_[5] = true;
 }
 void ClientTransferDetails::setProposedTransferDateToNull() noexcept
 {
     proposedTransferDate_.reset();
-    dirtyFlag_[4] = true;
+    dirtyFlag_[5] = true;
 }
 
 const int32_t &ClientTransferDetails::getValueOfTransferType() const noexcept
@@ -600,7 +670,7 @@ const std::shared_ptr<int32_t> &ClientTransferDetails::getTransferType() const n
 void ClientTransferDetails::setTransferType(const int32_t &pTransferType) noexcept
 {
     transferType_ = std::make_shared<int32_t>(pTransferType);
-    dirtyFlag_[5] = true;
+    dirtyFlag_[6] = true;
 }
 
 const ::trantor::Date &ClientTransferDetails::getValueOfSubmittedOn() const noexcept
@@ -617,7 +687,7 @@ const std::shared_ptr<::trantor::Date> &ClientTransferDetails::getSubmittedOn() 
 void ClientTransferDetails::setSubmittedOn(const ::trantor::Date &pSubmittedOn) noexcept
 {
     submittedOn_ = std::make_shared<::trantor::Date>(pSubmittedOn.roundDay());
-    dirtyFlag_[6] = true;
+    dirtyFlag_[7] = true;
 }
 
 const std::string &ClientTransferDetails::getValueOfSubmittedBy() const noexcept
@@ -634,12 +704,12 @@ const std::shared_ptr<std::string> &ClientTransferDetails::getSubmittedBy() cons
 void ClientTransferDetails::setSubmittedBy(const std::string &pSubmittedBy) noexcept
 {
     submittedBy_ = std::make_shared<std::string>(pSubmittedBy);
-    dirtyFlag_[7] = true;
+    dirtyFlag_[8] = true;
 }
 void ClientTransferDetails::setSubmittedBy(std::string &&pSubmittedBy) noexcept
 {
     submittedBy_ = std::make_shared<std::string>(std::move(pSubmittedBy));
-    dirtyFlag_[7] = true;
+    dirtyFlag_[8] = true;
 }
 
 void ClientTransferDetails::updateId(const uint64_t id)
@@ -650,6 +720,7 @@ const std::vector<std::string> &ClientTransferDetails::insertColumns() noexcept
 {
     static const std::vector<std::string> inCols={
         "id",
+        "business_id",
         "client_id",
         "from_office_id",
         "to_office_id",
@@ -676,6 +747,17 @@ void ClientTransferDetails::outputArgs(drogon::orm::internal::SqlBinder &binder)
     }
     if(dirtyFlag_[1])
     {
+        if(getBusinessId())
+        {
+            binder << getValueOfBusinessId();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[2])
+    {
         if(getClientId())
         {
             binder << getValueOfClientId();
@@ -685,7 +767,7 @@ void ClientTransferDetails::outputArgs(drogon::orm::internal::SqlBinder &binder)
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[2])
+    if(dirtyFlag_[3])
     {
         if(getFromOfficeId())
         {
@@ -696,7 +778,7 @@ void ClientTransferDetails::outputArgs(drogon::orm::internal::SqlBinder &binder)
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[3])
+    if(dirtyFlag_[4])
     {
         if(getToOfficeId())
         {
@@ -707,7 +789,7 @@ void ClientTransferDetails::outputArgs(drogon::orm::internal::SqlBinder &binder)
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[4])
+    if(dirtyFlag_[5])
     {
         if(getProposedTransferDate())
         {
@@ -718,7 +800,7 @@ void ClientTransferDetails::outputArgs(drogon::orm::internal::SqlBinder &binder)
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[5])
+    if(dirtyFlag_[6])
     {
         if(getTransferType())
         {
@@ -729,7 +811,7 @@ void ClientTransferDetails::outputArgs(drogon::orm::internal::SqlBinder &binder)
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[6])
+    if(dirtyFlag_[7])
     {
         if(getSubmittedOn())
         {
@@ -740,7 +822,7 @@ void ClientTransferDetails::outputArgs(drogon::orm::internal::SqlBinder &binder)
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[7])
+    if(dirtyFlag_[8])
     {
         if(getSubmittedBy())
         {
@@ -788,6 +870,10 @@ const std::vector<std::string> ClientTransferDetails::updateColumns() const
     {
         ret.push_back(getColumnName(7));
     }
+    if(dirtyFlag_[8])
+    {
+        ret.push_back(getColumnName(8));
+    }
     return ret;
 }
 
@@ -806,6 +892,17 @@ void ClientTransferDetails::updateArgs(drogon::orm::internal::SqlBinder &binder)
     }
     if(dirtyFlag_[1])
     {
+        if(getBusinessId())
+        {
+            binder << getValueOfBusinessId();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[2])
+    {
         if(getClientId())
         {
             binder << getValueOfClientId();
@@ -815,7 +912,7 @@ void ClientTransferDetails::updateArgs(drogon::orm::internal::SqlBinder &binder)
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[2])
+    if(dirtyFlag_[3])
     {
         if(getFromOfficeId())
         {
@@ -826,7 +923,7 @@ void ClientTransferDetails::updateArgs(drogon::orm::internal::SqlBinder &binder)
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[3])
+    if(dirtyFlag_[4])
     {
         if(getToOfficeId())
         {
@@ -837,7 +934,7 @@ void ClientTransferDetails::updateArgs(drogon::orm::internal::SqlBinder &binder)
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[4])
+    if(dirtyFlag_[5])
     {
         if(getProposedTransferDate())
         {
@@ -848,7 +945,7 @@ void ClientTransferDetails::updateArgs(drogon::orm::internal::SqlBinder &binder)
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[5])
+    if(dirtyFlag_[6])
     {
         if(getTransferType())
         {
@@ -859,7 +956,7 @@ void ClientTransferDetails::updateArgs(drogon::orm::internal::SqlBinder &binder)
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[6])
+    if(dirtyFlag_[7])
     {
         if(getSubmittedOn())
         {
@@ -870,7 +967,7 @@ void ClientTransferDetails::updateArgs(drogon::orm::internal::SqlBinder &binder)
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[7])
+    if(dirtyFlag_[8])
     {
         if(getSubmittedBy())
         {
@@ -892,6 +989,14 @@ Json::Value ClientTransferDetails::toJson() const
     else
     {
         ret["id"]=Json::Value();
+    }
+    if(getBusinessId())
+    {
+        ret["business_id"]=getValueOfBusinessId();
+    }
+    else
+    {
+        ret["business_id"]=Json::Value();
     }
     if(getClientId())
     {
@@ -961,7 +1066,7 @@ Json::Value ClientTransferDetails::toMasqueradedJson(
     const std::vector<std::string> &pMasqueradingVector) const
 {
     Json::Value ret;
-    if(pMasqueradingVector.size() == 8)
+    if(pMasqueradingVector.size() == 9)
     {
         if(!pMasqueradingVector[0].empty())
         {
@@ -976,9 +1081,9 @@ Json::Value ClientTransferDetails::toMasqueradedJson(
         }
         if(!pMasqueradingVector[1].empty())
         {
-            if(getClientId())
+            if(getBusinessId())
             {
-                ret[pMasqueradingVector[1]]=getValueOfClientId();
+                ret[pMasqueradingVector[1]]=getValueOfBusinessId();
             }
             else
             {
@@ -987,9 +1092,9 @@ Json::Value ClientTransferDetails::toMasqueradedJson(
         }
         if(!pMasqueradingVector[2].empty())
         {
-            if(getFromOfficeId())
+            if(getClientId())
             {
-                ret[pMasqueradingVector[2]]=getValueOfFromOfficeId();
+                ret[pMasqueradingVector[2]]=getValueOfClientId();
             }
             else
             {
@@ -998,9 +1103,9 @@ Json::Value ClientTransferDetails::toMasqueradedJson(
         }
         if(!pMasqueradingVector[3].empty())
         {
-            if(getToOfficeId())
+            if(getFromOfficeId())
             {
-                ret[pMasqueradingVector[3]]=getValueOfToOfficeId();
+                ret[pMasqueradingVector[3]]=getValueOfFromOfficeId();
             }
             else
             {
@@ -1009,9 +1114,9 @@ Json::Value ClientTransferDetails::toMasqueradedJson(
         }
         if(!pMasqueradingVector[4].empty())
         {
-            if(getProposedTransferDate())
+            if(getToOfficeId())
             {
-                ret[pMasqueradingVector[4]]=getProposedTransferDate()->toDbStringLocal();
+                ret[pMasqueradingVector[4]]=getValueOfToOfficeId();
             }
             else
             {
@@ -1020,9 +1125,9 @@ Json::Value ClientTransferDetails::toMasqueradedJson(
         }
         if(!pMasqueradingVector[5].empty())
         {
-            if(getTransferType())
+            if(getProposedTransferDate())
             {
-                ret[pMasqueradingVector[5]]=getValueOfTransferType();
+                ret[pMasqueradingVector[5]]=getProposedTransferDate()->toDbStringLocal();
             }
             else
             {
@@ -1031,9 +1136,9 @@ Json::Value ClientTransferDetails::toMasqueradedJson(
         }
         if(!pMasqueradingVector[6].empty())
         {
-            if(getSubmittedOn())
+            if(getTransferType())
             {
-                ret[pMasqueradingVector[6]]=getSubmittedOn()->toDbStringLocal();
+                ret[pMasqueradingVector[6]]=getValueOfTransferType();
             }
             else
             {
@@ -1042,13 +1147,24 @@ Json::Value ClientTransferDetails::toMasqueradedJson(
         }
         if(!pMasqueradingVector[7].empty())
         {
-            if(getSubmittedBy())
+            if(getSubmittedOn())
             {
-                ret[pMasqueradingVector[7]]=getValueOfSubmittedBy();
+                ret[pMasqueradingVector[7]]=getSubmittedOn()->toDbStringLocal();
             }
             else
             {
                 ret[pMasqueradingVector[7]]=Json::Value();
+            }
+        }
+        if(!pMasqueradingVector[8].empty())
+        {
+            if(getSubmittedBy())
+            {
+                ret[pMasqueradingVector[8]]=getValueOfSubmittedBy();
+            }
+            else
+            {
+                ret[pMasqueradingVector[8]]=Json::Value();
             }
         }
         return ret;
@@ -1061,6 +1177,14 @@ Json::Value ClientTransferDetails::toMasqueradedJson(
     else
     {
         ret["id"]=Json::Value();
+    }
+    if(getBusinessId())
+    {
+        ret["business_id"]=getValueOfBusinessId();
+    }
+    else
+    {
+        ret["business_id"]=Json::Value();
     }
     if(getClientId())
     {
@@ -1128,9 +1252,14 @@ bool ClientTransferDetails::validateJsonForCreation(const Json::Value &pJson, st
         if(!validJsonOfField(0, "id", pJson["id"], err, true))
             return false;
     }
+    if(pJson.isMember("business_id"))
+    {
+        if(!validJsonOfField(1, "business_id", pJson["business_id"], err, true))
+            return false;
+    }
     if(pJson.isMember("client_id"))
     {
-        if(!validJsonOfField(1, "client_id", pJson["client_id"], err, true))
+        if(!validJsonOfField(2, "client_id", pJson["client_id"], err, true))
             return false;
     }
     else
@@ -1140,7 +1269,7 @@ bool ClientTransferDetails::validateJsonForCreation(const Json::Value &pJson, st
     }
     if(pJson.isMember("from_office_id"))
     {
-        if(!validJsonOfField(2, "from_office_id", pJson["from_office_id"], err, true))
+        if(!validJsonOfField(3, "from_office_id", pJson["from_office_id"], err, true))
             return false;
     }
     else
@@ -1150,7 +1279,7 @@ bool ClientTransferDetails::validateJsonForCreation(const Json::Value &pJson, st
     }
     if(pJson.isMember("to_office_id"))
     {
-        if(!validJsonOfField(3, "to_office_id", pJson["to_office_id"], err, true))
+        if(!validJsonOfField(4, "to_office_id", pJson["to_office_id"], err, true))
             return false;
     }
     else
@@ -1160,12 +1289,12 @@ bool ClientTransferDetails::validateJsonForCreation(const Json::Value &pJson, st
     }
     if(pJson.isMember("proposed_transfer_date"))
     {
-        if(!validJsonOfField(4, "proposed_transfer_date", pJson["proposed_transfer_date"], err, true))
+        if(!validJsonOfField(5, "proposed_transfer_date", pJson["proposed_transfer_date"], err, true))
             return false;
     }
     if(pJson.isMember("transfer_type"))
     {
-        if(!validJsonOfField(5, "transfer_type", pJson["transfer_type"], err, true))
+        if(!validJsonOfField(6, "transfer_type", pJson["transfer_type"], err, true))
             return false;
     }
     else
@@ -1175,7 +1304,7 @@ bool ClientTransferDetails::validateJsonForCreation(const Json::Value &pJson, st
     }
     if(pJson.isMember("submitted_on"))
     {
-        if(!validJsonOfField(6, "submitted_on", pJson["submitted_on"], err, true))
+        if(!validJsonOfField(7, "submitted_on", pJson["submitted_on"], err, true))
             return false;
     }
     else
@@ -1185,7 +1314,7 @@ bool ClientTransferDetails::validateJsonForCreation(const Json::Value &pJson, st
     }
     if(pJson.isMember("submitted_by"))
     {
-        if(!validJsonOfField(7, "submitted_by", pJson["submitted_by"], err, true))
+        if(!validJsonOfField(8, "submitted_by", pJson["submitted_by"], err, true))
             return false;
     }
     else
@@ -1199,7 +1328,7 @@ bool ClientTransferDetails::validateMasqueradedJsonForCreation(const Json::Value
                                                                const std::vector<std::string> &pMasqueradingVector,
                                                                std::string &err)
 {
-    if(pMasqueradingVector.size() != 8)
+    if(pMasqueradingVector.size() != 9)
     {
         err = "Bad masquerading vector";
         return false;
@@ -1220,11 +1349,6 @@ bool ClientTransferDetails::validateMasqueradedJsonForCreation(const Json::Value
               if(!validJsonOfField(1, pMasqueradingVector[1], pJson[pMasqueradingVector[1]], err, true))
                   return false;
           }
-        else
-        {
-            err="The " + pMasqueradingVector[1] + " column cannot be null";
-            return false;
-        }
       }
       if(!pMasqueradingVector[2].empty())
       {
@@ -1259,6 +1383,11 @@ bool ClientTransferDetails::validateMasqueradedJsonForCreation(const Json::Value
               if(!validJsonOfField(4, pMasqueradingVector[4], pJson[pMasqueradingVector[4]], err, true))
                   return false;
           }
+        else
+        {
+            err="The " + pMasqueradingVector[4] + " column cannot be null";
+            return false;
+        }
       }
       if(!pMasqueradingVector[5].empty())
       {
@@ -1267,11 +1396,6 @@ bool ClientTransferDetails::validateMasqueradedJsonForCreation(const Json::Value
               if(!validJsonOfField(5, pMasqueradingVector[5], pJson[pMasqueradingVector[5]], err, true))
                   return false;
           }
-        else
-        {
-            err="The " + pMasqueradingVector[5] + " column cannot be null";
-            return false;
-        }
       }
       if(!pMasqueradingVector[6].empty())
       {
@@ -1299,6 +1423,19 @@ bool ClientTransferDetails::validateMasqueradedJsonForCreation(const Json::Value
             return false;
         }
       }
+      if(!pMasqueradingVector[8].empty())
+      {
+          if(pJson.isMember(pMasqueradingVector[8]))
+          {
+              if(!validJsonOfField(8, pMasqueradingVector[8], pJson[pMasqueradingVector[8]], err, true))
+                  return false;
+          }
+        else
+        {
+            err="The " + pMasqueradingVector[8] + " column cannot be null";
+            return false;
+        }
+      }
     }
     catch(const Json::LogicError &e)
     {
@@ -1319,39 +1456,44 @@ bool ClientTransferDetails::validateJsonForUpdate(const Json::Value &pJson, std:
         err = "The value of primary key must be set in the json object for update";
         return false;
     }
+    if(pJson.isMember("business_id"))
+    {
+        if(!validJsonOfField(1, "business_id", pJson["business_id"], err, false))
+            return false;
+    }
     if(pJson.isMember("client_id"))
     {
-        if(!validJsonOfField(1, "client_id", pJson["client_id"], err, false))
+        if(!validJsonOfField(2, "client_id", pJson["client_id"], err, false))
             return false;
     }
     if(pJson.isMember("from_office_id"))
     {
-        if(!validJsonOfField(2, "from_office_id", pJson["from_office_id"], err, false))
+        if(!validJsonOfField(3, "from_office_id", pJson["from_office_id"], err, false))
             return false;
     }
     if(pJson.isMember("to_office_id"))
     {
-        if(!validJsonOfField(3, "to_office_id", pJson["to_office_id"], err, false))
+        if(!validJsonOfField(4, "to_office_id", pJson["to_office_id"], err, false))
             return false;
     }
     if(pJson.isMember("proposed_transfer_date"))
     {
-        if(!validJsonOfField(4, "proposed_transfer_date", pJson["proposed_transfer_date"], err, false))
+        if(!validJsonOfField(5, "proposed_transfer_date", pJson["proposed_transfer_date"], err, false))
             return false;
     }
     if(pJson.isMember("transfer_type"))
     {
-        if(!validJsonOfField(5, "transfer_type", pJson["transfer_type"], err, false))
+        if(!validJsonOfField(6, "transfer_type", pJson["transfer_type"], err, false))
             return false;
     }
     if(pJson.isMember("submitted_on"))
     {
-        if(!validJsonOfField(6, "submitted_on", pJson["submitted_on"], err, false))
+        if(!validJsonOfField(7, "submitted_on", pJson["submitted_on"], err, false))
             return false;
     }
     if(pJson.isMember("submitted_by"))
     {
-        if(!validJsonOfField(7, "submitted_by", pJson["submitted_by"], err, false))
+        if(!validJsonOfField(8, "submitted_by", pJson["submitted_by"], err, false))
             return false;
     }
     return true;
@@ -1360,7 +1502,7 @@ bool ClientTransferDetails::validateMasqueradedJsonForUpdate(const Json::Value &
                                                              const std::vector<std::string> &pMasqueradingVector,
                                                              std::string &err)
 {
-    if(pMasqueradingVector.size() != 8)
+    if(pMasqueradingVector.size() != 9)
     {
         err = "Bad masquerading vector";
         return false;
@@ -1411,6 +1553,11 @@ bool ClientTransferDetails::validateMasqueradedJsonForUpdate(const Json::Value &
           if(!validJsonOfField(7, pMasqueradingVector[7], pJson[pMasqueradingVector[7]], err, false))
               return false;
       }
+      if(!pMasqueradingVector[8].empty() && pJson.isMember(pMasqueradingVector[8]))
+      {
+          if(!validJsonOfField(8, pMasqueradingVector[8], pJson[pMasqueradingVector[8]], err, false))
+              return false;
+      }
     }
     catch(const Json::LogicError &e)
     {
@@ -1442,8 +1589,7 @@ bool ClientTransferDetails::validJsonOfField(size_t index,
         case 1:
             if(pJson.isNull())
             {
-                err="The " + fieldName + " column cannot be null";
-                return false;
+                return true;
             }
             if(!pJson.isString())
             {
@@ -1478,7 +1624,8 @@ bool ClientTransferDetails::validJsonOfField(size_t index,
         case 4:
             if(pJson.isNull())
             {
-                return true;
+                err="The " + fieldName + " column cannot be null";
+                return false;
             }
             if(!pJson.isString())
             {
@@ -1489,10 +1636,9 @@ bool ClientTransferDetails::validJsonOfField(size_t index,
         case 5:
             if(pJson.isNull())
             {
-                err="The " + fieldName + " column cannot be null";
-                return false;
+                return true;
             }
-            if(!pJson.isInt())
+            if(!pJson.isString())
             {
                 err="Type error in the "+fieldName+" field";
                 return false;
@@ -1504,13 +1650,25 @@ bool ClientTransferDetails::validJsonOfField(size_t index,
                 err="The " + fieldName + " column cannot be null";
                 return false;
             }
-            if(!pJson.isString())
+            if(!pJson.isInt())
             {
                 err="Type error in the "+fieldName+" field";
                 return false;
             }
             break;
         case 7:
+            if(pJson.isNull())
+            {
+                err="The " + fieldName + " column cannot be null";
+                return false;
+            }
+            if(!pJson.isString())
+            {
+                err="Type error in the "+fieldName+" field";
+                return false;
+            }
+            break;
+        case 8:
             if(pJson.isNull())
             {
                 err="The " + fieldName + " column cannot be null";

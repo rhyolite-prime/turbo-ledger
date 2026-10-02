@@ -303,11 +303,6 @@
             }
         },
         {
-            "name": "turbo_ledger_accounting::plugins::AccountingServicePlugin",
-            "dependencies": [],
-            "config": {}
-        },
-        {
             "name": "drogon::plugin::AccessLogger",
             "dependencies": [],
             "config": {
@@ -325,5 +320,9 @@
         }
     ],
     //custom_config: custom configuration for users. This object can be get by the app().getCustomConfig() method. 
-    "custom_config": {}
+    "custom_config": {
+        "turbo": {
+            "context_secret": "dev-only-context-secret-change-me"
+        }
+    }
 }

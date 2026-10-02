@@ -1,0 +1,22 @@
+# build output
+build/
+cmake-build-*/
+*.o
+*.a
+
+# service run dirs & logs
+src/services/*/rundir/
+*.log
+
+# local databases / state
+pgdata*/
+*.rdb
+
+# editors
+.idea/
+.vscode/
+.DS_Store
+
+# python tooling
+__pycache__/
+*.pyc

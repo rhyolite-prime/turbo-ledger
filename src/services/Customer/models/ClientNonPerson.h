@@ -45,6 +45,7 @@ class ClientNonPerson
     struct Cols
     {
         static const std::string _id;
+        static const std::string _business_id;
         static const std::string _client_id;
         static const std::string _constitution_cv_id;
         static const std::string _incorp_no;
@@ -111,6 +112,16 @@ class ClientNonPerson
     void setId(const std::string &pId) noexcept;
     void setId(std::string &&pId) noexcept;
 
+    /**  For column business_id  */
+    ///Get the value of the column business_id, returns the default value if the column is null
+    const std::string &getValueOfBusinessId() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<std::string> &getBusinessId() const noexcept;
+    ///Set the value of the column business_id
+    void setBusinessId(const std::string &pBusinessId) noexcept;
+    void setBusinessId(std::string &&pBusinessId) noexcept;
+    void setBusinessIdToNull() noexcept;
+
     /**  For column client_id  */
     ///Get the value of the column client_id, returns the default value if the column is null
     const std::string &getValueOfClientId() const noexcept;
@@ -169,7 +180,7 @@ class ClientNonPerson
     void setRemarksToNull() noexcept;
 
 
-    static size_t getColumnNumber() noexcept {  return 7;  }
+    static size_t getColumnNumber() noexcept {  return 8;  }
     static const std::string &getColumnName(size_t index) noexcept(false);
 
     Json::Value toJson() const;
@@ -192,6 +203,7 @@ class ClientNonPerson
     ///For mysql or sqlite3
     void updateId(const uint64_t id);
     std::shared_ptr<std::string> id_;
+    std::shared_ptr<std::string> businessId_;
     std::shared_ptr<std::string> clientId_;
     std::shared_ptr<std::string> constitutionCvId_;
     std::shared_ptr<std::string> incorpNo_;
@@ -209,7 +221,7 @@ class ClientNonPerson
         const bool notNull_;
     };
     static const std::vector<MetaData> metaData_;
-    bool dirtyFlag_[7]={ false };
+    bool dirtyFlag_[8]={ false };
   public:
     static const std::string &sqlForFindingByPrimaryKey()
     {
@@ -235,33 +247,38 @@ class ClientNonPerson
         }
         if(dirtyFlag_[1])
         {
-            sql += "client_id,";
+            sql += "business_id,";
             ++parametersCount;
         }
         if(dirtyFlag_[2])
+        {
+            sql += "client_id,";
+            ++parametersCount;
+        }
+        if(dirtyFlag_[3])
         {
             sql += "constitution_cv_id,";
             ++parametersCount;
         }
         sql += "incorp_no,";
         ++parametersCount;
-        if(!dirtyFlag_[3])
+        if(!dirtyFlag_[4])
         {
             needSelection=true;
         }
-        if(dirtyFlag_[4])
+        if(dirtyFlag_[5])
         {
             sql += "incorp_validity_till,";
             ++parametersCount;
         }
-        if(dirtyFlag_[5])
+        if(dirtyFlag_[6])
         {
             sql += "main_business_line_cv_id,";
             ++parametersCount;
         }
         sql += "remarks,";
         ++parametersCount;
-        if(!dirtyFlag_[6])
+        if(!dirtyFlag_[7])
         {
             needSelection=true;
         }
@@ -300,14 +317,14 @@ class ClientNonPerson
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
         }
-        else
-        {
-            sql +="default,";
-        }
         if(dirtyFlag_[4])
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
+        }
+        else
+        {
+            sql +="default,";
         }
         if(dirtyFlag_[5])
         {
@@ -315,6 +332,11 @@ class ClientNonPerson
             sql.append(placeholderStr, n);
         }
         if(dirtyFlag_[6])
+        {
+            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
+            sql.append(placeholderStr, n);
+        }
+        if(dirtyFlag_[7])
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);

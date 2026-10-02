@@ -47,12 +47,14 @@ class AccountingRules
         static const std::string _id;
         static const std::string _name;
         static const std::string _office_id;
-        static const std::string _debit_account_id;
         static const std::string _allow_multiple_debits;
-        static const std::string _credit_account_id;
         static const std::string _allow_multiple_credits;
         static const std::string _description;
         static const std::string _system_defined;
+        static const std::string _debit_account_id;
+        static const std::string _credit_account_id;
+        static const std::string _created_at;
+        static const std::string _updated_at;
     };
 
     static const int primaryKeyNumber;
@@ -133,15 +135,6 @@ class AccountingRules
     void setOfficeId(std::string &&pOfficeId) noexcept;
     void setOfficeIdToNull() noexcept;
 
-    /**  For column debit_account_id  */
-    ///Get the value of the column debit_account_id, returns the default value if the column is null
-    const int32_t &getValueOfDebitAccountId() const noexcept;
-    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
-    const std::shared_ptr<int32_t> &getDebitAccountId() const noexcept;
-    ///Set the value of the column debit_account_id
-    void setDebitAccountId(const int32_t &pDebitAccountId) noexcept;
-    void setDebitAccountIdToNull() noexcept;
-
     /**  For column allow_multiple_debits  */
     ///Get the value of the column allow_multiple_debits, returns the default value if the column is null
     const bool &getValueOfAllowMultipleDebits() const noexcept;
@@ -149,15 +142,6 @@ class AccountingRules
     const std::shared_ptr<bool> &getAllowMultipleDebits() const noexcept;
     ///Set the value of the column allow_multiple_debits
     void setAllowMultipleDebits(const bool &pAllowMultipleDebits) noexcept;
-
-    /**  For column credit_account_id  */
-    ///Get the value of the column credit_account_id, returns the default value if the column is null
-    const int32_t &getValueOfCreditAccountId() const noexcept;
-    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
-    const std::shared_ptr<int32_t> &getCreditAccountId() const noexcept;
-    ///Set the value of the column credit_account_id
-    void setCreditAccountId(const int32_t &pCreditAccountId) noexcept;
-    void setCreditAccountIdToNull() noexcept;
 
     /**  For column allow_multiple_credits  */
     ///Get the value of the column allow_multiple_credits, returns the default value if the column is null
@@ -185,8 +169,44 @@ class AccountingRules
     ///Set the value of the column system_defined
     void setSystemDefined(const bool &pSystemDefined) noexcept;
 
+    /**  For column debit_account_id  */
+    ///Get the value of the column debit_account_id, returns the default value if the column is null
+    const std::string &getValueOfDebitAccountId() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<std::string> &getDebitAccountId() const noexcept;
+    ///Set the value of the column debit_account_id
+    void setDebitAccountId(const std::string &pDebitAccountId) noexcept;
+    void setDebitAccountId(std::string &&pDebitAccountId) noexcept;
+    void setDebitAccountIdToNull() noexcept;
 
-    static size_t getColumnNumber() noexcept {  return 9;  }
+    /**  For column credit_account_id  */
+    ///Get the value of the column credit_account_id, returns the default value if the column is null
+    const std::string &getValueOfCreditAccountId() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<std::string> &getCreditAccountId() const noexcept;
+    ///Set the value of the column credit_account_id
+    void setCreditAccountId(const std::string &pCreditAccountId) noexcept;
+    void setCreditAccountId(std::string &&pCreditAccountId) noexcept;
+    void setCreditAccountIdToNull() noexcept;
+
+    /**  For column created_at  */
+    ///Get the value of the column created_at, returns the default value if the column is null
+    const ::trantor::Date &getValueOfCreatedAt() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<::trantor::Date> &getCreatedAt() const noexcept;
+    ///Set the value of the column created_at
+    void setCreatedAt(const ::trantor::Date &pCreatedAt) noexcept;
+
+    /**  For column updated_at  */
+    ///Get the value of the column updated_at, returns the default value if the column is null
+    const ::trantor::Date &getValueOfUpdatedAt() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<::trantor::Date> &getUpdatedAt() const noexcept;
+    ///Set the value of the column updated_at
+    void setUpdatedAt(const ::trantor::Date &pUpdatedAt) noexcept;
+
+
+    static size_t getColumnNumber() noexcept {  return 11;  }
     static const std::string &getColumnName(size_t index) noexcept(false);
 
     Json::Value toJson() const;
@@ -211,12 +231,14 @@ class AccountingRules
     std::shared_ptr<std::string> id_;
     std::shared_ptr<std::string> name_;
     std::shared_ptr<std::string> officeId_;
-    std::shared_ptr<int32_t> debitAccountId_;
     std::shared_ptr<bool> allowMultipleDebits_;
-    std::shared_ptr<int32_t> creditAccountId_;
     std::shared_ptr<bool> allowMultipleCredits_;
     std::shared_ptr<std::string> description_;
     std::shared_ptr<bool> systemDefined_;
+    std::shared_ptr<std::string> debitAccountId_;
+    std::shared_ptr<std::string> creditAccountId_;
+    std::shared_ptr<::trantor::Date> createdAt_;
+    std::shared_ptr<::trantor::Date> updatedAt_;
     struct MetaData
     {
         const std::string colName_;
@@ -228,7 +250,7 @@ class AccountingRules
         const bool notNull_;
     };
     static const std::vector<MetaData> metaData_;
-    bool dirtyFlag_[9]={ false };
+    bool dirtyFlag_[11]={ false };
   public:
     static const std::string &sqlForFindingByPrimaryKey()
     {
@@ -263,37 +285,49 @@ class AccountingRules
             sql += "office_id,";
             ++parametersCount;
         }
-        if(dirtyFlag_[3])
-        {
-            sql += "debit_account_id,";
-            ++parametersCount;
-        }
         sql += "allow_multiple_debits,";
+        ++parametersCount;
+        if(!dirtyFlag_[3])
+        {
+            needSelection=true;
+        }
+        sql += "allow_multiple_credits,";
         ++parametersCount;
         if(!dirtyFlag_[4])
         {
             needSelection=true;
         }
-        if(dirtyFlag_[5])
-        {
-            sql += "credit_account_id,";
-            ++parametersCount;
-        }
-        sql += "allow_multiple_credits,";
-        ++parametersCount;
-        if(!dirtyFlag_[6])
-        {
-            needSelection=true;
-        }
         sql += "description,";
         ++parametersCount;
-        if(!dirtyFlag_[7])
+        if(!dirtyFlag_[5])
         {
             needSelection=true;
         }
         sql += "system_defined,";
         ++parametersCount;
-        if(!dirtyFlag_[8])
+        if(!dirtyFlag_[6])
+        {
+            needSelection=true;
+        }
+        if(dirtyFlag_[7])
+        {
+            sql += "debit_account_id,";
+            ++parametersCount;
+        }
+        if(dirtyFlag_[8])
+        {
+            sql += "credit_account_id,";
+            ++parametersCount;
+        }
+        sql += "created_at,";
+        ++parametersCount;
+        if(!dirtyFlag_[9])
+        {
+            needSelection=true;
+        }
+        sql += "updated_at,";
+        ++parametersCount;
+        if(!dirtyFlag_[10])
         {
             needSelection=true;
         }
@@ -336,6 +370,10 @@ class AccountingRules
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
         }
+        else
+        {
+            sql +="default,";
+        }
         if(dirtyFlag_[4])
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
@@ -349,6 +387,10 @@ class AccountingRules
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
+        }
+        else
+        {
+            sql +="default,";
         }
         if(dirtyFlag_[6])
         {
@@ -364,11 +406,21 @@ class AccountingRules
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
         }
+        if(dirtyFlag_[8])
+        {
+            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
+            sql.append(placeholderStr, n);
+        }
+        if(dirtyFlag_[9])
+        {
+            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
+            sql.append(placeholderStr, n);
+        }
         else
         {
             sql +="default,";
         }
-        if(dirtyFlag_[8])
+        if(dirtyFlag_[10])
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);

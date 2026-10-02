@@ -1,8 +1,0 @@
-//
-// Created by Emmanuel Addo-Odame on 06/04/2026.
-//
-
-#ifndef ORGANIZATION_OFFICESERVICE_H
-#define ORGANIZATION_OFFICESERVICE_H
-
-#endif //ORGANIZATION_OFFICESERVICE_H

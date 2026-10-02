@@ -1,406 +1,361 @@
 //
 // Created by Emmanuel Addo-Odame on 31/07/2026.
 //
-
+// Note: this file deliberately avoids drogon::orm::Mapper<T>/CoroMapper<T>
+// against a Transaction. Plain Mapper<T> methods (findByPrimaryKey, findBy,
+// insert, ...) are SYNCHRONOUS/blocking (they internally force
+// Mode::Blocking) and are not awaitable — co_await-ing them is a hard
+// compile error ("no member await_ready"). Only drogon::orm::CoroMapper<T>
+// is actually co_await-able, and this service follows the same convention
+// already used everywhere else in Identity's tenant-scoped code
+// (RbacService, UserService, AuditLogService): raw, parameterised SQL via
+// Transaction::execSqlCoro, which IS a proper drogon::Task<Result>.
+//
 
 #include "ApiKeyService.h"
-#include "services/redis/RedisCacheManager.h"
-#include "services/audit_logs/AuditScope.h"
-#include "models/ApiKeys.h"
-#include "models/Users.h"
-#include "models/Roles.h"
-#include "models/BusinessAccounts.h"
-#include "utils/JsonUtils.h"
-#include <drogon/drogon.h>
-#include <drogon/orm/CoroMapper.h>
+
 #include <bcrypt.h>
+#include <drogon/drogon.h>
+#include <drogon/orm/Row.h>
 
-#include "constants/ErrorCodes.h"
+#include "services/audit_logs/AuditScope.h"
+#include "services/redis/RedisCacheManager.h"
+#include "turbo/TenantDb.h"
 #include "utils/IdGeneratorUtils.h"
-
-using namespace drogon::orm;
 
 namespace turbo_ledger_identity::services {
 
-    drogon::Task<dto::BaseApiResponse> ApiKeyService::getAll(const dto::UserIdentityDto &identity, int pageNo, int pageSize, const std::string &query) {
-        dto::BaseApiResponse response;
-        try {
-            auto dbClient = drogon::app().getDbClient();
-            drogon::orm::CoroMapper<drogon_model::TlIdentity::ApiKeys> mapper(dbClient);
+namespace {
+std::string cacheKeyFor(const std::string &tenantId, const std::string &clientId) {
+    return "apikey:" + tenantId + ":" + clientId;
+}
 
-            drogon::orm::Criteria criteria;
-            if (!identity.business_id.empty()) {
-                criteria = drogon::orm::Criteria(drogon_model::TlIdentity::ApiKeys::Cols::_business_id, drogon::orm::CompareOperator::EQ, identity.business_id);
-            } else {
-                criteria = drogon::orm::Criteria(drogon_model::TlIdentity::ApiKeys::Cols::_business_id, drogon::orm::CompareOperator::IsNull);
-            }
+std::string asStringOr(const drogon::orm::Row &row, const char *col, const std::string &fallback = "") {
+    return row[col].isNull() ? fallback : row[col].as<std::string>();
+}
+}  // namespace
 
-            if (!query.empty()) {
-                criteria = criteria && (Criteria(drogon_model::TlIdentity::ApiKeys::Cols::_label, CompareOperator::Like, "%" + query + "%"));
-            }
+drogon::orm::DbClientPtr ApiKeyService::db() { return drogon::app().getDbClient(); }
 
-            auto apiKeys = co_await mapper.paginate(pageNo, pageSize).findBy(criteria);
+drogon::Task<Json::Value> ApiKeyService::listApiKeys(const turbo::RequestContext &ctx, int pageNo,
+                                                     int pageSize, const std::string &query) {
+    auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
 
-            Json::Value result(Json::arrayValue);
-            for (const auto &apiKey : apiKeys) {
+    int limit = pageSize > 0 ? pageSize : 10;
+    if (limit > 200) limit = 200;
+    const int offset = pageNo > 1 ? (pageNo - 1) * limit : 0;
 
-                auto json = apiKey.toJson();
-                json.removeMember("client_id");
-                json.removeMember("client_secret_hash");
+    // limit/offset are validated ints under our own control (not raw user
+    // strings), so folding them into the SQL text is safe — matching the
+    // pattern used by turbo::PageRequest::toSqlSuffix().
+    const std::string sql =
+        "SELECT id::text AS id, business_name, label, scopes::text AS scopes, "
+        "  allowed_ips::text AS allowed_ips, is_active, last_used_at::text AS last_used_at, "
+        "  api_key_user_id::text AS api_key_user_id, created_by::text AS created_by, "
+        "  created_at::text AS created_at, modified_by::text AS modified_by, "
+        "  modified_at::text AS modified_at "
+        "FROM api_keys WHERE ($1 = '' OR label ILIKE '%' || $1 || '%') "
+        "ORDER BY created_at DESC NULLS LAST LIMIT " +
+        std::to_string(limit) + " OFFSET " + std::to_string(offset);
 
-                result.append(utils::JsonUtils::convertKeysToCamelCase(json));
-            }
+    auto rows = co_await txn->execSqlCoro(sql, query);
 
-            response.success = true;
-            response.message = "Business API keys retrieved successfully";
-            response.result = result;
-        } catch (const std::exception &e) {
-            response.success = false;
-            response.message = e.what();
-        }
-        co_return response;
+    Json::Reader reader;
+    Json::Value result(Json::arrayValue);
+    for (const auto &row : rows) {
+        Json::Value j;
+        j["id"] = row["id"].as<std::string>();
+        j["businessName"] = asStringOr(row, "business_name");
+        j["label"] = asStringOr(row, "label");
+
+        Json::Value scopesJson(Json::arrayValue);
+        if (!row["scopes"].isNull()) reader.parse(row["scopes"].as<std::string>(), scopesJson);
+        j["scopes"] = scopesJson;
+
+        j["allowedIps"] = asStringOr(row, "allowed_ips");
+        j["isActive"] = row["is_active"].isNull() ? false : row["is_active"].as<bool>();
+        j["lastUsedAt"] = asStringOr(row, "last_used_at");
+        j["apiKeyUserId"] = asStringOr(row, "api_key_user_id");
+        j["createdBy"] = asStringOr(row, "created_by");
+        j["createdAt"] = asStringOr(row, "created_at");
+        j["modifiedBy"] = asStringOr(row, "modified_by");
+        j["modifiedAt"] = asStringOr(row, "modified_at");
+        result.append(j);
     }
+    co_return result;
+}
 
-    drogon::Task<dto::BaseApiResponse> ApiKeyService::create(const dto::UserIdentityDto &identity, const dto::ApiKeyDto &dto) {
-        dto::BaseApiResponse response;
+drogon::Task<Json::Value> ApiKeyService::createApiKey(const turbo::RequestContext &ctx,
+                                                      const dto::ApiKeyDto &apiKeyDto) {
+    auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
+
+    // 1. Generate Client ID and Client Secret
+    const std::string clientId = utils::IdGeneratorUtils::generateAlphanumericId(10);
+    const std::string clientSecret = utils::IdGeneratorUtils::generateAlphanumericId(18);
+
+    // 2. Hash Client Secret
+    const std::string clientSecretHash = bcrypt::generateHash(clientSecret, 6);
+
+    // 3. Derive allowed scopes from the role(s) assigned to apiKeyUserId — a
+    // legacy mechanism distinct from RbacService's relational
+    // user_roles/role_permissions tables: Users.roles and Roles.permissions
+    // are each a JSON array column. Resolved inside the same tenant
+    // transaction as the key itself.
+    Json::Value scopesJson(Json::arrayValue);
+    Json::Reader reader;
+    if (!apiKeyDto.getApiKeyUserId().empty()) {
         try {
-            auto dbClient = drogon::app().getDbClient();
-            drogon::orm::CoroMapper<drogon_model::TlIdentity::ApiKeys> mapper(dbClient);
+            auto userRows = co_await txn->execSqlCoro(
+                "SELECT roles::text AS roles FROM users WHERE id = $1::uuid", apiKeyDto.getApiKeyUserId());
+            if (!userRows.empty() && !userRows[0]["roles"].isNull()) {
+                Json::Value rolesJson;
+                if (reader.parse(userRows[0]["roles"].as<std::string>(), rolesJson) && rolesJson.isArray()) {
+                    for (const auto &roleVal : rolesJson) {
+                        std::string roleId;
+                        if (roleVal.isString()) {
+                            roleId = roleVal.asString();
+                        } else if (roleVal.isObject() && roleVal.isMember("id")) {
+                            roleId = roleVal["id"].asString();
+                        }
+                        if (roleId.empty()) continue;
 
-            // 1. Generate Client ID and Client Secret
-            std::string clientId = utils::IdGeneratorUtils::generateAlphanumericId(10);
-            std::string clientSecret = utils::IdGeneratorUtils::generateAlphanumericId(18);
-
-            // 2. Hash Client Secret
-            std::string clientSecretHash = bcrypt::generateHash(clientSecret,6);
-
-            drogon_model::TlIdentity::ApiKeys apiKey;
-            if (!identity.business_id.empty()) { apiKey.setBusinessId(identity.business_id); } else { apiKey.setBusinessIdToNull(); }
-            apiKey.setClientId(clientId);
-            apiKey.setClientSecretHash(clientSecretHash);
-            apiKey.setLabel(dto.getLabel());
-            apiKey.setBusinessName(dto.getBusinessName());
-
-            // get allowed permissions for api key - dto.getApiKeyUserId() user and use it to set the scopes
-            Json::Value scopesJson(Json::arrayValue);
-            if (!dto.getApiKeyUserId().empty()) {
-                try {
-                    drogon::orm::CoroMapper<drogon_model::TlIdentity::Users> userMapper(dbClient);
-                    auto user = co_await userMapper.findByPrimaryKey(dto.getApiKeyUserId());
-                    std::string rolesStr = user.getValueOfRoles();
-                    
-                    if (!rolesStr.empty()) {
-                        Json::Value rolesJson;
-                        Json::Reader reader;
-                        if (reader.parse(rolesStr, rolesJson) && rolesJson.isArray()) {
-                            drogon::orm::CoroMapper<drogon_model::TlIdentity::Roles> roleMapper(dbClient);
-                            for (const auto& roleVal : rolesJson) {
-                                std::string roleId;
-                                if (roleVal.isString()) {
-                                    roleId = roleVal.asString();
-                                } else if (roleVal.isObject() && roleVal.isMember("id")) {
-                                    roleId = roleVal["id"].asString();
-                                }
-                                
-                                if (!roleId.empty()) {
-                                    try {
-                                        auto role = co_await roleMapper.findByPrimaryKey(roleId);
-                                        std::string permsStr = role.getValueOfPermissions();
-                                        if (!permsStr.empty()) {
-                                            Json::Value permsJson;
-                                            if (reader.parse(permsStr, permsJson) && permsJson.isArray()) {
-                                                for (const auto& p : permsJson) {
-                                                    scopesJson.append(p);
-                                                }
-                                            }
-                                        }
-                                    } catch (...) {}
+                        try {
+                            auto roleRows = co_await txn->execSqlCoro(
+                                "SELECT permissions::text AS permissions FROM roles WHERE id = $1::uuid",
+                                roleId);
+                            if (!roleRows.empty() && !roleRows[0]["permissions"].isNull()) {
+                                Json::Value permsJson;
+                                if (reader.parse(roleRows[0]["permissions"].as<std::string>(), permsJson) &&
+                                    permsJson.isArray()) {
+                                    for (const auto &p : permsJson) scopesJson.append(p);
                                 }
                             }
+                        } catch (const std::exception &) {
+                            // unknown/garbage role id — skip it, don't fail key creation
                         }
                     }
-                } catch (const drogon::orm::DrogonDbException &) {
-                    LOG_ERROR << "Failed to find user " << dto.getApiKeyUserId() << " for API key scopes";
                 }
             }
-            Json::FastWriter writer;
-            apiKey.setScopes(writer.write(scopesJson));
-
-            std::string allowedIpsStr = "{";
-            const auto &ips = dto.getAllowedIps();
-            for (size_t i = 0; i < ips.size(); ++i) {
-                allowedIpsStr += "\"" + ips[i] + "\"";
-                if (i < ips.size() - 1) {
-                    allowedIpsStr += ",";
-                }
-            }
-            allowedIpsStr += "}";
-            apiKey.setAllowedIps(allowedIpsStr);
-
-            // Set basic default fields
-            apiKey.setIsActive(true);
-
-            services::AuditScope auditScope(identity.user_id, identity.business_id, "ApiKey", "", "CREATE");
-
-            auto newApiKey = co_await mapper.insert(apiKey);
-
-            response.success = true;
-            response.message = "Business API key created successfully";
-            response.result["clientId"] = clientId;
-            response.result["clientSecret"] = clientSecret;
-            auditScope.setEntityId(newApiKey.getValueOfId());
-            auditScope.setNewValues(newApiKey.toJson());
-            auditScope.commit();
-
-            //save to redis cache
-            std::string cacheKey = "apikey:" + clientId;
-
-            Json::Value jsonResult;
-            jsonResult["isValid"] = true;
-            jsonResult["clientSecretHash"] = clientSecretHash;
-            jsonResult["scopes"] = scopesJson;
-            
-            if (!identity.business_id.empty()) {
-                jsonResult["businessId"] = identity.business_id;
-                try {
-                    drogon::orm::CoroMapper<drogon_model::TlIdentity::BusinessAccounts> baMapper(dbClient);
-                    auto ba = co_await baMapper.findByPrimaryKey(identity.business_id);
-                    jsonResult["accountId"] = ba.getValueOfAccountId();
-                } catch (const drogon::orm::DrogonDbException &) {
-                    // Ignore if BusinessAccount not found
-                }
-            }
-
-            try {
-                services::RedisCacheManager redisManager;
-                co_await redisManager.setValue(cacheKey, Json::FastWriter().write(jsonResult));
-            } catch (const std::exception &e) {
-                LOG_ERROR << "Failed to save API key to Redis via RedisCacheManager: " << e.what();
-            }
-
         } catch (const std::exception &e) {
-            response.success = false;
-            response.message = e.what();
+            LOG_ERROR << "Failed to resolve scopes for API key user " << apiKeyDto.getApiKeyUserId() << ": "
+                      << e.what();
         }
-        co_return response;
+    }
+    Json::FastWriter writer;
+    const std::string scopesStr = writer.write(scopesJson);
+
+    std::string allowedIpsStr = "{";
+    const auto &ips = apiKeyDto.getAllowedIps();
+    for (size_t i = 0; i < ips.size(); ++i) {
+        allowedIpsStr += "\"" + ips[i] + "\"";
+        if (i + 1 < ips.size()) allowedIpsStr += ",";
+    }
+    allowedIpsStr += "}";
+
+    AuditScope auditScope(ctx.userId, ctx.tenantId, "ApiKey", "", "CREATE");
+
+    auto rows = co_await txn->execSqlCoro(
+        "INSERT INTO api_keys "
+        "  (business_name, client_id, client_secret_hash, label, scopes, allowed_ips, "
+        "   is_active, api_key_user_id, created_by) "
+        "VALUES ($1, $2, $3, NULLIF($4, ''), $5::jsonb, $6::inet[], true, "
+        "  NULLIF($7, '')::uuid, NULLIF($8, '')::uuid) "
+        "RETURNING id::text AS id",
+        apiKeyDto.getBusinessName(), clientId, clientSecretHash, apiKeyDto.getLabel(), scopesStr,
+        allowedIpsStr, apiKeyDto.getApiKeyUserId(), ctx.userId);
+
+    const std::string newId = rows[0]["id"].as<std::string>();
+
+    Json::Value result;
+    result["clientId"] = clientId;
+    result["clientSecret"] = clientSecret;
+
+    Json::Value newValues;
+    newValues["id"] = newId;
+    newValues["businessName"] = apiKeyDto.getBusinessName();
+    newValues["label"] = apiKeyDto.getLabel();
+    newValues["scopes"] = scopesJson;
+    auditScope.setEntityId(newId);
+    auditScope.setNewValues(newValues);
+    auditScope.commit();
+
+    // Cache the hash + scopes for fast validation, keyed per-tenant so two
+    // tenants can never collide on the same generated clientId.
+    Json::Value cached;
+    cached["tenantId"] = ctx.tenantId;
+    cached["clientSecretHash"] = clientSecretHash;
+    cached["scopes"] = scopesJson;
+    try {
+        RedisCacheManager redisManager;
+        co_await redisManager.setValue(cacheKeyFor(ctx.tenantId, clientId), writer.write(cached));
+    } catch (const std::exception &e) {
+        LOG_ERROR << "Failed to save API key to Redis via RedisCacheManager: " << e.what();
     }
 
-    drogon::Task<dto::BaseApiResponse> ApiKeyService::revoke(const dto::UserIdentityDto &identity, const std::string &id) {
-        dto::BaseApiResponse response;
-        try {
-            auto dbClient = drogon::app().getDbClient();
-            drogon::orm::CoroMapper<drogon_model::TlIdentity::ApiKeys> mapper(dbClient);
+    co_return result;
+}
 
-            drogon::orm::Criteria criteria(drogon_model::TlIdentity::ApiKeys::Cols::_id, drogon::orm::CompareOperator::EQ, id);
-            if (!identity.business_id.empty()) {
-                criteria = criteria && drogon::orm::Criteria(drogon_model::TlIdentity::ApiKeys::Cols::_business_id, drogon::orm::CompareOperator::EQ, identity.business_id);
-            } else {
-                criteria = criteria && drogon::orm::Criteria(drogon_model::TlIdentity::ApiKeys::Cols::_business_id, drogon::orm::CompareOperator::IsNull);
-            }
-            auto keys = co_await mapper.findBy(criteria);
+drogon::Task<Json::Value> ApiKeyService::revokeApiKey(const turbo::RequestContext &ctx,
+                                                      const std::string &id) {
+    auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
 
-            if (keys.empty()) {
-                response.success = false;
-                response.message = "API key not found or unauthorized";
-                response.error["code"] = constants::ErrorCode::ERR_DB_NOT_FOUND;
-                co_return response;
-            }
+    auto rows = co_await txn->execSqlCoro(
+        "SELECT client_id, is_active FROM api_keys WHERE id = $1::uuid", id);
+    if (rows.empty())
+        throw ApiError(drogon::k404NotFound, "API key not found", "error.msg.identity.apikey.not.found");
 
-            auto apiKey = keys.front();
-            services::AuditScope auditScope(identity.user_id, identity.business_id, "ApiKey", id, "REVOKE");
-            auditScope.setOldValues(apiKey.toJson());
-            apiKey.setIsActive(false);
+    const std::string clientId = rows[0]["client_id"].as<std::string>();
 
-            co_await mapper.update(apiKey);
-            
-            try {
-                services::RedisCacheManager redisManager;
-                co_await redisManager.removeValue("apikey:" + apiKey.getValueOfClientId());
-            } catch (const std::exception &e) {
-                LOG_ERROR << "Failed to remove API key from Redis: " << e.what();
-            }
+    AuditScope auditScope(ctx.userId, ctx.tenantId, "ApiKey", id, "REVOKE");
+    Json::Value oldValues;
+    oldValues["id"] = id;
+    oldValues["isActive"] = rows[0]["is_active"].isNull() ? false : rows[0]["is_active"].as<bool>();
+    auditScope.setOldValues(oldValues);
 
-            response.success = true;
-            response.message = "Business API key revoked successfully";
-        } catch (const std::exception &e) {
-            response.success = false;
-            response.message = e.what();
-            response.error["code"] = constants::ErrorCode::ERR_INTERNAL;
-        }
-        co_return response;
+    co_await txn->execSqlCoro(
+        "UPDATE api_keys SET is_active = false, modified_by = NULLIF($2, '')::uuid, modified_at = now() "
+        "WHERE id = $1::uuid",
+        id, ctx.userId);
+
+    Json::Value newValues = oldValues;
+    newValues["isActive"] = false;
+    auditScope.setNewValues(newValues);
+    auditScope.commit();
+
+    try {
+        RedisCacheManager redisManager;
+        co_await redisManager.removeValue(cacheKeyFor(ctx.tenantId, clientId));
+    } catch (const std::exception &e) {
+        LOG_ERROR << "Failed to remove API key from Redis: " << e.what();
     }
 
-    drogon::Task<dto::BaseApiResponse> ApiKeyService::activate(const dto::UserIdentityDto &identity, const std::string &id) {
-        dto::BaseApiResponse response;
-        try {
-            auto dbClient = drogon::app().getDbClient();
-            drogon::orm::CoroMapper<drogon_model::TlIdentity::ApiKeys> mapper(dbClient);
+    co_return Json::Value(Json::objectValue);
+}
 
-            drogon::orm::Criteria criteria(drogon_model::TlIdentity::ApiKeys::Cols::_id, drogon::orm::CompareOperator::EQ, id);
-            if (!identity.business_id.empty()) {
-                criteria = criteria && drogon::orm::Criteria(drogon_model::TlIdentity::ApiKeys::Cols::_business_id, drogon::orm::CompareOperator::EQ, identity.business_id);
-            } else {
-                criteria = criteria && drogon::orm::Criteria(drogon_model::TlIdentity::ApiKeys::Cols::_business_id, drogon::orm::CompareOperator::IsNull);
-            }
-            auto keys = co_await mapper.findBy(criteria);
+drogon::Task<Json::Value> ApiKeyService::activateApiKey(const turbo::RequestContext &ctx,
+                                                        const std::string &id) {
+    auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
 
-            if (keys.empty()) {
-                response.success = false;
-                response.message = "API key not found or unauthorized";
-                response.error["code"] = constants::ErrorCode::ERR_DB_NOT_FOUND;
-                co_return response;
-            }
+    auto rows = co_await txn->execSqlCoro(
+        "SELECT client_id, is_active FROM api_keys WHERE id = $1::uuid", id);
+    if (rows.empty())
+        throw ApiError(drogon::k404NotFound, "API key not found", "error.msg.identity.apikey.not.found");
 
-            auto apiKey = keys.front();
-            services::AuditScope auditScope(identity.user_id, identity.business_id, "ApiKey", id, "ACTIVATE");
-            auditScope.setOldValues(apiKey.toJson());
+    const std::string clientId = rows[0]["client_id"].as<std::string>();
 
-            apiKey.setIsActive(true);
+    AuditScope auditScope(ctx.userId, ctx.tenantId, "ApiKey", id, "ACTIVATE");
+    Json::Value oldValues;
+    oldValues["id"] = id;
+    oldValues["isActive"] = rows[0]["is_active"].isNull() ? false : rows[0]["is_active"].as<bool>();
+    auditScope.setOldValues(oldValues);
 
-            co_await mapper.update(apiKey);
-            auditScope.setNewValues(apiKey.toJson());
-            auditScope.commit();
-            
-            try {
-                services::RedisCacheManager redisManager;
-                co_await redisManager.removeValue("apikey:" + apiKey.getValueOfClientId());
-            } catch (const std::exception &e) {
-                LOG_ERROR << "Failed to remove API key from Redis: " << e.what();
-            }
+    co_await txn->execSqlCoro(
+        "UPDATE api_keys SET is_active = true, modified_by = NULLIF($2, '')::uuid, modified_at = now() "
+        "WHERE id = $1::uuid",
+        id, ctx.userId);
 
-            response.success = true;
-            response.message = "Business API key activated successfully";
-        } catch (const std::exception &e) {
-            response.success = false;
-            response.message = e.what();
-            response.error["code"] = constants::ErrorCode::ERR_INTERNAL;
-        }
-        co_return response;
+    Json::Value newValues = oldValues;
+    newValues["isActive"] = true;
+    auditScope.setNewValues(newValues);
+    auditScope.commit();
+
+    try {
+        RedisCacheManager redisManager;
+        co_await redisManager.removeValue(cacheKeyFor(ctx.tenantId, clientId));
+    } catch (const std::exception &e) {
+        LOG_ERROR << "Failed to remove API key from Redis: " << e.what();
     }
 
-    drogon::Task<dto::BaseApiResponse> ApiKeyService::deleteApiKey(const dto::UserIdentityDto &identity, const std::string &id) {
-        dto::BaseApiResponse response;
-        try {
-            auto dbClient = drogon::app().getDbClient();
-            CoroMapper<drogon_model::TlIdentity::ApiKeys> mapper(dbClient);
+    co_return Json::Value(Json::objectValue);
+}
 
-            Criteria criteria(drogon_model::TlIdentity::ApiKeys::Cols::_id, CompareOperator::EQ, id);
-            if (!identity.business_id.empty()) {
-                criteria = criteria && Criteria(drogon_model::TlIdentity::ApiKeys::Cols::_business_id, CompareOperator::EQ, identity.business_id);
-            } else {
-                criteria = criteria && Criteria(drogon_model::TlIdentity::ApiKeys::Cols::_business_id, CompareOperator::IsNull);
-            }
-            auto keys = co_await mapper.findBy(criteria);
+drogon::Task<void> ApiKeyService::deleteApiKey(const turbo::RequestContext &ctx, const std::string &id) {
+    auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
 
-            if (keys.empty()) {
-                response.success = false;
-                response.message = "API key not found or unauthorized";
-                response.error["code"] = constants::ErrorCode::ERR_DB_NOT_FOUND;
-                co_return response;
-            }
+    auto rows = co_await txn->execSqlCoro("SELECT client_id FROM api_keys WHERE id = $1::uuid", id);
+    if (rows.empty())
+        throw ApiError(drogon::k404NotFound, "API key not found", "error.msg.identity.apikey.not.found");
 
-            auto apiKey = keys.front();
-            services::AuditScope auditScope(identity.user_id, identity.business_id, "ApiKey", id, "DELETE");
-            auditScope.setOldValues(apiKey.toJson());
-            co_await mapper.deleteByPrimaryKey(id);
-            auditScope.commit();
-            
-            try {
-                services::RedisCacheManager redisManager;
-                co_await redisManager.removeValue("apikey:" + apiKey.getValueOfClientId());
-            } catch (const std::exception &e) {
-                LOG_ERROR << "Failed to remove API key from Redis: " << e.what();
-            }
+    const std::string clientId = rows[0]["client_id"].as<std::string>();
 
-            response.success = true;
-            response.message = "Business API key deleted successfully";
-        } catch (const std::exception &e) {
-            response.success = false;
-            response.message = e.what();
-            response.error["code"] = constants::ErrorCode::ERR_INTERNAL;
-        }
-        co_return response;
+    AuditScope auditScope(ctx.userId, ctx.tenantId, "ApiKey", id, "DELETE");
+    Json::Value oldValues;
+    oldValues["id"] = id;
+    auditScope.setOldValues(oldValues);
+
+    co_await txn->execSqlCoro("DELETE FROM api_keys WHERE id = $1::uuid", id);
+    auditScope.commit();
+
+    try {
+        RedisCacheManager redisManager;
+        co_await redisManager.removeValue(cacheKeyFor(ctx.tenantId, clientId));
+    } catch (const std::exception &e) {
+        LOG_ERROR << "Failed to remove API key from Redis: " << e.what();
     }
+}
 
-    drogon::Task<ApiCredentialsValidationResult> ApiKeyService::validateApiCredentials(const std::string &clientId, const std::string &clientSecret) {
-        ApiCredentialsValidationResult result;
-        try {
-            auto dbClient = drogon::app().getDbClient();
-            
-            // Try Redis first
-            std::string cacheKey = "apikey:" + clientId;
-            try {
-                services::RedisCacheManager redisManager;
-                std::string cachedData = co_await redisManager.getValue(cacheKey);
-                if (!cachedData.empty()) {
-                    Json::Value jsonResult;
-                    Json::Reader reader;
-                    if (reader.parse(cachedData, jsonResult)) {
-                        std::string cachedHash = jsonResult["clientSecretHash"].asString();
-                        if (!bcrypt::validatePassword(clientSecret, cachedHash)) {
-                            result.isValid = false;
-                            result.errorMessage = "Invalid API credentials";
-                            result.errorCode = constants::ErrorCode::ERR_AUTH_INVALID_CREDENTIALS;
-                            co_return result;
-                        }
-                        
-                        result.isValid = true;
-                        result.businessId = jsonResult.isMember("businessId") ? jsonResult["businessId"].asString() : "";
-                        result.accountId = jsonResult.isMember("accountId") ? jsonResult["accountId"].asString() : "";
-                        co_return result;
-                    }
-                }
-            } catch (const std::exception &e) {
-                LOG_ERROR << "Redis cache error in validateApiCredentials: " << e.what();
-            }
-
-            // Fallback to DB if not in cache
-            CoroMapper<drogon_model::TlIdentity::ApiKeys> apiKeyMapper(dbClient);
-
-            auto keys = co_await apiKeyMapper.findBy(
-                Criteria(drogon_model::TlIdentity::ApiKeys::Cols::_client_id, CompareOperator::EQ, clientId) && Criteria(drogon_model::TlIdentity::ApiKeys::Cols::_is_active, CompareOperator::EQ, true)
-            );
-
-            if (keys.empty()) {
-                result.isValid = false;
-                result.errorMessage = "Invalid API credentials";
-                result.errorCode = constants::ErrorCode::ERR_DB_NOT_FOUND;
-                co_return result;
-            }
-
-            auto apiKey = keys.front();
-
-            if (!bcrypt::validatePassword(clientSecret, apiKey.getValueOfClientSecretHash())) {
-                result.isValid = false;
-                result.errorMessage = "Invalid API credentials";
-                result.errorCode = constants::ErrorCode::ERR_AUTH_INVALID_CREDENTIALS;
-                co_return result;
-            }
-
-            const std::string& businessId = apiKey.getValueOfBusinessId();
-
-            CoroMapper<drogon_model::TlIdentity::BusinessAccounts> accountMapper(dbClient);
-
-            drogon_model::TlIdentity::BusinessAccounts account;
-
-            try {
-                account = co_await accountMapper.findByPrimaryKey(businessId);
-            } catch (const UnexpectedRows &) {
-                result.isValid = false;
-                result.errorCode = constants::ERR_RESOURCE_NOT_FOUND;
-                result.errorMessage = "Business account not found.";
-                co_return result;
-            }
-
-            result.isValid = true;
-            result.accountId = account.getValueOfAccountId();
-            result.businessId = businessId;
-        } catch (const std::exception &e) {
-            result.isValid = false;
-            result.errorMessage = e.what();
-            result.errorCode = constants::ErrorCode::ERR_INTERNAL;
-        }
+drogon::Task<ApiCredentialsValidationResult> ApiKeyService::validateApiCredentials(
+    const std::string &tenantId, const std::string &clientId, const std::string &clientSecret) {
+    ApiCredentialsValidationResult result;
+    if (!turbo::RequestContext::isValidTenantId(tenantId)) {
+        result.isValid = false;
+        result.errorMessage = "Invalid or missing tenant id";
+        result.errorCode = drogon::k400BadRequest;
         co_return result;
     }
 
+    // Try Redis first.
+    const std::string cacheKey = cacheKeyFor(tenantId, clientId);
+    try {
+        RedisCacheManager redisManager;
+        const std::string cachedData = co_await redisManager.getValue(cacheKey);
+        if (!cachedData.empty()) {
+            Json::Value cached;
+            Json::Reader reader;
+            if (reader.parse(cachedData, cached)) {
+                if (!bcrypt::validatePassword(clientSecret, cached["clientSecretHash"].asString())) {
+                    result.isValid = false;
+                    result.errorMessage = "Invalid API credentials";
+                    result.errorCode = drogon::k401Unauthorized;
+                    co_return result;
+                }
+                result.isValid = true;
+                result.tenantId = tenantId;
+                co_return result;
+            }
+        }
+    } catch (const std::exception &e) {
+        LOG_ERROR << "Redis cache error in validateApiCredentials: " << e.what();
+    }
+
+    // Fallback to the tenant schema.
+    try {
+        auto txn = co_await turbo::db::beginTenantTxn(db(), tenantId);
+        auto rows = co_await txn->execSqlCoro(
+            "SELECT client_secret_hash FROM api_keys WHERE client_id = $1 AND is_active = true", clientId);
+
+        if (rows.empty()) {
+            result.isValid = false;
+            result.errorMessage = "Invalid API credentials";
+            result.errorCode = drogon::k404NotFound;
+            co_return result;
+        }
+
+        if (!bcrypt::validatePassword(clientSecret, rows[0]["client_secret_hash"].as<std::string>())) {
+            result.isValid = false;
+            result.errorMessage = "Invalid API credentials";
+            result.errorCode = drogon::k401Unauthorized;
+            co_return result;
+        }
+
+        result.isValid = true;
+        result.tenantId = tenantId;
+    } catch (const std::exception &e) {
+        result.isValid = false;
+        result.errorMessage = e.what();
+        result.errorCode = drogon::k500InternalServerError;
+    }
+    co_return result;
 }
+
+}  // namespace turbo_ledger_identity::services

@@ -1,0 +1,1444 @@
+{
+  "info": {
+    "_postman_id": "fb82e10f-d96e-434d-8b32-2dcf276e8113",
+    "name": "TurboLedger \u2014 Phase 3 (Accounting core)",
+    "description": "Phase 3 surface through the API Gateway: glaccounts, glclosures, journalentries, accountingrules, financialactivityaccounts, provisioningentries, runaccruals (Accounting service).\n\nRun the '0 - Auth' request first (requires a tenant/admin already provisioned) to populate {{token}}. Collection variables: baseUrl, tenantId, token.\n\nRequest bodies were auto-derived from the actual field reads in AccountingService.cc; placeholder values are generic and should be adjusted to valid data (e.g. real GL account ids/currency codes) for your environment.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:7499"
+    },
+    {
+      "key": "tenantId",
+      "value": "acme_bank"
+    },
+    {
+      "key": "token",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "0 \u00b7 Auth",
+      "item": [
+        {
+          "name": "Tenant admin sign in",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/signin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "signin"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usernameOrEmail\": \"admin\",\n  \"password\": \"Passw0rd!\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = pm.response.json();",
+                  "pm.test('signin ok', () => pm.expect(d.success).to.be.true);",
+                  "pm.collectionVariables.set('token', d.result.token);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Gl Accounts",
+      "item": [
+        {
+          "name": "Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/glaccounts/get-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "glaccounts",
+                "get-all"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/glaccounts/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "glaccounts",
+                "create"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sample Name\",\n  \"glCode\": \"SAMPLE_CODE\",\n  \"type\": 1,\n  \"usage\": 1,\n  \"parentId\": \"1\",\n  \"disabled\": true,\n  \"manualEntriesAllowed\": true,\n  \"description\": \"Sample description\",\n  \"tagId\": \"1\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/glaccounts/get-detail/{id}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "glaccounts",
+                "get-detail",
+                "{id}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/glaccounts/{id}/update",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "glaccounts",
+                "{id}",
+                "update"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sample Name\",\n  \"description\": \"Sample description\",\n  \"manualEntriesAllowed\": true,\n  \"disabled\": true,\n  \"tagId\": \"1\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Remove",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/glaccounts/{id}/delete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "glaccounts",
+                "{id}",
+                "delete"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Template Endpoint",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/glaccounts/template",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "glaccounts",
+                "template"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Download Template",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/glaccounts/downloadtemplate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "glaccounts",
+                "downloadtemplate"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Upload Template",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/glaccounts/uploadtemplate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "glaccounts",
+                "uploadtemplate"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Gl Closures",
+      "item": [
+        {
+          "name": "Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/glclosures/get-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "glclosures",
+                "get-all"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/glclosures/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "glclosures",
+                "create"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"officeId\": \"1\",\n  \"closingDate\": \"2026-01-15\",\n  \"comments\": \"Sample comments\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/glclosures/get-detail/{id}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "glclosures",
+                "get-detail",
+                "{id}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/glclosures/{id}/update",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "glclosures",
+                "{id}",
+                "update"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"comments\": \"Sample comments\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Remove",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/glclosures/{id}/delete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "glclosures",
+                "{id}",
+                "delete"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Journal Entries",
+      "item": [
+        {
+          "name": "Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/journalentries/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "journalentries",
+                "create"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"officeId\": \"1\",\n  \"transactionDate\": \"2026-01-15\",\n  \"currencyCode\": \"USD\",\n  \"comments\": \"Sample comments\",\n  \"referenceNumber\": \"sample-referenceNumber\",\n  \"manualEntry\": true,\n  \"credits\": \"sample-credits\",\n  \"debits\": \"sample-debits\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/journalentries/get-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "journalentries",
+                "get-all"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/journalentries/get-detail/{id}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "journalentries",
+                "get-detail",
+                "{id}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Opening Balance",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/journalentries/openingbalance",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "journalentries",
+                "openingbalance"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Provisioning",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/journalentries/provisioning",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "journalentries",
+                "provisioning"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Template Endpoint",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/journalentries/template",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "journalentries",
+                "template"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Reverse",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/journalentries/{transactionId}/reverse",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "journalentries",
+                "{transactionId}",
+                "reverse"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"comments\": \"Sample comments\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Recalculate Running Balance",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/journalentries/{transactionId}/recalculate-running-balance",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "journalentries",
+                "{transactionId}",
+                "recalculate-running-balance"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Download Template",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/journalentries/downloadtemplate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "journalentries",
+                "downloadtemplate"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Upload Template",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/journalentries/uploadtemplate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "journalentries",
+                "uploadtemplate"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Accounting Rules",
+      "item": [
+        {
+          "name": "Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/accountingrules/get-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accountingrules",
+                "get-all"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/accountingrules/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accountingrules",
+                "create"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sample Name\",\n  \"officeId\": \"1\",\n  \"description\": \"Sample description\",\n  \"allowMultipleDebits\": true,\n  \"allowMultipleCredits\": true,\n  \"debitAccountId\": \"1\",\n  \"creditAccountId\": \"1\",\n  \"debitAccounts\": \"sample-debitAccounts\",\n  \"creditAccounts\": \"sample-creditAccounts\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/accountingrules/get-detail/{id}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accountingrules",
+                "get-detail",
+                "{id}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/accountingrules/{id}/update",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accountingrules",
+                "{id}",
+                "update"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sample Name\",\n  \"description\": \"Sample description\",\n  \"debitAccountId\": \"1\",\n  \"creditAccountId\": \"1\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Remove",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/accountingrules/{id}/delete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accountingrules",
+                "{id}",
+                "delete"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Template Endpoint",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/accountingrules/template",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accountingrules",
+                "template"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Financial Activity Accounts",
+      "item": [
+        {
+          "name": "Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/financialactivityaccounts/get-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "financialactivityaccounts",
+                "get-all"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/financialactivityaccounts/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "financialactivityaccounts",
+                "create"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"glAccountId\": \"1\",\n  \"financialActivityType\": 1\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/financialactivityaccounts/get-detail/{id}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "financialactivityaccounts",
+                "get-detail",
+                "{id}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/financialactivityaccounts/{id}/update",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "financialactivityaccounts",
+                "{id}",
+                "update"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"glAccountId\": \"1\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Remove",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/financialactivityaccounts/{id}/delete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "financialactivityaccounts",
+                "{id}",
+                "delete"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Template Endpoint",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/financialactivityaccounts/template",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "financialactivityaccounts",
+                "template"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Provisioning Entries",
+      "item": [
+        {
+          "name": "Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/provisioningentries/get-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "provisioningentries",
+                "get-all"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/provisioningentries/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "provisioningentries",
+                "create"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"2026-01-15\",\n  \"comments\": \"Sample comments\",\n  \"createjournalentries\": true,\n  \"entries\": \"sample-entries\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/provisioningentries/get-detail/{id}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "provisioningentries",
+                "get-detail",
+                "{id}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Recreate",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/provisioningentries/{id}/recreate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "provisioningentries",
+                "{id}",
+                "recreate"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Entries",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/provisioningentries/entries",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "provisioningentries",
+                "entries"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Run Accruals",
+      "item": [
+        {
+          "name": "Run",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/runaccruals/run",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "runaccruals",
+                "run"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tenantDate\": \"2026-01-15\",\n  \"date\": \"2026-01-15\",\n  \"accruals\": \"sample-accruals\"\n}"
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

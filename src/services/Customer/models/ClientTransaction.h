@@ -45,6 +45,7 @@ class ClientTransaction
     struct Cols
     {
         static const std::string _id;
+        static const std::string _business_id;
         static const std::string _client_id;
         static const std::string _office_id;
         static const std::string _currency_code;
@@ -52,13 +53,12 @@ class ClientTransaction
         static const std::string _is_reversed;
         static const std::string _external_id;
         static const std::string _transaction_date;
-        static const std::string _transaction_type_enum;
+        static const std::string _transaction_type;
         static const std::string _amount;
-        static const std::string _created_date;
-        static const std::string _created_on_utc;
         static const std::string _created_by;
-        static const std::string _last_modified_by;
-        static const std::string _last_modified_on_utc;
+        static const std::string _created_at;
+        static const std::string _modified_by;
+        static const std::string _modified_at;
         static const std::string _submitted_on_date;
     };
 
@@ -119,6 +119,16 @@ class ClientTransaction
     ///Set the value of the column id
     void setId(const std::string &pId) noexcept;
     void setId(std::string &&pId) noexcept;
+
+    /**  For column business_id  */
+    ///Get the value of the column business_id, returns the default value if the column is null
+    const std::string &getValueOfBusinessId() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<std::string> &getBusinessId() const noexcept;
+    ///Set the value of the column business_id
+    void setBusinessId(const std::string &pBusinessId) noexcept;
+    void setBusinessId(std::string &&pBusinessId) noexcept;
+    void setBusinessIdToNull() noexcept;
 
     /**  For column client_id  */
     ///Get the value of the column client_id, returns the default value if the column is null
@@ -183,13 +193,13 @@ class ClientTransaction
     ///Set the value of the column transaction_date
     void setTransactionDate(const ::trantor::Date &pTransactionDate) noexcept;
 
-    /**  For column transaction_type_enum  */
-    ///Get the value of the column transaction_type_enum, returns the default value if the column is null
-    const int32_t &getValueOfTransactionTypeEnum() const noexcept;
+    /**  For column transaction_type  */
+    ///Get the value of the column transaction_type, returns the default value if the column is null
+    const int32_t &getValueOfTransactionType() const noexcept;
     ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
-    const std::shared_ptr<int32_t> &getTransactionTypeEnum() const noexcept;
-    ///Set the value of the column transaction_type_enum
-    void setTransactionTypeEnum(const int32_t &pTransactionTypeEnum) noexcept;
+    const std::shared_ptr<int32_t> &getTransactionType() const noexcept;
+    ///Set the value of the column transaction_type
+    void setTransactionType(const int32_t &pTransactionType) noexcept;
 
     /**  For column amount  */
     ///Get the value of the column amount, returns the default value if the column is null
@@ -200,24 +210,6 @@ class ClientTransaction
     void setAmount(const std::string &pAmount) noexcept;
     void setAmount(std::string &&pAmount) noexcept;
 
-    /**  For column created_date  */
-    ///Get the value of the column created_date, returns the default value if the column is null
-    const ::trantor::Date &getValueOfCreatedDate() const noexcept;
-    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
-    const std::shared_ptr<::trantor::Date> &getCreatedDate() const noexcept;
-    ///Set the value of the column created_date
-    void setCreatedDate(const ::trantor::Date &pCreatedDate) noexcept;
-    void setCreatedDateToNull() noexcept;
-
-    /**  For column created_on_utc  */
-    ///Get the value of the column created_on_utc, returns the default value if the column is null
-    const ::trantor::Date &getValueOfCreatedOnUtc() const noexcept;
-    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
-    const std::shared_ptr<::trantor::Date> &getCreatedOnUtc() const noexcept;
-    ///Set the value of the column created_on_utc
-    void setCreatedOnUtc(const ::trantor::Date &pCreatedOnUtc) noexcept;
-    void setCreatedOnUtcToNull() noexcept;
-
     /**  For column created_by  */
     ///Get the value of the column created_by, returns the default value if the column is null
     const std::string &getValueOfCreatedBy() const noexcept;
@@ -226,24 +218,35 @@ class ClientTransaction
     ///Set the value of the column created_by
     void setCreatedBy(const std::string &pCreatedBy) noexcept;
     void setCreatedBy(std::string &&pCreatedBy) noexcept;
+    void setCreatedByToNull() noexcept;
 
-    /**  For column last_modified_by  */
-    ///Get the value of the column last_modified_by, returns the default value if the column is null
-    const std::string &getValueOfLastModifiedBy() const noexcept;
+    /**  For column created_at  */
+    ///Get the value of the column created_at, returns the default value if the column is null
+    const ::trantor::Date &getValueOfCreatedAt() const noexcept;
     ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
-    const std::shared_ptr<std::string> &getLastModifiedBy() const noexcept;
-    ///Set the value of the column last_modified_by
-    void setLastModifiedBy(const std::string &pLastModifiedBy) noexcept;
-    void setLastModifiedBy(std::string &&pLastModifiedBy) noexcept;
+    const std::shared_ptr<::trantor::Date> &getCreatedAt() const noexcept;
+    ///Set the value of the column created_at
+    void setCreatedAt(const ::trantor::Date &pCreatedAt) noexcept;
+    void setCreatedAtToNull() noexcept;
 
-    /**  For column last_modified_on_utc  */
-    ///Get the value of the column last_modified_on_utc, returns the default value if the column is null
-    const ::trantor::Date &getValueOfLastModifiedOnUtc() const noexcept;
+    /**  For column modified_by  */
+    ///Get the value of the column modified_by, returns the default value if the column is null
+    const std::string &getValueOfModifiedBy() const noexcept;
     ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
-    const std::shared_ptr<::trantor::Date> &getLastModifiedOnUtc() const noexcept;
-    ///Set the value of the column last_modified_on_utc
-    void setLastModifiedOnUtc(const ::trantor::Date &pLastModifiedOnUtc) noexcept;
-    void setLastModifiedOnUtcToNull() noexcept;
+    const std::shared_ptr<std::string> &getModifiedBy() const noexcept;
+    ///Set the value of the column modified_by
+    void setModifiedBy(const std::string &pModifiedBy) noexcept;
+    void setModifiedBy(std::string &&pModifiedBy) noexcept;
+    void setModifiedByToNull() noexcept;
+
+    /**  For column modified_at  */
+    ///Get the value of the column modified_at, returns the default value if the column is null
+    const ::trantor::Date &getValueOfModifiedAt() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<::trantor::Date> &getModifiedAt() const noexcept;
+    ///Set the value of the column modified_at
+    void setModifiedAt(const ::trantor::Date &pModifiedAt) noexcept;
+    void setModifiedAtToNull() noexcept;
 
     /**  For column submitted_on_date  */
     ///Get the value of the column submitted_on_date, returns the default value if the column is null
@@ -277,6 +280,7 @@ class ClientTransaction
     ///For mysql or sqlite3
     void updateId(const uint64_t id);
     std::shared_ptr<std::string> id_;
+    std::shared_ptr<std::string> businessId_;
     std::shared_ptr<std::string> clientId_;
     std::shared_ptr<std::string> officeId_;
     std::shared_ptr<std::string> currencyCode_;
@@ -284,13 +288,12 @@ class ClientTransaction
     std::shared_ptr<bool> isReversed_;
     std::shared_ptr<std::string> externalId_;
     std::shared_ptr<::trantor::Date> transactionDate_;
-    std::shared_ptr<int32_t> transactionTypeEnum_;
+    std::shared_ptr<int32_t> transactionType_;
     std::shared_ptr<std::string> amount_;
-    std::shared_ptr<::trantor::Date> createdDate_;
-    std::shared_ptr<::trantor::Date> createdOnUtc_;
     std::shared_ptr<std::string> createdBy_;
-    std::shared_ptr<std::string> lastModifiedBy_;
-    std::shared_ptr<::trantor::Date> lastModifiedOnUtc_;
+    std::shared_ptr<::trantor::Date> createdAt_;
+    std::shared_ptr<std::string> modifiedBy_;
+    std::shared_ptr<::trantor::Date> modifiedAt_;
     std::shared_ptr<::trantor::Date> submittedOnDate_;
     struct MetaData
     {
@@ -329,73 +332,72 @@ class ClientTransaction
         }
         if(dirtyFlag_[1])
         {
-            sql += "client_id,";
+            sql += "business_id,";
             ++parametersCount;
         }
         if(dirtyFlag_[2])
         {
-            sql += "office_id,";
+            sql += "client_id,";
             ++parametersCount;
         }
         if(dirtyFlag_[3])
         {
-            sql += "currency_code,";
+            sql += "office_id,";
             ++parametersCount;
         }
         if(dirtyFlag_[4])
         {
-            sql += "payment_detail_id,";
+            sql += "currency_code,";
             ++parametersCount;
         }
         if(dirtyFlag_[5])
+        {
+            sql += "payment_detail_id,";
+            ++parametersCount;
+        }
+        if(dirtyFlag_[6])
         {
             sql += "is_reversed,";
             ++parametersCount;
         }
         sql += "external_id,";
         ++parametersCount;
-        if(!dirtyFlag_[6])
+        if(!dirtyFlag_[7])
         {
             needSelection=true;
         }
-        if(dirtyFlag_[7])
+        if(dirtyFlag_[8])
         {
             sql += "transaction_date,";
             ++parametersCount;
         }
-        if(dirtyFlag_[8])
+        if(dirtyFlag_[9])
         {
-            sql += "transaction_type_enum,";
+            sql += "transaction_type,";
             ++parametersCount;
         }
-        if(dirtyFlag_[9])
+        if(dirtyFlag_[10])
         {
             sql += "amount,";
             ++parametersCount;
         }
-        sql += "created_date,";
-        ++parametersCount;
-        if(!dirtyFlag_[10])
-        {
-            needSelection=true;
-        }
-        sql += "created_on_utc,";
-        ++parametersCount;
-        if(!dirtyFlag_[11])
-        {
-            needSelection=true;
-        }
-        if(dirtyFlag_[12])
+        if(dirtyFlag_[11])
         {
             sql += "created_by,";
             ++parametersCount;
         }
+        sql += "created_at,";
+        ++parametersCount;
+        if(!dirtyFlag_[12])
+        {
+            needSelection=true;
+        }
         if(dirtyFlag_[13])
         {
-            sql += "last_modified_by,";
+            sql += "modified_by,";
             ++parametersCount;
         }
-        sql += "last_modified_on_utc,";
+        sql += "modified_at,";
         ++parametersCount;
         if(!dirtyFlag_[14])
         {
@@ -456,14 +458,14 @@ class ClientTransaction
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
         }
-        else
-        {
-            sql +="default,";
-        }
         if(dirtyFlag_[7])
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
+        }
+        else
+        {
+            sql +="default,";
         }
         if(dirtyFlag_[8])
         {
@@ -480,23 +482,19 @@ class ClientTransaction
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
         }
-        else
-        {
-            sql +="default,";
-        }
         if(dirtyFlag_[11])
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
         }
-        else
-        {
-            sql +="default,";
-        }
         if(dirtyFlag_[12])
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
+        }
+        else
+        {
+            sql +="default,";
         }
         if(dirtyFlag_[13])
         {

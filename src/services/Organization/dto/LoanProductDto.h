@@ -1,8 +1,0 @@
-//
-// Created by Emmanuel Addo-Odame on 07/04/2026.
-//
-
-#ifndef ORGANIZATION_LOANPRODUCTDTO_H
-#define ORGANIZATION_LOANPRODUCTDTO_H
-
-#endif //ORGANIZATION_LOANPRODUCTDTO_H

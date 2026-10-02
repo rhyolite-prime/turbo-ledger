@@ -1,13 +1,15 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.10)
 project(Identity CXX)
 
 include(CheckIncludeFileCXX)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+# GCC < 13 needs -fcoroutines even in C++20/23 mode; GCC >= 13 and Clang enable
+# coroutines automatically (and Clang rejects the flag).
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 13)
     add_compile_options(-fcoroutines)
 endif()
 
@@ -18,12 +20,7 @@ add_executable(${PROJECT_NAME} main.cc
         constants/ErrorCodes.h
         services/users/UserService.h
         services/users/UserService.cc
-        services/roles/RoleService.h
-        services/roles/RoleService.cc
         services/api_keys/ApiKeyService.h
-        services/business_accounts/BusinessAccountService.h
-        services/business_accounts/BusinessAccountService.cc
-        dto/BusinessAccountDto.h
         constants/StatusType.h
         utils/JsonUtils.h
         services/audit_logs/AuditLogService.h
@@ -34,13 +31,10 @@ add_executable(${PROJECT_NAME} main.cc
         services/api_keys/ApiKeyService.cc
         utils/IdGeneratorUtils.h
         utils/IdGeneratorUtils.cc
-        dto/RoleDto.h
-        dto/UserDto.h
         dto/SigninDto.h
         utils/PasswordUtils.h
         utils/PasswordUtils.cc
         utils/codecvt_helper.h
-        dto/UserIdentityDto.h
         services/redis/RedisCacheManager.h
         services/redis/RedisCacheManager.cc
 )
@@ -54,10 +48,20 @@ add_executable(${PROJECT_NAME} main.cc
 # and comment out the following lines
 find_package(Drogon CONFIG REQUIRED)
 find_package(OpenSSL REQUIRED)
-add_subdirectory(external_deps/Bcrypt.cpp)
-target_link_libraries(${PROJECT_NAME} PRIVATE Drogon::Drogon bcrypt OpenSSL::SSL OpenSSL::Crypto)
 
+# Shared platform library (libturbo)
+if(NOT TARGET turbo)
+    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../libs/turbo turbo_build)
+endif()
 
+# Shared external dependencies (Bcrypt / jwt-cpp with FetchContent fallback)
+include(${CMAKE_CURRENT_SOURCE_DIR}/../../../cmake/TurboExternalDeps.cmake)
+turbo_require_bcrypt(${PROJECT_NAME})
+turbo_require_jwt_cpp(${PROJECT_NAME})
+
+# turbo::turbo already publicly links Drogon::Drogon and OpenSSL::Crypto;
+# don't relist them here or the linker will see libdrogon.a twice.
+target_link_libraries(${PROJECT_NAME} PRIVATE turbo::turbo OpenSSL::SSL)
 
 # ##############################################################################
 
@@ -66,7 +70,7 @@ if (CMAKE_CXX_STANDARD LESS 17)
 elseif (CMAKE_CXX_STANDARD LESS 20)
     message(STATUS "use c++17")
 else ()
-    message(STATUS "use c++20")
+    message(STATUS "use c++${CMAKE_CXX_STANDARD}")
 endif ()
 
 aux_source_directory(controllers CTL_SRC)
@@ -74,6 +78,7 @@ aux_source_directory(filters FILTER_SRC)
 aux_source_directory(plugins PLUGIN_SRC)
 aux_source_directory(constants PLUGIN_SRC)
 aux_source_directory(services/users SERVICE_SRC)
+aux_source_directory(services/rbac SERVICE_SRC)
 aux_source_directory(models MODEL_SRC)
 
 drogon_create_views(${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/views
@@ -104,4 +109,13 @@ target_sources(${PROJECT_NAME}
 
 # ##############################################################################
 
-add_subdirectory(test)
+#add_subdirectory(test)
+
+
+# External dependencies (Bcrypt / jwt-cpp) are resolved via
+# cmake/TurboExternalDeps.cmake above (vendored submodule or FetchContent).
+target_include_directories(${PROJECT_NAME}
+        PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/models
+)

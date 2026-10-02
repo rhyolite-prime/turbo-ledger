@@ -19,17 +19,19 @@ const std::string Office::Cols::_hierarchy = "\"hierarchy\"";
 const std::string Office::Cols::_external_id = "\"external_id\"";
 const std::string Office::Cols::_name = "\"name\"";
 const std::string Office::Cols::_opening_date = "\"opening_date\"";
+const std::string Office::Cols::_updated_at = "\"updated_at\"";
 const std::string Office::primaryKeyName = "id";
 const bool Office::hasPrimaryKey = true;
 const std::string Office::tableName = "\"office\"";
 
 const std::vector<typename Office::MetaData> Office::metaData_={
 {"id","std::string","uuid",0,0,1,1},
-{"parent_id","std::string","uuid",0,0,0,0},
-{"hierarchy","std::string","character varying",100,0,0,0},
+{"parent_id","std::string","uuid",0,0,0,1},
+{"hierarchy","std::string","character varying",250,0,0,0},
 {"external_id","std::string","character varying",100,0,0,0},
 {"name","std::string","character varying",50,0,0,1},
-{"opening_date","::trantor::Date","date",0,0,0,1}
+{"opening_date","::trantor::Date","date",0,0,0,1},
+{"updated_at","::trantor::Date","date",0,0,0,1}
 };
 const std::string &Office::getColumnName(size_t index) noexcept(false)
 {
@@ -69,11 +71,20 @@ Office::Office(const Row &r, const ssize_t indexOffset) noexcept
             time_t t = mktime(&stm);
             openingDate_=std::make_shared<::trantor::Date>(t*1000000);
         }
+        if(!r["updated_at"].isNull())
+        {
+            auto daysStr = r["updated_at"].as<std::string>();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            strptime(daysStr.c_str(),"%Y-%m-%d",&stm);
+            time_t t = mktime(&stm);
+            updatedAt_=std::make_shared<::trantor::Date>(t*1000000);
+        }
     }
     else
     {
         size_t offset = (size_t)indexOffset;
-        if(offset + 6 > r.size())
+        if(offset + 7 > r.size())
         {
             LOG_FATAL << "Invalid SQL result for this model";
             return;
@@ -114,13 +125,23 @@ Office::Office(const Row &r, const ssize_t indexOffset) noexcept
             time_t t = mktime(&stm);
             openingDate_=std::make_shared<::trantor::Date>(t*1000000);
         }
+        index = offset + 6;
+        if(!r[index].isNull())
+        {
+            auto daysStr = r[index].as<std::string>();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            strptime(daysStr.c_str(),"%Y-%m-%d",&stm);
+            time_t t = mktime(&stm);
+            updatedAt_=std::make_shared<::trantor::Date>(t*1000000);
+        }
     }
 
 }
 
 Office::Office(const Json::Value &pJson, const std::vector<std::string> &pMasqueradingVector) noexcept(false)
 {
-    if(pMasqueradingVector.size() != 6)
+    if(pMasqueradingVector.size() != 7)
     {
         LOG_ERROR << "Bad masquerading vector";
         return;
@@ -176,6 +197,19 @@ Office::Office(const Json::Value &pJson, const std::vector<std::string> &pMasque
             strptime(daysStr.c_str(),"%Y-%m-%d",&stm);
             time_t t = mktime(&stm);
             openingDate_=std::make_shared<::trantor::Date>(t*1000000);
+        }
+    }
+    if(!pMasqueradingVector[6].empty() && pJson.isMember(pMasqueradingVector[6]))
+    {
+        dirtyFlag_[6] = true;
+        if(!pJson[pMasqueradingVector[6]].isNull())
+        {
+            auto daysStr = pJson[pMasqueradingVector[6]].asString();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            strptime(daysStr.c_str(),"%Y-%m-%d",&stm);
+            time_t t = mktime(&stm);
+            updatedAt_=std::make_shared<::trantor::Date>(t*1000000);
         }
     }
 }
@@ -235,12 +269,25 @@ Office::Office(const Json::Value &pJson) noexcept(false)
             openingDate_=std::make_shared<::trantor::Date>(t*1000000);
         }
     }
+    if(pJson.isMember("updated_at"))
+    {
+        dirtyFlag_[6]=true;
+        if(!pJson["updated_at"].isNull())
+        {
+            auto daysStr = pJson["updated_at"].asString();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            strptime(daysStr.c_str(),"%Y-%m-%d",&stm);
+            time_t t = mktime(&stm);
+            updatedAt_=std::make_shared<::trantor::Date>(t*1000000);
+        }
+    }
 }
 
 void Office::updateByMasqueradedJson(const Json::Value &pJson,
                                             const std::vector<std::string> &pMasqueradingVector) noexcept(false)
 {
-    if(pMasqueradingVector.size() != 6)
+    if(pMasqueradingVector.size() != 7)
     {
         LOG_ERROR << "Bad masquerading vector";
         return;
@@ -295,6 +342,19 @@ void Office::updateByMasqueradedJson(const Json::Value &pJson,
             strptime(daysStr.c_str(),"%Y-%m-%d",&stm);
             time_t t = mktime(&stm);
             openingDate_=std::make_shared<::trantor::Date>(t*1000000);
+        }
+    }
+    if(!pMasqueradingVector[6].empty() && pJson.isMember(pMasqueradingVector[6]))
+    {
+        dirtyFlag_[6] = true;
+        if(!pJson[pMasqueradingVector[6]].isNull())
+        {
+            auto daysStr = pJson[pMasqueradingVector[6]].asString();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            strptime(daysStr.c_str(),"%Y-%m-%d",&stm);
+            time_t t = mktime(&stm);
+            updatedAt_=std::make_shared<::trantor::Date>(t*1000000);
         }
     }
 }
@@ -353,6 +413,19 @@ void Office::updateByJson(const Json::Value &pJson) noexcept(false)
             openingDate_=std::make_shared<::trantor::Date>(t*1000000);
         }
     }
+    if(pJson.isMember("updated_at"))
+    {
+        dirtyFlag_[6] = true;
+        if(!pJson["updated_at"].isNull())
+        {
+            auto daysStr = pJson["updated_at"].asString();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            strptime(daysStr.c_str(),"%Y-%m-%d",&stm);
+            time_t t = mktime(&stm);
+            updatedAt_=std::make_shared<::trantor::Date>(t*1000000);
+        }
+    }
 }
 
 const std::string &Office::getValueOfId() const noexcept
@@ -401,11 +474,6 @@ void Office::setParentId(const std::string &pParentId) noexcept
 void Office::setParentId(std::string &&pParentId) noexcept
 {
     parentId_ = std::make_shared<std::string>(std::move(pParentId));
-    dirtyFlag_[1] = true;
-}
-void Office::setParentIdToNull() noexcept
-{
-    parentId_.reset();
     dirtyFlag_[1] = true;
 }
 
@@ -502,6 +570,23 @@ void Office::setOpeningDate(const ::trantor::Date &pOpeningDate) noexcept
     dirtyFlag_[5] = true;
 }
 
+const ::trantor::Date &Office::getValueOfUpdatedAt() const noexcept
+{
+    static const ::trantor::Date defaultValue = ::trantor::Date();
+    if(updatedAt_)
+        return *updatedAt_;
+    return defaultValue;
+}
+const std::shared_ptr<::trantor::Date> &Office::getUpdatedAt() const noexcept
+{
+    return updatedAt_;
+}
+void Office::setUpdatedAt(const ::trantor::Date &pUpdatedAt) noexcept
+{
+    updatedAt_ = std::make_shared<::trantor::Date>(pUpdatedAt.roundDay());
+    dirtyFlag_[6] = true;
+}
+
 void Office::updateId(const uint64_t id)
 {
 }
@@ -514,7 +599,8 @@ const std::vector<std::string> &Office::insertColumns() noexcept
         "hierarchy",
         "external_id",
         "name",
-        "opening_date"
+        "opening_date",
+        "updated_at"
     };
     return inCols;
 }
@@ -587,6 +673,17 @@ void Office::outputArgs(drogon::orm::internal::SqlBinder &binder) const
             binder << nullptr;
         }
     }
+    if(dirtyFlag_[6])
+    {
+        if(getUpdatedAt())
+        {
+            binder << getValueOfUpdatedAt();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
 }
 
 const std::vector<std::string> Office::updateColumns() const
@@ -615,6 +712,10 @@ const std::vector<std::string> Office::updateColumns() const
     if(dirtyFlag_[5])
     {
         ret.push_back(getColumnName(5));
+    }
+    if(dirtyFlag_[6])
+    {
+        ret.push_back(getColumnName(6));
     }
     return ret;
 }
@@ -687,6 +788,17 @@ void Office::updateArgs(drogon::orm::internal::SqlBinder &binder) const
             binder << nullptr;
         }
     }
+    if(dirtyFlag_[6])
+    {
+        if(getUpdatedAt())
+        {
+            binder << getValueOfUpdatedAt();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
 }
 Json::Value Office::toJson() const
 {
@@ -739,6 +851,14 @@ Json::Value Office::toJson() const
     {
         ret["opening_date"]=Json::Value();
     }
+    if(getUpdatedAt())
+    {
+        ret["updated_at"]=getUpdatedAt()->toDbStringLocal();
+    }
+    else
+    {
+        ret["updated_at"]=Json::Value();
+    }
     return ret;
 }
 
@@ -751,7 +871,7 @@ Json::Value Office::toMasqueradedJson(
     const std::vector<std::string> &pMasqueradingVector) const
 {
     Json::Value ret;
-    if(pMasqueradingVector.size() == 6)
+    if(pMasqueradingVector.size() == 7)
     {
         if(!pMasqueradingVector[0].empty())
         {
@@ -819,6 +939,17 @@ Json::Value Office::toMasqueradedJson(
                 ret[pMasqueradingVector[5]]=Json::Value();
             }
         }
+        if(!pMasqueradingVector[6].empty())
+        {
+            if(getUpdatedAt())
+            {
+                ret[pMasqueradingVector[6]]=getUpdatedAt()->toDbStringLocal();
+            }
+            else
+            {
+                ret[pMasqueradingVector[6]]=Json::Value();
+            }
+        }
         return ret;
     }
     LOG_ERROR << "Masquerade failed";
@@ -870,6 +1001,14 @@ Json::Value Office::toMasqueradedJson(
     {
         ret["opening_date"]=Json::Value();
     }
+    if(getUpdatedAt())
+    {
+        ret["updated_at"]=getUpdatedAt()->toDbStringLocal();
+    }
+    else
+    {
+        ret["updated_at"]=Json::Value();
+    }
     return ret;
 }
 
@@ -915,13 +1054,23 @@ bool Office::validateJsonForCreation(const Json::Value &pJson, std::string &err)
         err="The opening_date column cannot be null";
         return false;
     }
+    if(pJson.isMember("updated_at"))
+    {
+        if(!validJsonOfField(6, "updated_at", pJson["updated_at"], err, true))
+            return false;
+    }
+    else
+    {
+        err="The updated_at column cannot be null";
+        return false;
+    }
     return true;
 }
 bool Office::validateMasqueradedJsonForCreation(const Json::Value &pJson,
                                                 const std::vector<std::string> &pMasqueradingVector,
                                                 std::string &err)
 {
-    if(pMasqueradingVector.size() != 6)
+    if(pMasqueradingVector.size() != 7)
     {
         err = "Bad masquerading vector";
         return false;
@@ -985,6 +1134,19 @@ bool Office::validateMasqueradedJsonForCreation(const Json::Value &pJson,
             return false;
         }
       }
+      if(!pMasqueradingVector[6].empty())
+      {
+          if(pJson.isMember(pMasqueradingVector[6]))
+          {
+              if(!validJsonOfField(6, pMasqueradingVector[6], pJson[pMasqueradingVector[6]], err, true))
+                  return false;
+          }
+        else
+        {
+            err="The " + pMasqueradingVector[6] + " column cannot be null";
+            return false;
+        }
+      }
     }
     catch(const Json::LogicError &e)
     {
@@ -1030,13 +1192,18 @@ bool Office::validateJsonForUpdate(const Json::Value &pJson, std::string &err)
         if(!validJsonOfField(5, "opening_date", pJson["opening_date"], err, false))
             return false;
     }
+    if(pJson.isMember("updated_at"))
+    {
+        if(!validJsonOfField(6, "updated_at", pJson["updated_at"], err, false))
+            return false;
+    }
     return true;
 }
 bool Office::validateMasqueradedJsonForUpdate(const Json::Value &pJson,
                                               const std::vector<std::string> &pMasqueradingVector,
                                               std::string &err)
 {
-    if(pMasqueradingVector.size() != 6)
+    if(pMasqueradingVector.size() != 7)
     {
         err = "Bad masquerading vector";
         return false;
@@ -1077,6 +1244,11 @@ bool Office::validateMasqueradedJsonForUpdate(const Json::Value &pJson,
           if(!validJsonOfField(5, pMasqueradingVector[5], pJson[pMasqueradingVector[5]], err, false))
               return false;
       }
+      if(!pMasqueradingVector[6].empty() && pJson.isMember(pMasqueradingVector[6]))
+      {
+          if(!validJsonOfField(6, pMasqueradingVector[6], pJson[pMasqueradingVector[6]], err, false))
+              return false;
+      }
     }
     catch(const Json::LogicError &e)
     {
@@ -1108,7 +1280,8 @@ bool Office::validJsonOfField(size_t index,
         case 1:
             if(pJson.isNull())
             {
-                return true;
+                err="The " + fieldName + " column cannot be null";
+                return false;
             }
             if(!pJson.isString())
             {
@@ -1126,14 +1299,14 @@ bool Office::validJsonOfField(size_t index,
                 err="Type error in the "+fieldName+" field";
                 return false;
             }
-            if(pJson.isString() && std::strlen(pJson.asCString()) > 100)
+            if(pJson.isString() && std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>{}
+                .from_bytes(pJson.asCString()).size() > 250)
             {
                 err="String length exceeds limit for the " +
                     fieldName +
-                    " field (the maximum value is 100)";
+                    " field (the maximum value is 250)";
                 return false;
             }
-
             break;
         case 3:
             if(pJson.isNull())
@@ -1145,14 +1318,14 @@ bool Office::validJsonOfField(size_t index,
                 err="Type error in the "+fieldName+" field";
                 return false;
             }
-            if(pJson.isString() && std::strlen(pJson.asCString()) > 100)
+            if(pJson.isString() && std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>{}
+                .from_bytes(pJson.asCString()).size() > 100)
             {
                 err="String length exceeds limit for the " +
                     fieldName +
                     " field (the maximum value is 100)";
                 return false;
             }
-
             break;
         case 4:
             if(pJson.isNull())
@@ -1165,16 +1338,28 @@ bool Office::validJsonOfField(size_t index,
                 err="Type error in the "+fieldName+" field";
                 return false;
             }
-            if(pJson.isString() && std::strlen(pJson.asCString()) > 50)
+            if(pJson.isString() && std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>{}
+                .from_bytes(pJson.asCString()).size() > 50)
             {
                 err="String length exceeds limit for the " +
                     fieldName +
                     " field (the maximum value is 50)";
                 return false;
             }
-
             break;
         case 5:
+            if(pJson.isNull())
+            {
+                err="The " + fieldName + " column cannot be null";
+                return false;
+            }
+            if(!pJson.isString())
+            {
+                err="Type error in the "+fieldName+" field";
+                return false;
+            }
+            break;
+        case 6:
             if(pJson.isNull())
             {
                 err="The " + fieldName + " column cannot be null";

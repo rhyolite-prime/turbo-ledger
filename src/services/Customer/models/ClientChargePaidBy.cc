@@ -14,6 +14,7 @@ using namespace drogon::orm;
 using namespace drogon_model::TlCustomerDb;
 
 const std::string ClientChargePaidBy::Cols::_id = "\"id\"";
+const std::string ClientChargePaidBy::Cols::_business_id = "\"business_id\"";
 const std::string ClientChargePaidBy::Cols::_client_transaction_id = "\"client_transaction_id\"";
 const std::string ClientChargePaidBy::Cols::_client_charge_id = "\"client_charge_id\"";
 const std::string ClientChargePaidBy::Cols::_amount = "\"amount\"";
@@ -23,6 +24,7 @@ const std::string ClientChargePaidBy::tableName = "\"client_charge_paid_by\"";
 
 const std::vector<typename ClientChargePaidBy::MetaData> ClientChargePaidBy::metaData_={
 {"id","std::string","uuid",0,0,1,1},
+{"business_id","std::string","uuid",0,0,0,0},
 {"client_transaction_id","std::string","uuid",0,0,0,0},
 {"client_charge_id","std::string","uuid",0,0,0,1},
 {"amount","std::string","numeric",0,0,0,1}
@@ -40,6 +42,10 @@ ClientChargePaidBy::ClientChargePaidBy(const Row &r, const ssize_t indexOffset) 
         {
             id_=std::make_shared<std::string>(r["id"].as<std::string>());
         }
+        if(!r["business_id"].isNull())
+        {
+            businessId_=std::make_shared<std::string>(r["business_id"].as<std::string>());
+        }
         if(!r["client_transaction_id"].isNull())
         {
             clientTransactionId_=std::make_shared<std::string>(r["client_transaction_id"].as<std::string>());
@@ -56,7 +62,7 @@ ClientChargePaidBy::ClientChargePaidBy(const Row &r, const ssize_t indexOffset) 
     else
     {
         size_t offset = (size_t)indexOffset;
-        if(offset + 4 > r.size())
+        if(offset + 5 > r.size())
         {
             LOG_FATAL << "Invalid SQL result for this model";
             return;
@@ -70,14 +76,19 @@ ClientChargePaidBy::ClientChargePaidBy(const Row &r, const ssize_t indexOffset) 
         index = offset + 1;
         if(!r[index].isNull())
         {
-            clientTransactionId_=std::make_shared<std::string>(r[index].as<std::string>());
+            businessId_=std::make_shared<std::string>(r[index].as<std::string>());
         }
         index = offset + 2;
         if(!r[index].isNull())
         {
-            clientChargeId_=std::make_shared<std::string>(r[index].as<std::string>());
+            clientTransactionId_=std::make_shared<std::string>(r[index].as<std::string>());
         }
         index = offset + 3;
+        if(!r[index].isNull())
+        {
+            clientChargeId_=std::make_shared<std::string>(r[index].as<std::string>());
+        }
+        index = offset + 4;
         if(!r[index].isNull())
         {
             amount_=std::make_shared<std::string>(r[index].as<std::string>());
@@ -88,7 +99,7 @@ ClientChargePaidBy::ClientChargePaidBy(const Row &r, const ssize_t indexOffset) 
 
 ClientChargePaidBy::ClientChargePaidBy(const Json::Value &pJson, const std::vector<std::string> &pMasqueradingVector) noexcept(false)
 {
-    if(pMasqueradingVector.size() != 4)
+    if(pMasqueradingVector.size() != 5)
     {
         LOG_ERROR << "Bad masquerading vector";
         return;
@@ -106,7 +117,7 @@ ClientChargePaidBy::ClientChargePaidBy(const Json::Value &pJson, const std::vect
         dirtyFlag_[1] = true;
         if(!pJson[pMasqueradingVector[1]].isNull())
         {
-            clientTransactionId_=std::make_shared<std::string>(pJson[pMasqueradingVector[1]].asString());
+            businessId_=std::make_shared<std::string>(pJson[pMasqueradingVector[1]].asString());
         }
     }
     if(!pMasqueradingVector[2].empty() && pJson.isMember(pMasqueradingVector[2]))
@@ -114,7 +125,7 @@ ClientChargePaidBy::ClientChargePaidBy(const Json::Value &pJson, const std::vect
         dirtyFlag_[2] = true;
         if(!pJson[pMasqueradingVector[2]].isNull())
         {
-            clientChargeId_=std::make_shared<std::string>(pJson[pMasqueradingVector[2]].asString());
+            clientTransactionId_=std::make_shared<std::string>(pJson[pMasqueradingVector[2]].asString());
         }
     }
     if(!pMasqueradingVector[3].empty() && pJson.isMember(pMasqueradingVector[3]))
@@ -122,7 +133,15 @@ ClientChargePaidBy::ClientChargePaidBy(const Json::Value &pJson, const std::vect
         dirtyFlag_[3] = true;
         if(!pJson[pMasqueradingVector[3]].isNull())
         {
-            amount_=std::make_shared<std::string>(pJson[pMasqueradingVector[3]].asString());
+            clientChargeId_=std::make_shared<std::string>(pJson[pMasqueradingVector[3]].asString());
+        }
+    }
+    if(!pMasqueradingVector[4].empty() && pJson.isMember(pMasqueradingVector[4]))
+    {
+        dirtyFlag_[4] = true;
+        if(!pJson[pMasqueradingVector[4]].isNull())
+        {
+            amount_=std::make_shared<std::string>(pJson[pMasqueradingVector[4]].asString());
         }
     }
 }
@@ -137,9 +156,17 @@ ClientChargePaidBy::ClientChargePaidBy(const Json::Value &pJson) noexcept(false)
             id_=std::make_shared<std::string>(pJson["id"].asString());
         }
     }
-    if(pJson.isMember("client_transaction_id"))
+    if(pJson.isMember("business_id"))
     {
         dirtyFlag_[1]=true;
+        if(!pJson["business_id"].isNull())
+        {
+            businessId_=std::make_shared<std::string>(pJson["business_id"].asString());
+        }
+    }
+    if(pJson.isMember("client_transaction_id"))
+    {
+        dirtyFlag_[2]=true;
         if(!pJson["client_transaction_id"].isNull())
         {
             clientTransactionId_=std::make_shared<std::string>(pJson["client_transaction_id"].asString());
@@ -147,7 +174,7 @@ ClientChargePaidBy::ClientChargePaidBy(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("client_charge_id"))
     {
-        dirtyFlag_[2]=true;
+        dirtyFlag_[3]=true;
         if(!pJson["client_charge_id"].isNull())
         {
             clientChargeId_=std::make_shared<std::string>(pJson["client_charge_id"].asString());
@@ -155,7 +182,7 @@ ClientChargePaidBy::ClientChargePaidBy(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("amount"))
     {
-        dirtyFlag_[3]=true;
+        dirtyFlag_[4]=true;
         if(!pJson["amount"].isNull())
         {
             amount_=std::make_shared<std::string>(pJson["amount"].asString());
@@ -166,7 +193,7 @@ ClientChargePaidBy::ClientChargePaidBy(const Json::Value &pJson) noexcept(false)
 void ClientChargePaidBy::updateByMasqueradedJson(const Json::Value &pJson,
                                             const std::vector<std::string> &pMasqueradingVector) noexcept(false)
 {
-    if(pMasqueradingVector.size() != 4)
+    if(pMasqueradingVector.size() != 5)
     {
         LOG_ERROR << "Bad masquerading vector";
         return;
@@ -183,7 +210,7 @@ void ClientChargePaidBy::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[1] = true;
         if(!pJson[pMasqueradingVector[1]].isNull())
         {
-            clientTransactionId_=std::make_shared<std::string>(pJson[pMasqueradingVector[1]].asString());
+            businessId_=std::make_shared<std::string>(pJson[pMasqueradingVector[1]].asString());
         }
     }
     if(!pMasqueradingVector[2].empty() && pJson.isMember(pMasqueradingVector[2]))
@@ -191,7 +218,7 @@ void ClientChargePaidBy::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[2] = true;
         if(!pJson[pMasqueradingVector[2]].isNull())
         {
-            clientChargeId_=std::make_shared<std::string>(pJson[pMasqueradingVector[2]].asString());
+            clientTransactionId_=std::make_shared<std::string>(pJson[pMasqueradingVector[2]].asString());
         }
     }
     if(!pMasqueradingVector[3].empty() && pJson.isMember(pMasqueradingVector[3]))
@@ -199,7 +226,15 @@ void ClientChargePaidBy::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[3] = true;
         if(!pJson[pMasqueradingVector[3]].isNull())
         {
-            amount_=std::make_shared<std::string>(pJson[pMasqueradingVector[3]].asString());
+            clientChargeId_=std::make_shared<std::string>(pJson[pMasqueradingVector[3]].asString());
+        }
+    }
+    if(!pMasqueradingVector[4].empty() && pJson.isMember(pMasqueradingVector[4]))
+    {
+        dirtyFlag_[4] = true;
+        if(!pJson[pMasqueradingVector[4]].isNull())
+        {
+            amount_=std::make_shared<std::string>(pJson[pMasqueradingVector[4]].asString());
         }
     }
 }
@@ -213,9 +248,17 @@ void ClientChargePaidBy::updateByJson(const Json::Value &pJson) noexcept(false)
             id_=std::make_shared<std::string>(pJson["id"].asString());
         }
     }
-    if(pJson.isMember("client_transaction_id"))
+    if(pJson.isMember("business_id"))
     {
         dirtyFlag_[1] = true;
+        if(!pJson["business_id"].isNull())
+        {
+            businessId_=std::make_shared<std::string>(pJson["business_id"].asString());
+        }
+    }
+    if(pJson.isMember("client_transaction_id"))
+    {
+        dirtyFlag_[2] = true;
         if(!pJson["client_transaction_id"].isNull())
         {
             clientTransactionId_=std::make_shared<std::string>(pJson["client_transaction_id"].asString());
@@ -223,7 +266,7 @@ void ClientChargePaidBy::updateByJson(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("client_charge_id"))
     {
-        dirtyFlag_[2] = true;
+        dirtyFlag_[3] = true;
         if(!pJson["client_charge_id"].isNull())
         {
             clientChargeId_=std::make_shared<std::string>(pJson["client_charge_id"].asString());
@@ -231,7 +274,7 @@ void ClientChargePaidBy::updateByJson(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("amount"))
     {
-        dirtyFlag_[3] = true;
+        dirtyFlag_[4] = true;
         if(!pJson["amount"].isNull())
         {
             amount_=std::make_shared<std::string>(pJson["amount"].asString());
@@ -266,6 +309,33 @@ const typename ClientChargePaidBy::PrimaryKeyType & ClientChargePaidBy::getPrima
     return *id_;
 }
 
+const std::string &ClientChargePaidBy::getValueOfBusinessId() const noexcept
+{
+    static const std::string defaultValue = std::string();
+    if(businessId_)
+        return *businessId_;
+    return defaultValue;
+}
+const std::shared_ptr<std::string> &ClientChargePaidBy::getBusinessId() const noexcept
+{
+    return businessId_;
+}
+void ClientChargePaidBy::setBusinessId(const std::string &pBusinessId) noexcept
+{
+    businessId_ = std::make_shared<std::string>(pBusinessId);
+    dirtyFlag_[1] = true;
+}
+void ClientChargePaidBy::setBusinessId(std::string &&pBusinessId) noexcept
+{
+    businessId_ = std::make_shared<std::string>(std::move(pBusinessId));
+    dirtyFlag_[1] = true;
+}
+void ClientChargePaidBy::setBusinessIdToNull() noexcept
+{
+    businessId_.reset();
+    dirtyFlag_[1] = true;
+}
+
 const std::string &ClientChargePaidBy::getValueOfClientTransactionId() const noexcept
 {
     static const std::string defaultValue = std::string();
@@ -280,17 +350,17 @@ const std::shared_ptr<std::string> &ClientChargePaidBy::getClientTransactionId()
 void ClientChargePaidBy::setClientTransactionId(const std::string &pClientTransactionId) noexcept
 {
     clientTransactionId_ = std::make_shared<std::string>(pClientTransactionId);
-    dirtyFlag_[1] = true;
+    dirtyFlag_[2] = true;
 }
 void ClientChargePaidBy::setClientTransactionId(std::string &&pClientTransactionId) noexcept
 {
     clientTransactionId_ = std::make_shared<std::string>(std::move(pClientTransactionId));
-    dirtyFlag_[1] = true;
+    dirtyFlag_[2] = true;
 }
 void ClientChargePaidBy::setClientTransactionIdToNull() noexcept
 {
     clientTransactionId_.reset();
-    dirtyFlag_[1] = true;
+    dirtyFlag_[2] = true;
 }
 
 const std::string &ClientChargePaidBy::getValueOfClientChargeId() const noexcept
@@ -307,12 +377,12 @@ const std::shared_ptr<std::string> &ClientChargePaidBy::getClientChargeId() cons
 void ClientChargePaidBy::setClientChargeId(const std::string &pClientChargeId) noexcept
 {
     clientChargeId_ = std::make_shared<std::string>(pClientChargeId);
-    dirtyFlag_[2] = true;
+    dirtyFlag_[3] = true;
 }
 void ClientChargePaidBy::setClientChargeId(std::string &&pClientChargeId) noexcept
 {
     clientChargeId_ = std::make_shared<std::string>(std::move(pClientChargeId));
-    dirtyFlag_[2] = true;
+    dirtyFlag_[3] = true;
 }
 
 const std::string &ClientChargePaidBy::getValueOfAmount() const noexcept
@@ -329,12 +399,12 @@ const std::shared_ptr<std::string> &ClientChargePaidBy::getAmount() const noexce
 void ClientChargePaidBy::setAmount(const std::string &pAmount) noexcept
 {
     amount_ = std::make_shared<std::string>(pAmount);
-    dirtyFlag_[3] = true;
+    dirtyFlag_[4] = true;
 }
 void ClientChargePaidBy::setAmount(std::string &&pAmount) noexcept
 {
     amount_ = std::make_shared<std::string>(std::move(pAmount));
-    dirtyFlag_[3] = true;
+    dirtyFlag_[4] = true;
 }
 
 void ClientChargePaidBy::updateId(const uint64_t id)
@@ -345,6 +415,7 @@ const std::vector<std::string> &ClientChargePaidBy::insertColumns() noexcept
 {
     static const std::vector<std::string> inCols={
         "id",
+        "business_id",
         "client_transaction_id",
         "client_charge_id",
         "amount"
@@ -367,6 +438,17 @@ void ClientChargePaidBy::outputArgs(drogon::orm::internal::SqlBinder &binder) co
     }
     if(dirtyFlag_[1])
     {
+        if(getBusinessId())
+        {
+            binder << getValueOfBusinessId();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[2])
+    {
         if(getClientTransactionId())
         {
             binder << getValueOfClientTransactionId();
@@ -376,7 +458,7 @@ void ClientChargePaidBy::outputArgs(drogon::orm::internal::SqlBinder &binder) co
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[2])
+    if(dirtyFlag_[3])
     {
         if(getClientChargeId())
         {
@@ -387,7 +469,7 @@ void ClientChargePaidBy::outputArgs(drogon::orm::internal::SqlBinder &binder) co
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[3])
+    if(dirtyFlag_[4])
     {
         if(getAmount())
         {
@@ -419,6 +501,10 @@ const std::vector<std::string> ClientChargePaidBy::updateColumns() const
     {
         ret.push_back(getColumnName(3));
     }
+    if(dirtyFlag_[4])
+    {
+        ret.push_back(getColumnName(4));
+    }
     return ret;
 }
 
@@ -437,6 +523,17 @@ void ClientChargePaidBy::updateArgs(drogon::orm::internal::SqlBinder &binder) co
     }
     if(dirtyFlag_[1])
     {
+        if(getBusinessId())
+        {
+            binder << getValueOfBusinessId();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[2])
+    {
         if(getClientTransactionId())
         {
             binder << getValueOfClientTransactionId();
@@ -446,7 +543,7 @@ void ClientChargePaidBy::updateArgs(drogon::orm::internal::SqlBinder &binder) co
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[2])
+    if(dirtyFlag_[3])
     {
         if(getClientChargeId())
         {
@@ -457,7 +554,7 @@ void ClientChargePaidBy::updateArgs(drogon::orm::internal::SqlBinder &binder) co
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[3])
+    if(dirtyFlag_[4])
     {
         if(getAmount())
         {
@@ -479,6 +576,14 @@ Json::Value ClientChargePaidBy::toJson() const
     else
     {
         ret["id"]=Json::Value();
+    }
+    if(getBusinessId())
+    {
+        ret["business_id"]=getValueOfBusinessId();
+    }
+    else
+    {
+        ret["business_id"]=Json::Value();
     }
     if(getClientTransactionId())
     {
@@ -516,7 +621,7 @@ Json::Value ClientChargePaidBy::toMasqueradedJson(
     const std::vector<std::string> &pMasqueradingVector) const
 {
     Json::Value ret;
-    if(pMasqueradingVector.size() == 4)
+    if(pMasqueradingVector.size() == 5)
     {
         if(!pMasqueradingVector[0].empty())
         {
@@ -531,9 +636,9 @@ Json::Value ClientChargePaidBy::toMasqueradedJson(
         }
         if(!pMasqueradingVector[1].empty())
         {
-            if(getClientTransactionId())
+            if(getBusinessId())
             {
-                ret[pMasqueradingVector[1]]=getValueOfClientTransactionId();
+                ret[pMasqueradingVector[1]]=getValueOfBusinessId();
             }
             else
             {
@@ -542,9 +647,9 @@ Json::Value ClientChargePaidBy::toMasqueradedJson(
         }
         if(!pMasqueradingVector[2].empty())
         {
-            if(getClientChargeId())
+            if(getClientTransactionId())
             {
-                ret[pMasqueradingVector[2]]=getValueOfClientChargeId();
+                ret[pMasqueradingVector[2]]=getValueOfClientTransactionId();
             }
             else
             {
@@ -553,13 +658,24 @@ Json::Value ClientChargePaidBy::toMasqueradedJson(
         }
         if(!pMasqueradingVector[3].empty())
         {
-            if(getAmount())
+            if(getClientChargeId())
             {
-                ret[pMasqueradingVector[3]]=getValueOfAmount();
+                ret[pMasqueradingVector[3]]=getValueOfClientChargeId();
             }
             else
             {
                 ret[pMasqueradingVector[3]]=Json::Value();
+            }
+        }
+        if(!pMasqueradingVector[4].empty())
+        {
+            if(getAmount())
+            {
+                ret[pMasqueradingVector[4]]=getValueOfAmount();
+            }
+            else
+            {
+                ret[pMasqueradingVector[4]]=Json::Value();
             }
         }
         return ret;
@@ -572,6 +688,14 @@ Json::Value ClientChargePaidBy::toMasqueradedJson(
     else
     {
         ret["id"]=Json::Value();
+    }
+    if(getBusinessId())
+    {
+        ret["business_id"]=getValueOfBusinessId();
+    }
+    else
+    {
+        ret["business_id"]=Json::Value();
     }
     if(getClientTransactionId())
     {
@@ -607,14 +731,19 @@ bool ClientChargePaidBy::validateJsonForCreation(const Json::Value &pJson, std::
         if(!validJsonOfField(0, "id", pJson["id"], err, true))
             return false;
     }
+    if(pJson.isMember("business_id"))
+    {
+        if(!validJsonOfField(1, "business_id", pJson["business_id"], err, true))
+            return false;
+    }
     if(pJson.isMember("client_transaction_id"))
     {
-        if(!validJsonOfField(1, "client_transaction_id", pJson["client_transaction_id"], err, true))
+        if(!validJsonOfField(2, "client_transaction_id", pJson["client_transaction_id"], err, true))
             return false;
     }
     if(pJson.isMember("client_charge_id"))
     {
-        if(!validJsonOfField(2, "client_charge_id", pJson["client_charge_id"], err, true))
+        if(!validJsonOfField(3, "client_charge_id", pJson["client_charge_id"], err, true))
             return false;
     }
     else
@@ -624,7 +753,7 @@ bool ClientChargePaidBy::validateJsonForCreation(const Json::Value &pJson, std::
     }
     if(pJson.isMember("amount"))
     {
-        if(!validJsonOfField(3, "amount", pJson["amount"], err, true))
+        if(!validJsonOfField(4, "amount", pJson["amount"], err, true))
             return false;
     }
     else
@@ -638,7 +767,7 @@ bool ClientChargePaidBy::validateMasqueradedJsonForCreation(const Json::Value &p
                                                             const std::vector<std::string> &pMasqueradingVector,
                                                             std::string &err)
 {
-    if(pMasqueradingVector.size() != 4)
+    if(pMasqueradingVector.size() != 5)
     {
         err = "Bad masquerading vector";
         return false;
@@ -667,11 +796,6 @@ bool ClientChargePaidBy::validateMasqueradedJsonForCreation(const Json::Value &p
               if(!validJsonOfField(2, pMasqueradingVector[2], pJson[pMasqueradingVector[2]], err, true))
                   return false;
           }
-        else
-        {
-            err="The " + pMasqueradingVector[2] + " column cannot be null";
-            return false;
-        }
       }
       if(!pMasqueradingVector[3].empty())
       {
@@ -683,6 +807,19 @@ bool ClientChargePaidBy::validateMasqueradedJsonForCreation(const Json::Value &p
         else
         {
             err="The " + pMasqueradingVector[3] + " column cannot be null";
+            return false;
+        }
+      }
+      if(!pMasqueradingVector[4].empty())
+      {
+          if(pJson.isMember(pMasqueradingVector[4]))
+          {
+              if(!validJsonOfField(4, pMasqueradingVector[4], pJson[pMasqueradingVector[4]], err, true))
+                  return false;
+          }
+        else
+        {
+            err="The " + pMasqueradingVector[4] + " column cannot be null";
             return false;
         }
       }
@@ -706,19 +843,24 @@ bool ClientChargePaidBy::validateJsonForUpdate(const Json::Value &pJson, std::st
         err = "The value of primary key must be set in the json object for update";
         return false;
     }
+    if(pJson.isMember("business_id"))
+    {
+        if(!validJsonOfField(1, "business_id", pJson["business_id"], err, false))
+            return false;
+    }
     if(pJson.isMember("client_transaction_id"))
     {
-        if(!validJsonOfField(1, "client_transaction_id", pJson["client_transaction_id"], err, false))
+        if(!validJsonOfField(2, "client_transaction_id", pJson["client_transaction_id"], err, false))
             return false;
     }
     if(pJson.isMember("client_charge_id"))
     {
-        if(!validJsonOfField(2, "client_charge_id", pJson["client_charge_id"], err, false))
+        if(!validJsonOfField(3, "client_charge_id", pJson["client_charge_id"], err, false))
             return false;
     }
     if(pJson.isMember("amount"))
     {
-        if(!validJsonOfField(3, "amount", pJson["amount"], err, false))
+        if(!validJsonOfField(4, "amount", pJson["amount"], err, false))
             return false;
     }
     return true;
@@ -727,7 +869,7 @@ bool ClientChargePaidBy::validateMasqueradedJsonForUpdate(const Json::Value &pJs
                                                           const std::vector<std::string> &pMasqueradingVector,
                                                           std::string &err)
 {
-    if(pMasqueradingVector.size() != 4)
+    if(pMasqueradingVector.size() != 5)
     {
         err = "Bad masquerading vector";
         return false;
@@ -756,6 +898,11 @@ bool ClientChargePaidBy::validateMasqueradedJsonForUpdate(const Json::Value &pJs
       if(!pMasqueradingVector[3].empty() && pJson.isMember(pMasqueradingVector[3]))
       {
           if(!validJsonOfField(3, pMasqueradingVector[3], pJson[pMasqueradingVector[3]], err, false))
+              return false;
+      }
+      if(!pMasqueradingVector[4].empty() && pJson.isMember(pMasqueradingVector[4]))
+      {
+          if(!validJsonOfField(4, pMasqueradingVector[4], pJson[pMasqueradingVector[4]], err, false))
               return false;
       }
     }
@@ -800,6 +947,17 @@ bool ClientChargePaidBy::validJsonOfField(size_t index,
         case 2:
             if(pJson.isNull())
             {
+                return true;
+            }
+            if(!pJson.isString())
+            {
+                err="Type error in the "+fieldName+" field";
+                return false;
+            }
+            break;
+        case 3:
+            if(pJson.isNull())
+            {
                 err="The " + fieldName + " column cannot be null";
                 return false;
             }
@@ -809,7 +967,7 @@ bool ClientChargePaidBy::validJsonOfField(size_t index,
                 return false;
             }
             break;
-        case 3:
+        case 4:
             if(pJson.isNull())
             {
                 err="The " + fieldName + " column cannot be null";

@@ -423,3 +423,20 @@ Here is a logical and strategic order for building the Fineract CN microservices
    7. Customer (Unified Customer View)
    8. API Gateway (External Access)
 
+
+
+**** User Passwords *****
+
+mary => qx2ZC3}Ds4
+imhotep => qx2ZC3}Ds4
+John => GD=0u2w88h
+Kwame => 3M3gQ3fM@7
+Sarah => 6jSXz7{8<|
+
+
+"clientId": "Iur9HrJMFs",
+"clientSecret": "xkfQqX9lciNALNKgZ9"
+
+# Format: base64(clientId:clientSecret)
+echo -n "your-client-id:your-client-secret" | base64
+# → eW91ci1jbGllbnQtaWQ6eW91ci1jbGllbnQtc2VjcmV0

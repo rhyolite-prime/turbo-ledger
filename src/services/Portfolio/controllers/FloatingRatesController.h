@@ -1,25 +1,28 @@
+//
+// Phase 6 — floatingrates (4 endpoints).
+//
 #pragma once
 
 #include <drogon/HttpController.h>
 
 using namespace drogon;
 
-class FloatingRatesController : public drogon::HttpController<FloatingRatesController>
-{
+class FloatingRatesController : public drogon::HttpController<FloatingRatesController> {
   public:
-    static constexpr const char *PREFIX = "/api/v1/floating-rates/";
+    static constexpr const char *PREFIX = "/api/v1/floatingrates/";
+    static constexpr const char *FILTER = "turbo::TrustedContextFilter";
+
     METHOD_LIST_BEGIN
-    ADD_METHOD_TO(FloatingRatesController::getFloatingRate, std::string(PREFIX) + "get-all", Get);
-    ADD_METHOD_TO(FloatingRatesController::getFloatingRateDetails, std::string(PREFIX) + "{1}", Get);
-    ADD_METHOD_TO(FloatingRatesController::createFloatingRate, std::string(PREFIX) + "create", Post);
-    ADD_METHOD_TO(FloatingRatesController::updateFloatingRate, std::string(PREFIX) + "{1}", Put);
-    ADD_METHOD_TO(FloatingRatesController::deleteFloatingRate, std::string(PREFIX) + "{1}", Delete);
+        ADD_METHOD_TO(FloatingRatesController::getAll, std::string(PREFIX) + "get-all", Get, Options, FILTER);
+        ADD_METHOD_TO(FloatingRatesController::create, std::string(PREFIX) + "create", Post, Options, FILTER);
+        ADD_METHOD_TO(FloatingRatesController::getDetails, std::string(PREFIX) + "get-detail/{1}", Get,
+                     Options, FILTER);
+        ADD_METHOD_TO(FloatingRatesController::update, std::string(PREFIX) + "{1}/update", Put, Options,
+                     FILTER);
     METHOD_LIST_END
 
-    void getFloatingRate(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback);
-    void getFloatingRateDetails(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback);
-    void createFloatingRate(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback);
-    void updateFloatingRate(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback);
-    void deleteFloatingRate(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback);
-
+    Task<HttpResponsePtr> getAll(HttpRequestPtr req);
+    Task<HttpResponsePtr> create(HttpRequestPtr req);
+    Task<HttpResponsePtr> getDetails(HttpRequestPtr req, std::string id);
+    Task<HttpResponsePtr> update(HttpRequestPtr req, std::string id);
 };

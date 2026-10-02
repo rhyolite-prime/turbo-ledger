@@ -45,6 +45,7 @@ class ClientIdentifier
     struct Cols
     {
         static const std::string _id;
+        static const std::string _business_id;
         static const std::string _client_id;
         static const std::string _document_type_id;
         static const std::string _document_key;
@@ -116,6 +117,16 @@ class ClientIdentifier
     ///Set the value of the column id
     void setId(const std::string &pId) noexcept;
     void setId(std::string &&pId) noexcept;
+
+    /**  For column business_id  */
+    ///Get the value of the column business_id, returns the default value if the column is null
+    const std::string &getValueOfBusinessId() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<std::string> &getBusinessId() const noexcept;
+    ///Set the value of the column business_id
+    void setBusinessId(const std::string &pBusinessId) noexcept;
+    void setBusinessId(std::string &&pBusinessId) noexcept;
+    void setBusinessIdToNull() noexcept;
 
     /**  For column client_id  */
     ///Get the value of the column client_id, returns the default value if the column is null
@@ -226,7 +237,7 @@ class ClientIdentifier
     void setLastModifiedOnUtcToNull() noexcept;
 
 
-    static size_t getColumnNumber() noexcept {  return 13;  }
+    static size_t getColumnNumber() noexcept {  return 14;  }
     static const std::string &getColumnName(size_t index) noexcept(false);
 
     Json::Value toJson() const;
@@ -249,6 +260,7 @@ class ClientIdentifier
     ///For mysql or sqlite3
     void updateId(const uint64_t id);
     std::shared_ptr<std::string> id_;
+    std::shared_ptr<std::string> businessId_;
     std::shared_ptr<std::string> clientId_;
     std::shared_ptr<std::string> documentTypeId_;
     std::shared_ptr<std::string> documentKey_;
@@ -272,7 +284,7 @@ class ClientIdentifier
         const bool notNull_;
     };
     static const std::vector<MetaData> metaData_;
-    bool dirtyFlag_[13]={ false };
+    bool dirtyFlag_[14]={ false };
   public:
     static const std::string &sqlForFindingByPrimaryKey()
     {
@@ -298,67 +310,72 @@ class ClientIdentifier
         }
         if(dirtyFlag_[1])
         {
-            sql += "client_id,";
+            sql += "business_id,";
             ++parametersCount;
         }
         if(dirtyFlag_[2])
         {
-            sql += "document_type_id,";
+            sql += "client_id,";
             ++parametersCount;
         }
         if(dirtyFlag_[3])
+        {
+            sql += "document_type_id,";
+            ++parametersCount;
+        }
+        if(dirtyFlag_[4])
         {
             sql += "document_key,";
             ++parametersCount;
         }
         sql += "status,";
         ++parametersCount;
-        if(!dirtyFlag_[4])
+        if(!dirtyFlag_[5])
         {
             needSelection=true;
         }
-        if(dirtyFlag_[5])
+        if(dirtyFlag_[6])
         {
             sql += "active,";
             ++parametersCount;
         }
         sql += "description,";
         ++parametersCount;
-        if(!dirtyFlag_[6])
+        if(!dirtyFlag_[7])
         {
             needSelection=true;
         }
-        if(dirtyFlag_[7])
+        if(dirtyFlag_[8])
         {
             sql += "created_by,";
             ++parametersCount;
         }
-        if(dirtyFlag_[8])
+        if(dirtyFlag_[9])
         {
             sql += "last_modified_by,";
             ++parametersCount;
         }
         sql += "created_date,";
         ++parametersCount;
-        if(!dirtyFlag_[9])
+        if(!dirtyFlag_[10])
         {
             needSelection=true;
         }
         sql += "lastmodified_date,";
         ++parametersCount;
-        if(!dirtyFlag_[10])
+        if(!dirtyFlag_[11])
         {
             needSelection=true;
         }
         sql += "created_on_utc,";
         ++parametersCount;
-        if(!dirtyFlag_[11])
+        if(!dirtyFlag_[12])
         {
             needSelection=true;
         }
         sql += "last_modified_on_utc,";
         ++parametersCount;
-        if(!dirtyFlag_[12])
+        if(!dirtyFlag_[13])
         {
             needSelection=true;
         }
@@ -402,28 +419,28 @@ class ClientIdentifier
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
         }
-        else
-        {
-            sql +="default,";
-        }
         if(dirtyFlag_[5])
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
+        }
+        else
+        {
+            sql +="default,";
         }
         if(dirtyFlag_[6])
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
         }
-        else
-        {
-            sql +="default,";
-        }
         if(dirtyFlag_[7])
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
+        }
+        else
+        {
+            sql +="default,";
         }
         if(dirtyFlag_[8])
         {
@@ -434,10 +451,6 @@ class ClientIdentifier
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
-        }
-        else
-        {
-            sql +="default,";
         }
         if(dirtyFlag_[10])
         {
@@ -458,6 +471,15 @@ class ClientIdentifier
             sql +="default,";
         }
         if(dirtyFlag_[12])
+        {
+            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
+            sql.append(placeholderStr, n);
+        }
+        else
+        {
+            sql +="default,";
+        }
+        if(dirtyFlag_[13])
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);

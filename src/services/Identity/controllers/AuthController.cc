@@ -2,6 +2,7 @@
 #include "dto/BaseApiResponse.h"
 #include "plugins/IdentityServicePlugin.h"
 #include "dto/SigninDto.h"
+#include "turbo/RequestContext.h"
 
 using namespace drogon;
 using namespace turbo_ledger_identity::plugins;
@@ -24,7 +25,10 @@ Task<HttpResponsePtr> AuthController::signIn(HttpRequestPtr req) {
     auto *plugin = app().getPlugin<IdentityServicePlugin>();
     auto& userService = plugin->getUserService();
 
-    auto result = co_await userService.validateUserCredentials(dto);
+    // Phase 1: tenant-scoped signin. The gateway always forwards TL-Tenant-Id;
+    // the tenant schema is tried first, with a host (public.users) fallback.
+    const std::string tenantId = req->getHeader(turbo::RequestContext::kTenantHeaderName);
+    auto result = co_await userService.validateUserCredentials(dto, tenantId);
 
     auto resp = HttpResponse::newHttpJsonResponse(result.toJson());
     resp->setStatusCode(result.success ? k200OK : k401Unauthorized);

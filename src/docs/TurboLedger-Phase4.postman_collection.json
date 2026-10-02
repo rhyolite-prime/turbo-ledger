@@ -1,0 +1,1946 @@
+{
+  "info": {
+    "_postman_id": "ee056f28-c286-4ca6-b0a8-42a746f5f29c",
+    "name": "TurboLedger \u2014 Phase 4 (Customer domain)",
+    "description": "Phase 4 surface through the API Gateway: clients (core CRUD, commands, sub-resources), client addresses, clients v2 search, and collateral management (Customer service).\n\nRun the '0 - Auth' request first (requires a tenant/admin already provisioned) to populate {{token}}. Collection variables: baseUrl, tenantId, token.\n\nRequest bodies were auto-derived from the actual field reads in CustomerService.cc; placeholder values are generic and should be adjusted to valid data (e.g. real office/staff ids) for your environment.\n\nNote: 'command' routes accept any Fineract client command (activate, close, reject, withdraw, reactivate, etc.) via the {cmd} path segment \u2014 the example defaults to one such command and includes the union of fields used across all command branches; trim the body to just the fields relevant to the command you choose.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:7499"
+    },
+    {
+      "key": "tenantId",
+      "value": "acme_bank"
+    },
+    {
+      "key": "token",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "0 \u00b7 Auth",
+      "item": [
+        {
+          "name": "Tenant admin sign in",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/signin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "signin"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usernameOrEmail\": \"admin\",\n  \"password\": \"Passw0rd!\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = pm.response.json();",
+                  "pm.test('signin ok', () => pm.expect(d.success).to.be.true);",
+                  "pm.collectionVariables.set('token', d.result.token);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Clients",
+      "item": [
+        {
+          "name": "Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/get-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "get-all"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "create"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"officeId\": \"1\",\n  \"firstname\": \"Sample Firstname\",\n  \"lastname\": \"Sample Lastname\",\n  \"fullname\": \"Sample Fullname\",\n  \"accountNo\": \"sample-accountNo\",\n  \"externalId\": \"EXT-0001\",\n  \"staffId\": \"1\",\n  \"middlename\": \"Sample Middlename\",\n  \"mobileNo\": \"0244000000\",\n  \"emailAddress\": \"user@example.com\",\n  \"isStaff\": true,\n  \"genderCvId\": \"1\",\n  \"dateOfBirth\": \"2026-01-15\",\n  \"clientTypeCvId\": \"1\",\n  \"clientClassificationCvId\": \"1\",\n  \"legalFormId\": 1,\n  \"submittedOnDate\": \"2026-01-15\",\n  \"kycStatus\": 1,\n  \"riskRating\": 1,\n  \"fatcaFlag\": true,\n  \"crsFlag\": true,\n  \"active\": true,\n  \"nonPerson\": \"sample-nonPerson\",\n  \"activationDate\": \"2026-01-15\",\n  \"closureDate\": \"2026-01-15\",\n  \"closureReasonCvId\": \"1\",\n  \"rejectionDate\": \"2026-01-15\",\n  \"rejectReasonCvId\": \"1\",\n  \"withdrawalDate\": \"2026-01-15\",\n  \"withdrawReasonCvId\": \"1\",\n  \"reactivationDate\": \"2026-01-15\",\n  \"savingsAccountId\": \"1\",\n  \"destinationOfficeId\": \"1\",\n  \"transferDate\": \"2026-01-15\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/get-detail/{id}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "get-detail",
+                "{id}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{id}/update",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{id}",
+                "update"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"externalId\": \"EXT-0001\",\n  \"staffId\": \"1\",\n  \"firstname\": \"Sample Firstname\",\n  \"middlename\": \"Sample Middlename\",\n  \"lastname\": \"Sample Lastname\",\n  \"fullname\": \"Sample Fullname\",\n  \"mobileNo\": \"0244000000\",\n  \"emailAddress\": \"user@example.com\",\n  \"genderCvId\": \"1\",\n  \"dateOfBirth\": \"2026-01-15\",\n  \"clientTypeCvId\": \"1\",\n  \"clientClassificationCvId\": \"1\",\n  \"legalFormId\": 1,\n  \"defaultSavingsProductId\": \"1\",\n  \"kycStatus\": 1,\n  \"riskRating\": 1,\n  \"fatcaFlag\": true,\n  \"crsFlag\": true,\n  \"nonPerson\": \"sample-nonPerson\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Remove",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{id}/delete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{id}",
+                "delete"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Command",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{id}/command/activate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{id}",
+                "command",
+                "activate"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"activationDate\": \"2026-01-15\",\n  \"closureDate\": \"2026-01-15\",\n  \"closureReasonCvId\": \"1\",\n  \"rejectionDate\": \"2026-01-15\",\n  \"rejectReasonCvId\": \"1\",\n  \"withdrawalDate\": \"2026-01-15\",\n  \"withdrawReasonCvId\": \"1\",\n  \"reactivationDate\": \"2026-01-15\",\n  \"staffId\": \"1\",\n  \"savingsAccountId\": \"1\",\n  \"destinationOfficeId\": \"1\",\n  \"transferDate\": \"2026-01-15\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Template Endpoint",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/template",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "template"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Download Template",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/downloadtemplate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "downloadtemplate"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Upload Template",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/uploadtemplate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "uploadtemplate"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Accounts Overview",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{id}/accounts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{id}",
+                "accounts"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Obligee Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{id}/obligeedetails",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{id}",
+                "obligeedetails"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Transfer Template",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{id}/transferproposaldate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{id}",
+                "transferproposaldate"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Details By External Id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/external-id/{externalId}/get-detail",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "external-id",
+                "{externalId}",
+                "get-detail"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update By External Id",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/external-id/{externalId}/update",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "external-id",
+                "{externalId}",
+                "update"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"externalId\": \"EXT-0001\",\n  \"staffId\": \"1\",\n  \"firstname\": \"Sample Firstname\",\n  \"middlename\": \"Sample Middlename\",\n  \"lastname\": \"Sample Lastname\",\n  \"fullname\": \"Sample Fullname\",\n  \"mobileNo\": \"0244000000\",\n  \"emailAddress\": \"user@example.com\",\n  \"genderCvId\": \"1\",\n  \"dateOfBirth\": \"2026-01-15\",\n  \"clientTypeCvId\": \"1\",\n  \"clientClassificationCvId\": \"1\",\n  \"legalFormId\": 1,\n  \"defaultSavingsProductId\": \"1\",\n  \"kycStatus\": 1,\n  \"riskRating\": 1,\n  \"fatcaFlag\": true,\n  \"crsFlag\": true,\n  \"nonPerson\": \"sample-nonPerson\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Remove By External Id",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/external-id/{externalId}/delete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "external-id",
+                "{externalId}",
+                "delete"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Command By External Id",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/external-id/{externalId}/command/activate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "external-id",
+                "{externalId}",
+                "command",
+                "activate"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"activationDate\": \"2026-01-15\",\n  \"closureDate\": \"2026-01-15\",\n  \"closureReasonCvId\": \"1\",\n  \"rejectionDate\": \"2026-01-15\",\n  \"rejectReasonCvId\": \"1\",\n  \"withdrawalDate\": \"2026-01-15\",\n  \"withdrawReasonCvId\": \"1\",\n  \"reactivationDate\": \"2026-01-15\",\n  \"staffId\": \"1\",\n  \"savingsAccountId\": \"1\",\n  \"destinationOfficeId\": \"1\",\n  \"transferDate\": \"2026-01-15\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Transactions By External Id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/external-id/{externalId}/transactions/get-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "external-id",
+                "{externalId}",
+                "transactions",
+                "get-all"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Charges Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{clientId}/charges/get-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{clientId}",
+                "charges",
+                "get-all"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Charges Add",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{clientId}/charges/add",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{clientId}",
+                "charges",
+                "add"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"chargeId\": \"1\",\n  \"amount\": \"1000.00\",\n  \"isPenalty\": true,\n  \"chargeTimeEnum\": 1,\n  \"dueDate\": \"2026-01-15\",\n  \"chargeCalculationEnum\": 1\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Charges Get Detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{clientId}/charges/{chargeId}/get-detail",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{clientId}",
+                "charges",
+                "{chargeId}",
+                "get-detail"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Charges Delete",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{clientId}/charges/{chargeId}/delete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{clientId}",
+                "charges",
+                "{chargeId}",
+                "delete"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Charges Command",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{clientId}/charges/{chargeId}/command/pay",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{clientId}",
+                "charges",
+                "{chargeId}",
+                "command",
+                "pay"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transactionAmount\": \"1000.00\",\n  \"currencyCode\": \"USD\",\n  \"transactionDate\": \"2026-01-15\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Charges Template",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{clientId}/charges/template",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{clientId}",
+                "charges",
+                "template"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Identifiers Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{clientId}/identifiers/get-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{clientId}",
+                "identifiers",
+                "get-all"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Identifiers Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{clientId}/identifiers/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{clientId}",
+                "identifiers",
+                "create"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"documentTypeId\": \"1\",\n  \"documentKey\": \"sample-documentKey\",\n  \"status\": 1,\n  \"active\": 1,\n  \"description\": \"Sample description\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Identifiers Get Detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{clientId}/identifiers/{identifierId}/get-detail",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{clientId}",
+                "identifiers",
+                "{identifierId}",
+                "get-detail"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Identifiers Update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{clientId}/identifiers/{identifierId}/update",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{clientId}",
+                "identifiers",
+                "{identifierId}",
+                "update"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"documentTypeId\": \"1\",\n  \"documentKey\": \"sample-documentKey\",\n  \"status\": 1,\n  \"active\": 1,\n  \"description\": \"Sample description\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Identifiers Delete",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{clientId}/identifiers/{identifierId}/delete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{clientId}",
+                "identifiers",
+                "{identifierId}",
+                "delete"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Identifiers Template",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{clientId}/identifiers/template",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{clientId}",
+                "identifiers",
+                "template"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Family Members Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{clientId}/familymembers/get-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{clientId}",
+                "familymembers",
+                "get-all"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Family Members Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{clientId}/familymembers/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{clientId}",
+                "familymembers",
+                "create"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstname\": \"Sample Firstname\",\n  \"lastname\": \"Sample Lastname\",\n  \"middlename\": \"Sample Middlename\",\n  \"qualification\": \"sample-qualification\",\n  \"mobileNumber\": \"0244000000\",\n  \"age\": 1,\n  \"isDependent\": true,\n  \"relationshipCvId\": \"1\",\n  \"maritalStatusCvId\": \"1\",\n  \"genderCvId\": \"1\",\n  \"dateOfBirth\": \"2026-01-15\",\n  \"professionCvId\": \"1\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Family Members Get Detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{clientId}/familymembers/{familyMemberId}/get-detail",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{clientId}",
+                "familymembers",
+                "{familyMemberId}",
+                "get-detail"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Family Members Update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{clientId}/familymembers/{familyMemberId}/update",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{clientId}",
+                "familymembers",
+                "{familyMemberId}",
+                "update"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstname\": \"Sample Firstname\",\n  \"middlename\": \"Sample Middlename\",\n  \"lastname\": \"Sample Lastname\",\n  \"qualification\": \"sample-qualification\",\n  \"mobileNumber\": \"0244000000\",\n  \"age\": 1,\n  \"isDependent\": true,\n  \"relationshipCvId\": \"1\",\n  \"maritalStatusCvId\": \"1\",\n  \"genderCvId\": \"1\",\n  \"dateOfBirth\": \"2026-01-15\",\n  \"professionCvId\": \"1\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Family Members Delete",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{clientId}/familymembers/{familyMemberId}/delete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{clientId}",
+                "familymembers",
+                "{familyMemberId}",
+                "delete"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Family Members Template",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{clientId}/familymembers/template",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{clientId}",
+                "familymembers",
+                "template"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Collaterals Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{clientId}/collaterals/get-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{clientId}",
+                "collaterals",
+                "get-all"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Collaterals Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{clientId}/collaterals/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{clientId}",
+                "collaterals",
+                "create"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"collateralId\": \"1\",\n  \"quantity\": \"sample-quantity\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Collaterals Get Detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{clientId}/collaterals/{collateralId}/get-detail",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{clientId}",
+                "collaterals",
+                "{collateralId}",
+                "get-detail"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Collaterals Update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{clientId}/collaterals/{collateralId}/update",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{clientId}",
+                "collaterals",
+                "{collateralId}",
+                "update"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": \"sample-quantity\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Collaterals Delete",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{clientId}/collaterals/{collateralId}/delete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{clientId}",
+                "collaterals",
+                "{collateralId}",
+                "delete"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Collaterals Template",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{clientId}/collaterals/template",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{clientId}",
+                "collaterals",
+                "template"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Transactions Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{clientId}/transactions/get-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{clientId}",
+                "transactions",
+                "get-all"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Transactions Get Detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{clientId}/transactions/{transactionId}/get-detail",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{clientId}",
+                "transactions",
+                "{transactionId}",
+                "get-detail"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Transactions Undo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/clients/{clientId}/transactions/{transactionId}/undo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "clients",
+                "{clientId}",
+                "transactions",
+                "{transactionId}",
+                "undo"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Client Addresses",
+      "item": [
+        {
+          "name": "Template Endpoint",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/client/addresses/template",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "client",
+                "addresses",
+                "template"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/client/{clientId}/addresses",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "client",
+                "{clientId}",
+                "addresses"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/client/{clientId}/addresses",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "client",
+                "{clientId}",
+                "addresses"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"street\": \"sample-street\",\n  \"addressLine1\": \"sample-addressLine1\",\n  \"addressLine2\": \"sample-addressLine2\",\n  \"city\": \"sample-city\",\n  \"stateOrProvince\": \"sample-stateOrProvince\",\n  \"country\": \"sample-country\",\n  \"countryCode\": \"SAMPLE_CODE\",\n  \"addressTypeId\": \"1\",\n  \"isActive\": true\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/client/{clientId}/addresses",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "client",
+                "{clientId}",
+                "addresses"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"addressId\": \"1\",\n  \"id\": \"1\",\n  \"street\": \"sample-street\",\n  \"addressLine1\": \"sample-addressLine1\",\n  \"addressLine2\": \"sample-addressLine2\",\n  \"city\": \"sample-city\",\n  \"stateOrProvince\": \"sample-stateOrProvince\",\n  \"country\": \"sample-country\",\n  \"countryCode\": \"SAMPLE_CODE\",\n  \"addressTypeId\": \"1\",\n  \"isActive\": true\n}"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Clients V2",
+      "item": [
+        {
+          "name": "Search",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v2/clients/search",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v2",
+                "clients",
+                "search"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"sample-text\"\n}"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Collateral Management",
+      "item": [
+        {
+          "name": "Template Endpoint",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/collateral-management/template",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "collateral-management",
+                "template"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/collateral-management/get-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "collateral-management",
+                "get-all"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/collateral-management/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "collateral-management",
+                "create"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sample Name\",\n  \"quality\": \"sample-quality\",\n  \"basePrice\": \"sample-basePrice\",\n  \"currencyCode\": \"USD\",\n  \"pctToBase\": \"sample-pctToBase\",\n  \"unitType\": \"sample-unitType\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/collateral-management/get-detail/{id}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "collateral-management",
+                "get-detail",
+                "{id}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/collateral-management/{id}/update",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "collateral-management",
+                "{id}",
+                "update"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sample Name\",\n  \"quality\": \"sample-quality\",\n  \"basePrice\": \"sample-basePrice\",\n  \"currencyCode\": \"USD\",\n  \"pctToBase\": \"sample-pctToBase\",\n  \"unitType\": \"sample-unitType\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Remove",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/collateral-management/{id}/delete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "collateral-management",
+                "{id}",
+                "delete"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

@@ -45,6 +45,7 @@ class ClientTransferDetails
     struct Cols
     {
         static const std::string _id;
+        static const std::string _business_id;
         static const std::string _client_id;
         static const std::string _from_office_id;
         static const std::string _to_office_id;
@@ -112,6 +113,16 @@ class ClientTransferDetails
     void setId(const std::string &pId) noexcept;
     void setId(std::string &&pId) noexcept;
 
+    /**  For column business_id  */
+    ///Get the value of the column business_id, returns the default value if the column is null
+    const std::string &getValueOfBusinessId() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<std::string> &getBusinessId() const noexcept;
+    ///Set the value of the column business_id
+    void setBusinessId(const std::string &pBusinessId) noexcept;
+    void setBusinessId(std::string &&pBusinessId) noexcept;
+    void setBusinessIdToNull() noexcept;
+
     /**  For column client_id  */
     ///Get the value of the column client_id, returns the default value if the column is null
     const std::string &getValueOfClientId() const noexcept;
@@ -174,7 +185,7 @@ class ClientTransferDetails
     void setSubmittedBy(std::string &&pSubmittedBy) noexcept;
 
 
-    static size_t getColumnNumber() noexcept {  return 8;  }
+    static size_t getColumnNumber() noexcept {  return 9;  }
     static const std::string &getColumnName(size_t index) noexcept(false);
 
     Json::Value toJson() const;
@@ -197,6 +208,7 @@ class ClientTransferDetails
     ///For mysql or sqlite3
     void updateId(const uint64_t id);
     std::shared_ptr<std::string> id_;
+    std::shared_ptr<std::string> businessId_;
     std::shared_ptr<std::string> clientId_;
     std::shared_ptr<std::string> fromOfficeId_;
     std::shared_ptr<std::string> toOfficeId_;
@@ -215,7 +227,7 @@ class ClientTransferDetails
         const bool notNull_;
     };
     static const std::vector<MetaData> metaData_;
-    bool dirtyFlag_[8]={ false };
+    bool dirtyFlag_[9]={ false };
   public:
     static const std::string &sqlForFindingByPrimaryKey()
     {
@@ -241,35 +253,40 @@ class ClientTransferDetails
         }
         if(dirtyFlag_[1])
         {
-            sql += "client_id,";
+            sql += "business_id,";
             ++parametersCount;
         }
         if(dirtyFlag_[2])
         {
-            sql += "from_office_id,";
+            sql += "client_id,";
             ++parametersCount;
         }
         if(dirtyFlag_[3])
         {
-            sql += "to_office_id,";
+            sql += "from_office_id,";
             ++parametersCount;
         }
         if(dirtyFlag_[4])
         {
-            sql += "proposed_transfer_date,";
+            sql += "to_office_id,";
             ++parametersCount;
         }
         if(dirtyFlag_[5])
         {
-            sql += "transfer_type,";
+            sql += "proposed_transfer_date,";
             ++parametersCount;
         }
         if(dirtyFlag_[6])
         {
-            sql += "submitted_on,";
+            sql += "transfer_type,";
             ++parametersCount;
         }
         if(dirtyFlag_[7])
+        {
+            sql += "submitted_on,";
+            ++parametersCount;
+        }
+        if(dirtyFlag_[8])
         {
             sql += "submitted_by,";
             ++parametersCount;
@@ -325,6 +342,11 @@ class ClientTransferDetails
             sql.append(placeholderStr, n);
         }
         if(dirtyFlag_[7])
+        {
+            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
+            sql.append(placeholderStr, n);
+        }
+        if(dirtyFlag_[8])
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);

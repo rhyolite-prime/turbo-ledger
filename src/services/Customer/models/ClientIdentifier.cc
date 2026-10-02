@@ -14,6 +14,7 @@ using namespace drogon::orm;
 using namespace drogon_model::TlCustomerDb;
 
 const std::string ClientIdentifier::Cols::_id = "\"id\"";
+const std::string ClientIdentifier::Cols::_business_id = "\"business_id\"";
 const std::string ClientIdentifier::Cols::_client_id = "\"client_id\"";
 const std::string ClientIdentifier::Cols::_document_type_id = "\"document_type_id\"";
 const std::string ClientIdentifier::Cols::_document_key = "\"document_key\"";
@@ -32,6 +33,7 @@ const std::string ClientIdentifier::tableName = "\"client_identifier\"";
 
 const std::vector<typename ClientIdentifier::MetaData> ClientIdentifier::metaData_={
 {"id","std::string","uuid",0,0,1,1},
+{"business_id","std::string","uuid",0,0,0,0},
 {"client_id","std::string","uuid",0,0,0,1},
 {"document_type_id","std::string","uuid",0,0,0,1},
 {"document_key","std::string","character varying",50,0,0,1},
@@ -57,6 +59,10 @@ ClientIdentifier::ClientIdentifier(const Row &r, const ssize_t indexOffset) noex
         if(!r["id"].isNull())
         {
             id_=std::make_shared<std::string>(r["id"].as<std::string>());
+        }
+        if(!r["business_id"].isNull())
+        {
+            businessId_=std::make_shared<std::string>(r["business_id"].as<std::string>());
         }
         if(!r["client_id"].isNull())
         {
@@ -182,7 +188,7 @@ ClientIdentifier::ClientIdentifier(const Row &r, const ssize_t indexOffset) noex
     else
     {
         size_t offset = (size_t)indexOffset;
-        if(offset + 13 > r.size())
+        if(offset + 14 > r.size())
         {
             LOG_FATAL << "Invalid SQL result for this model";
             return;
@@ -196,44 +202,49 @@ ClientIdentifier::ClientIdentifier(const Row &r, const ssize_t indexOffset) noex
         index = offset + 1;
         if(!r[index].isNull())
         {
-            clientId_=std::make_shared<std::string>(r[index].as<std::string>());
+            businessId_=std::make_shared<std::string>(r[index].as<std::string>());
         }
         index = offset + 2;
         if(!r[index].isNull())
         {
-            documentTypeId_=std::make_shared<std::string>(r[index].as<std::string>());
+            clientId_=std::make_shared<std::string>(r[index].as<std::string>());
         }
         index = offset + 3;
         if(!r[index].isNull())
         {
-            documentKey_=std::make_shared<std::string>(r[index].as<std::string>());
+            documentTypeId_=std::make_shared<std::string>(r[index].as<std::string>());
         }
         index = offset + 4;
         if(!r[index].isNull())
         {
-            status_=std::make_shared<int32_t>(r[index].as<int32_t>());
+            documentKey_=std::make_shared<std::string>(r[index].as<std::string>());
         }
         index = offset + 5;
         if(!r[index].isNull())
         {
-            active_=std::make_shared<int32_t>(r[index].as<int32_t>());
+            status_=std::make_shared<int32_t>(r[index].as<int32_t>());
         }
         index = offset + 6;
         if(!r[index].isNull())
         {
-            description_=std::make_shared<std::string>(r[index].as<std::string>());
+            active_=std::make_shared<int32_t>(r[index].as<int32_t>());
         }
         index = offset + 7;
         if(!r[index].isNull())
         {
-            createdBy_=std::make_shared<std::string>(r[index].as<std::string>());
+            description_=std::make_shared<std::string>(r[index].as<std::string>());
         }
         index = offset + 8;
         if(!r[index].isNull())
         {
-            lastModifiedBy_=std::make_shared<std::string>(r[index].as<std::string>());
+            createdBy_=std::make_shared<std::string>(r[index].as<std::string>());
         }
         index = offset + 9;
+        if(!r[index].isNull())
+        {
+            lastModifiedBy_=std::make_shared<std::string>(r[index].as<std::string>());
+        }
+        index = offset + 10;
         if(!r[index].isNull())
         {
             auto timeStr = r[index].as<std::string>();
@@ -256,7 +267,7 @@ ClientIdentifier::ClientIdentifier(const Row &r, const ssize_t indexOffset) noex
                 createdDate_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
         }
-        index = offset + 10;
+        index = offset + 11;
         if(!r[index].isNull())
         {
             auto timeStr = r[index].as<std::string>();
@@ -279,7 +290,7 @@ ClientIdentifier::ClientIdentifier(const Row &r, const ssize_t indexOffset) noex
                 lastmodifiedDate_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
         }
-        index = offset + 11;
+        index = offset + 12;
         if(!r[index].isNull())
         {
             auto timeStr = r[index].as<std::string>();
@@ -302,7 +313,7 @@ ClientIdentifier::ClientIdentifier(const Row &r, const ssize_t indexOffset) noex
                 createdOnUtc_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
         }
-        index = offset + 12;
+        index = offset + 13;
         if(!r[index].isNull())
         {
             auto timeStr = r[index].as<std::string>();
@@ -331,7 +342,7 @@ ClientIdentifier::ClientIdentifier(const Row &r, const ssize_t indexOffset) noex
 
 ClientIdentifier::ClientIdentifier(const Json::Value &pJson, const std::vector<std::string> &pMasqueradingVector) noexcept(false)
 {
-    if(pMasqueradingVector.size() != 13)
+    if(pMasqueradingVector.size() != 14)
     {
         LOG_ERROR << "Bad masquerading vector";
         return;
@@ -349,7 +360,7 @@ ClientIdentifier::ClientIdentifier(const Json::Value &pJson, const std::vector<s
         dirtyFlag_[1] = true;
         if(!pJson[pMasqueradingVector[1]].isNull())
         {
-            clientId_=std::make_shared<std::string>(pJson[pMasqueradingVector[1]].asString());
+            businessId_=std::make_shared<std::string>(pJson[pMasqueradingVector[1]].asString());
         }
     }
     if(!pMasqueradingVector[2].empty() && pJson.isMember(pMasqueradingVector[2]))
@@ -357,7 +368,7 @@ ClientIdentifier::ClientIdentifier(const Json::Value &pJson, const std::vector<s
         dirtyFlag_[2] = true;
         if(!pJson[pMasqueradingVector[2]].isNull())
         {
-            documentTypeId_=std::make_shared<std::string>(pJson[pMasqueradingVector[2]].asString());
+            clientId_=std::make_shared<std::string>(pJson[pMasqueradingVector[2]].asString());
         }
     }
     if(!pMasqueradingVector[3].empty() && pJson.isMember(pMasqueradingVector[3]))
@@ -365,7 +376,7 @@ ClientIdentifier::ClientIdentifier(const Json::Value &pJson, const std::vector<s
         dirtyFlag_[3] = true;
         if(!pJson[pMasqueradingVector[3]].isNull())
         {
-            documentKey_=std::make_shared<std::string>(pJson[pMasqueradingVector[3]].asString());
+            documentTypeId_=std::make_shared<std::string>(pJson[pMasqueradingVector[3]].asString());
         }
     }
     if(!pMasqueradingVector[4].empty() && pJson.isMember(pMasqueradingVector[4]))
@@ -373,7 +384,7 @@ ClientIdentifier::ClientIdentifier(const Json::Value &pJson, const std::vector<s
         dirtyFlag_[4] = true;
         if(!pJson[pMasqueradingVector[4]].isNull())
         {
-            status_=std::make_shared<int32_t>((int32_t)pJson[pMasqueradingVector[4]].asInt64());
+            documentKey_=std::make_shared<std::string>(pJson[pMasqueradingVector[4]].asString());
         }
     }
     if(!pMasqueradingVector[5].empty() && pJson.isMember(pMasqueradingVector[5]))
@@ -381,7 +392,7 @@ ClientIdentifier::ClientIdentifier(const Json::Value &pJson, const std::vector<s
         dirtyFlag_[5] = true;
         if(!pJson[pMasqueradingVector[5]].isNull())
         {
-            active_=std::make_shared<int32_t>((int32_t)pJson[pMasqueradingVector[5]].asInt64());
+            status_=std::make_shared<int32_t>((int32_t)pJson[pMasqueradingVector[5]].asInt64());
         }
     }
     if(!pMasqueradingVector[6].empty() && pJson.isMember(pMasqueradingVector[6]))
@@ -389,7 +400,7 @@ ClientIdentifier::ClientIdentifier(const Json::Value &pJson, const std::vector<s
         dirtyFlag_[6] = true;
         if(!pJson[pMasqueradingVector[6]].isNull())
         {
-            description_=std::make_shared<std::string>(pJson[pMasqueradingVector[6]].asString());
+            active_=std::make_shared<int32_t>((int32_t)pJson[pMasqueradingVector[6]].asInt64());
         }
     }
     if(!pMasqueradingVector[7].empty() && pJson.isMember(pMasqueradingVector[7]))
@@ -397,7 +408,7 @@ ClientIdentifier::ClientIdentifier(const Json::Value &pJson, const std::vector<s
         dirtyFlag_[7] = true;
         if(!pJson[pMasqueradingVector[7]].isNull())
         {
-            createdBy_=std::make_shared<std::string>(pJson[pMasqueradingVector[7]].asString());
+            description_=std::make_shared<std::string>(pJson[pMasqueradingVector[7]].asString());
         }
     }
     if(!pMasqueradingVector[8].empty() && pJson.isMember(pMasqueradingVector[8]))
@@ -405,7 +416,7 @@ ClientIdentifier::ClientIdentifier(const Json::Value &pJson, const std::vector<s
         dirtyFlag_[8] = true;
         if(!pJson[pMasqueradingVector[8]].isNull())
         {
-            lastModifiedBy_=std::make_shared<std::string>(pJson[pMasqueradingVector[8]].asString());
+            createdBy_=std::make_shared<std::string>(pJson[pMasqueradingVector[8]].asString());
         }
     }
     if(!pMasqueradingVector[9].empty() && pJson.isMember(pMasqueradingVector[9]))
@@ -413,25 +424,7 @@ ClientIdentifier::ClientIdentifier(const Json::Value &pJson, const std::vector<s
         dirtyFlag_[9] = true;
         if(!pJson[pMasqueradingVector[9]].isNull())
         {
-            auto timeStr = pJson[pMasqueradingVector[9]].asString();
-            struct tm stm;
-            memset(&stm,0,sizeof(stm));
-            auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
-            time_t t = mktime(&stm);
-            size_t decimalNum = 0;
-            if(p)
-            {
-                if(*p=='.')
-                {
-                    std::string decimals(p+1,&timeStr[timeStr.length()]);
-                    while(decimals.length()<6)
-                    {
-                        decimals += "0";
-                    }
-                    decimalNum = (size_t)atol(decimals.c_str());
-                }
-                createdDate_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
-            }
+            lastModifiedBy_=std::make_shared<std::string>(pJson[pMasqueradingVector[9]].asString());
         }
     }
     if(!pMasqueradingVector[10].empty() && pJson.isMember(pMasqueradingVector[10]))
@@ -456,7 +449,7 @@ ClientIdentifier::ClientIdentifier(const Json::Value &pJson, const std::vector<s
                     }
                     decimalNum = (size_t)atol(decimals.c_str());
                 }
-                lastmodifiedDate_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+                createdDate_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
         }
     }
@@ -482,7 +475,7 @@ ClientIdentifier::ClientIdentifier(const Json::Value &pJson, const std::vector<s
                     }
                     decimalNum = (size_t)atol(decimals.c_str());
                 }
-                createdOnUtc_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+                lastmodifiedDate_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
         }
     }
@@ -492,6 +485,32 @@ ClientIdentifier::ClientIdentifier(const Json::Value &pJson, const std::vector<s
         if(!pJson[pMasqueradingVector[12]].isNull())
         {
             auto timeStr = pJson[pMasqueradingVector[12]].asString();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
+            time_t t = mktime(&stm);
+            size_t decimalNum = 0;
+            if(p)
+            {
+                if(*p=='.')
+                {
+                    std::string decimals(p+1,&timeStr[timeStr.length()]);
+                    while(decimals.length()<6)
+                    {
+                        decimals += "0";
+                    }
+                    decimalNum = (size_t)atol(decimals.c_str());
+                }
+                createdOnUtc_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+            }
+        }
+    }
+    if(!pMasqueradingVector[13].empty() && pJson.isMember(pMasqueradingVector[13]))
+    {
+        dirtyFlag_[13] = true;
+        if(!pJson[pMasqueradingVector[13]].isNull())
+        {
+            auto timeStr = pJson[pMasqueradingVector[13]].asString();
             struct tm stm;
             memset(&stm,0,sizeof(stm));
             auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
@@ -524,9 +543,17 @@ ClientIdentifier::ClientIdentifier(const Json::Value &pJson) noexcept(false)
             id_=std::make_shared<std::string>(pJson["id"].asString());
         }
     }
-    if(pJson.isMember("client_id"))
+    if(pJson.isMember("business_id"))
     {
         dirtyFlag_[1]=true;
+        if(!pJson["business_id"].isNull())
+        {
+            businessId_=std::make_shared<std::string>(pJson["business_id"].asString());
+        }
+    }
+    if(pJson.isMember("client_id"))
+    {
+        dirtyFlag_[2]=true;
         if(!pJson["client_id"].isNull())
         {
             clientId_=std::make_shared<std::string>(pJson["client_id"].asString());
@@ -534,7 +561,7 @@ ClientIdentifier::ClientIdentifier(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("document_type_id"))
     {
-        dirtyFlag_[2]=true;
+        dirtyFlag_[3]=true;
         if(!pJson["document_type_id"].isNull())
         {
             documentTypeId_=std::make_shared<std::string>(pJson["document_type_id"].asString());
@@ -542,7 +569,7 @@ ClientIdentifier::ClientIdentifier(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("document_key"))
     {
-        dirtyFlag_[3]=true;
+        dirtyFlag_[4]=true;
         if(!pJson["document_key"].isNull())
         {
             documentKey_=std::make_shared<std::string>(pJson["document_key"].asString());
@@ -550,7 +577,7 @@ ClientIdentifier::ClientIdentifier(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("status"))
     {
-        dirtyFlag_[4]=true;
+        dirtyFlag_[5]=true;
         if(!pJson["status"].isNull())
         {
             status_=std::make_shared<int32_t>((int32_t)pJson["status"].asInt64());
@@ -558,7 +585,7 @@ ClientIdentifier::ClientIdentifier(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("active"))
     {
-        dirtyFlag_[5]=true;
+        dirtyFlag_[6]=true;
         if(!pJson["active"].isNull())
         {
             active_=std::make_shared<int32_t>((int32_t)pJson["active"].asInt64());
@@ -566,7 +593,7 @@ ClientIdentifier::ClientIdentifier(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("description"))
     {
-        dirtyFlag_[6]=true;
+        dirtyFlag_[7]=true;
         if(!pJson["description"].isNull())
         {
             description_=std::make_shared<std::string>(pJson["description"].asString());
@@ -574,7 +601,7 @@ ClientIdentifier::ClientIdentifier(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("created_by"))
     {
-        dirtyFlag_[7]=true;
+        dirtyFlag_[8]=true;
         if(!pJson["created_by"].isNull())
         {
             createdBy_=std::make_shared<std::string>(pJson["created_by"].asString());
@@ -582,7 +609,7 @@ ClientIdentifier::ClientIdentifier(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("last_modified_by"))
     {
-        dirtyFlag_[8]=true;
+        dirtyFlag_[9]=true;
         if(!pJson["last_modified_by"].isNull())
         {
             lastModifiedBy_=std::make_shared<std::string>(pJson["last_modified_by"].asString());
@@ -590,7 +617,7 @@ ClientIdentifier::ClientIdentifier(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("created_date"))
     {
-        dirtyFlag_[9]=true;
+        dirtyFlag_[10]=true;
         if(!pJson["created_date"].isNull())
         {
             auto timeStr = pJson["created_date"].asString();
@@ -616,7 +643,7 @@ ClientIdentifier::ClientIdentifier(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("lastmodified_date"))
     {
-        dirtyFlag_[10]=true;
+        dirtyFlag_[11]=true;
         if(!pJson["lastmodified_date"].isNull())
         {
             auto timeStr = pJson["lastmodified_date"].asString();
@@ -642,7 +669,7 @@ ClientIdentifier::ClientIdentifier(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("created_on_utc"))
     {
-        dirtyFlag_[11]=true;
+        dirtyFlag_[12]=true;
         if(!pJson["created_on_utc"].isNull())
         {
             auto timeStr = pJson["created_on_utc"].asString();
@@ -668,7 +695,7 @@ ClientIdentifier::ClientIdentifier(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("last_modified_on_utc"))
     {
-        dirtyFlag_[12]=true;
+        dirtyFlag_[13]=true;
         if(!pJson["last_modified_on_utc"].isNull())
         {
             auto timeStr = pJson["last_modified_on_utc"].asString();
@@ -697,7 +724,7 @@ ClientIdentifier::ClientIdentifier(const Json::Value &pJson) noexcept(false)
 void ClientIdentifier::updateByMasqueradedJson(const Json::Value &pJson,
                                             const std::vector<std::string> &pMasqueradingVector) noexcept(false)
 {
-    if(pMasqueradingVector.size() != 13)
+    if(pMasqueradingVector.size() != 14)
     {
         LOG_ERROR << "Bad masquerading vector";
         return;
@@ -714,7 +741,7 @@ void ClientIdentifier::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[1] = true;
         if(!pJson[pMasqueradingVector[1]].isNull())
         {
-            clientId_=std::make_shared<std::string>(pJson[pMasqueradingVector[1]].asString());
+            businessId_=std::make_shared<std::string>(pJson[pMasqueradingVector[1]].asString());
         }
     }
     if(!pMasqueradingVector[2].empty() && pJson.isMember(pMasqueradingVector[2]))
@@ -722,7 +749,7 @@ void ClientIdentifier::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[2] = true;
         if(!pJson[pMasqueradingVector[2]].isNull())
         {
-            documentTypeId_=std::make_shared<std::string>(pJson[pMasqueradingVector[2]].asString());
+            clientId_=std::make_shared<std::string>(pJson[pMasqueradingVector[2]].asString());
         }
     }
     if(!pMasqueradingVector[3].empty() && pJson.isMember(pMasqueradingVector[3]))
@@ -730,7 +757,7 @@ void ClientIdentifier::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[3] = true;
         if(!pJson[pMasqueradingVector[3]].isNull())
         {
-            documentKey_=std::make_shared<std::string>(pJson[pMasqueradingVector[3]].asString());
+            documentTypeId_=std::make_shared<std::string>(pJson[pMasqueradingVector[3]].asString());
         }
     }
     if(!pMasqueradingVector[4].empty() && pJson.isMember(pMasqueradingVector[4]))
@@ -738,7 +765,7 @@ void ClientIdentifier::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[4] = true;
         if(!pJson[pMasqueradingVector[4]].isNull())
         {
-            status_=std::make_shared<int32_t>((int32_t)pJson[pMasqueradingVector[4]].asInt64());
+            documentKey_=std::make_shared<std::string>(pJson[pMasqueradingVector[4]].asString());
         }
     }
     if(!pMasqueradingVector[5].empty() && pJson.isMember(pMasqueradingVector[5]))
@@ -746,7 +773,7 @@ void ClientIdentifier::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[5] = true;
         if(!pJson[pMasqueradingVector[5]].isNull())
         {
-            active_=std::make_shared<int32_t>((int32_t)pJson[pMasqueradingVector[5]].asInt64());
+            status_=std::make_shared<int32_t>((int32_t)pJson[pMasqueradingVector[5]].asInt64());
         }
     }
     if(!pMasqueradingVector[6].empty() && pJson.isMember(pMasqueradingVector[6]))
@@ -754,7 +781,7 @@ void ClientIdentifier::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[6] = true;
         if(!pJson[pMasqueradingVector[6]].isNull())
         {
-            description_=std::make_shared<std::string>(pJson[pMasqueradingVector[6]].asString());
+            active_=std::make_shared<int32_t>((int32_t)pJson[pMasqueradingVector[6]].asInt64());
         }
     }
     if(!pMasqueradingVector[7].empty() && pJson.isMember(pMasqueradingVector[7]))
@@ -762,7 +789,7 @@ void ClientIdentifier::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[7] = true;
         if(!pJson[pMasqueradingVector[7]].isNull())
         {
-            createdBy_=std::make_shared<std::string>(pJson[pMasqueradingVector[7]].asString());
+            description_=std::make_shared<std::string>(pJson[pMasqueradingVector[7]].asString());
         }
     }
     if(!pMasqueradingVector[8].empty() && pJson.isMember(pMasqueradingVector[8]))
@@ -770,7 +797,7 @@ void ClientIdentifier::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[8] = true;
         if(!pJson[pMasqueradingVector[8]].isNull())
         {
-            lastModifiedBy_=std::make_shared<std::string>(pJson[pMasqueradingVector[8]].asString());
+            createdBy_=std::make_shared<std::string>(pJson[pMasqueradingVector[8]].asString());
         }
     }
     if(!pMasqueradingVector[9].empty() && pJson.isMember(pMasqueradingVector[9]))
@@ -778,25 +805,7 @@ void ClientIdentifier::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[9] = true;
         if(!pJson[pMasqueradingVector[9]].isNull())
         {
-            auto timeStr = pJson[pMasqueradingVector[9]].asString();
-            struct tm stm;
-            memset(&stm,0,sizeof(stm));
-            auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
-            time_t t = mktime(&stm);
-            size_t decimalNum = 0;
-            if(p)
-            {
-                if(*p=='.')
-                {
-                    std::string decimals(p+1,&timeStr[timeStr.length()]);
-                    while(decimals.length()<6)
-                    {
-                        decimals += "0";
-                    }
-                    decimalNum = (size_t)atol(decimals.c_str());
-                }
-                createdDate_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
-            }
+            lastModifiedBy_=std::make_shared<std::string>(pJson[pMasqueradingVector[9]].asString());
         }
     }
     if(!pMasqueradingVector[10].empty() && pJson.isMember(pMasqueradingVector[10]))
@@ -821,7 +830,7 @@ void ClientIdentifier::updateByMasqueradedJson(const Json::Value &pJson,
                     }
                     decimalNum = (size_t)atol(decimals.c_str());
                 }
-                lastmodifiedDate_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+                createdDate_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
         }
     }
@@ -847,7 +856,7 @@ void ClientIdentifier::updateByMasqueradedJson(const Json::Value &pJson,
                     }
                     decimalNum = (size_t)atol(decimals.c_str());
                 }
-                createdOnUtc_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+                lastmodifiedDate_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
         }
     }
@@ -857,6 +866,32 @@ void ClientIdentifier::updateByMasqueradedJson(const Json::Value &pJson,
         if(!pJson[pMasqueradingVector[12]].isNull())
         {
             auto timeStr = pJson[pMasqueradingVector[12]].asString();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
+            time_t t = mktime(&stm);
+            size_t decimalNum = 0;
+            if(p)
+            {
+                if(*p=='.')
+                {
+                    std::string decimals(p+1,&timeStr[timeStr.length()]);
+                    while(decimals.length()<6)
+                    {
+                        decimals += "0";
+                    }
+                    decimalNum = (size_t)atol(decimals.c_str());
+                }
+                createdOnUtc_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+            }
+        }
+    }
+    if(!pMasqueradingVector[13].empty() && pJson.isMember(pMasqueradingVector[13]))
+    {
+        dirtyFlag_[13] = true;
+        if(!pJson[pMasqueradingVector[13]].isNull())
+        {
+            auto timeStr = pJson[pMasqueradingVector[13]].asString();
             struct tm stm;
             memset(&stm,0,sizeof(stm));
             auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
@@ -888,9 +923,17 @@ void ClientIdentifier::updateByJson(const Json::Value &pJson) noexcept(false)
             id_=std::make_shared<std::string>(pJson["id"].asString());
         }
     }
-    if(pJson.isMember("client_id"))
+    if(pJson.isMember("business_id"))
     {
         dirtyFlag_[1] = true;
+        if(!pJson["business_id"].isNull())
+        {
+            businessId_=std::make_shared<std::string>(pJson["business_id"].asString());
+        }
+    }
+    if(pJson.isMember("client_id"))
+    {
+        dirtyFlag_[2] = true;
         if(!pJson["client_id"].isNull())
         {
             clientId_=std::make_shared<std::string>(pJson["client_id"].asString());
@@ -898,7 +941,7 @@ void ClientIdentifier::updateByJson(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("document_type_id"))
     {
-        dirtyFlag_[2] = true;
+        dirtyFlag_[3] = true;
         if(!pJson["document_type_id"].isNull())
         {
             documentTypeId_=std::make_shared<std::string>(pJson["document_type_id"].asString());
@@ -906,7 +949,7 @@ void ClientIdentifier::updateByJson(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("document_key"))
     {
-        dirtyFlag_[3] = true;
+        dirtyFlag_[4] = true;
         if(!pJson["document_key"].isNull())
         {
             documentKey_=std::make_shared<std::string>(pJson["document_key"].asString());
@@ -914,7 +957,7 @@ void ClientIdentifier::updateByJson(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("status"))
     {
-        dirtyFlag_[4] = true;
+        dirtyFlag_[5] = true;
         if(!pJson["status"].isNull())
         {
             status_=std::make_shared<int32_t>((int32_t)pJson["status"].asInt64());
@@ -922,7 +965,7 @@ void ClientIdentifier::updateByJson(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("active"))
     {
-        dirtyFlag_[5] = true;
+        dirtyFlag_[6] = true;
         if(!pJson["active"].isNull())
         {
             active_=std::make_shared<int32_t>((int32_t)pJson["active"].asInt64());
@@ -930,7 +973,7 @@ void ClientIdentifier::updateByJson(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("description"))
     {
-        dirtyFlag_[6] = true;
+        dirtyFlag_[7] = true;
         if(!pJson["description"].isNull())
         {
             description_=std::make_shared<std::string>(pJson["description"].asString());
@@ -938,7 +981,7 @@ void ClientIdentifier::updateByJson(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("created_by"))
     {
-        dirtyFlag_[7] = true;
+        dirtyFlag_[8] = true;
         if(!pJson["created_by"].isNull())
         {
             createdBy_=std::make_shared<std::string>(pJson["created_by"].asString());
@@ -946,7 +989,7 @@ void ClientIdentifier::updateByJson(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("last_modified_by"))
     {
-        dirtyFlag_[8] = true;
+        dirtyFlag_[9] = true;
         if(!pJson["last_modified_by"].isNull())
         {
             lastModifiedBy_=std::make_shared<std::string>(pJson["last_modified_by"].asString());
@@ -954,7 +997,7 @@ void ClientIdentifier::updateByJson(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("created_date"))
     {
-        dirtyFlag_[9] = true;
+        dirtyFlag_[10] = true;
         if(!pJson["created_date"].isNull())
         {
             auto timeStr = pJson["created_date"].asString();
@@ -980,7 +1023,7 @@ void ClientIdentifier::updateByJson(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("lastmodified_date"))
     {
-        dirtyFlag_[10] = true;
+        dirtyFlag_[11] = true;
         if(!pJson["lastmodified_date"].isNull())
         {
             auto timeStr = pJson["lastmodified_date"].asString();
@@ -1006,7 +1049,7 @@ void ClientIdentifier::updateByJson(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("created_on_utc"))
     {
-        dirtyFlag_[11] = true;
+        dirtyFlag_[12] = true;
         if(!pJson["created_on_utc"].isNull())
         {
             auto timeStr = pJson["created_on_utc"].asString();
@@ -1032,7 +1075,7 @@ void ClientIdentifier::updateByJson(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("last_modified_on_utc"))
     {
-        dirtyFlag_[12] = true;
+        dirtyFlag_[13] = true;
         if(!pJson["last_modified_on_utc"].isNull())
         {
             auto timeStr = pJson["last_modified_on_utc"].asString();
@@ -1085,6 +1128,33 @@ const typename ClientIdentifier::PrimaryKeyType & ClientIdentifier::getPrimaryKe
     return *id_;
 }
 
+const std::string &ClientIdentifier::getValueOfBusinessId() const noexcept
+{
+    static const std::string defaultValue = std::string();
+    if(businessId_)
+        return *businessId_;
+    return defaultValue;
+}
+const std::shared_ptr<std::string> &ClientIdentifier::getBusinessId() const noexcept
+{
+    return businessId_;
+}
+void ClientIdentifier::setBusinessId(const std::string &pBusinessId) noexcept
+{
+    businessId_ = std::make_shared<std::string>(pBusinessId);
+    dirtyFlag_[1] = true;
+}
+void ClientIdentifier::setBusinessId(std::string &&pBusinessId) noexcept
+{
+    businessId_ = std::make_shared<std::string>(std::move(pBusinessId));
+    dirtyFlag_[1] = true;
+}
+void ClientIdentifier::setBusinessIdToNull() noexcept
+{
+    businessId_.reset();
+    dirtyFlag_[1] = true;
+}
+
 const std::string &ClientIdentifier::getValueOfClientId() const noexcept
 {
     static const std::string defaultValue = std::string();
@@ -1099,12 +1169,12 @@ const std::shared_ptr<std::string> &ClientIdentifier::getClientId() const noexce
 void ClientIdentifier::setClientId(const std::string &pClientId) noexcept
 {
     clientId_ = std::make_shared<std::string>(pClientId);
-    dirtyFlag_[1] = true;
+    dirtyFlag_[2] = true;
 }
 void ClientIdentifier::setClientId(std::string &&pClientId) noexcept
 {
     clientId_ = std::make_shared<std::string>(std::move(pClientId));
-    dirtyFlag_[1] = true;
+    dirtyFlag_[2] = true;
 }
 
 const std::string &ClientIdentifier::getValueOfDocumentTypeId() const noexcept
@@ -1121,12 +1191,12 @@ const std::shared_ptr<std::string> &ClientIdentifier::getDocumentTypeId() const 
 void ClientIdentifier::setDocumentTypeId(const std::string &pDocumentTypeId) noexcept
 {
     documentTypeId_ = std::make_shared<std::string>(pDocumentTypeId);
-    dirtyFlag_[2] = true;
+    dirtyFlag_[3] = true;
 }
 void ClientIdentifier::setDocumentTypeId(std::string &&pDocumentTypeId) noexcept
 {
     documentTypeId_ = std::make_shared<std::string>(std::move(pDocumentTypeId));
-    dirtyFlag_[2] = true;
+    dirtyFlag_[3] = true;
 }
 
 const std::string &ClientIdentifier::getValueOfDocumentKey() const noexcept
@@ -1143,12 +1213,12 @@ const std::shared_ptr<std::string> &ClientIdentifier::getDocumentKey() const noe
 void ClientIdentifier::setDocumentKey(const std::string &pDocumentKey) noexcept
 {
     documentKey_ = std::make_shared<std::string>(pDocumentKey);
-    dirtyFlag_[3] = true;
+    dirtyFlag_[4] = true;
 }
 void ClientIdentifier::setDocumentKey(std::string &&pDocumentKey) noexcept
 {
     documentKey_ = std::make_shared<std::string>(std::move(pDocumentKey));
-    dirtyFlag_[3] = true;
+    dirtyFlag_[4] = true;
 }
 
 const int32_t &ClientIdentifier::getValueOfStatus() const noexcept
@@ -1165,7 +1235,7 @@ const std::shared_ptr<int32_t> &ClientIdentifier::getStatus() const noexcept
 void ClientIdentifier::setStatus(const int32_t &pStatus) noexcept
 {
     status_ = std::make_shared<int32_t>(pStatus);
-    dirtyFlag_[4] = true;
+    dirtyFlag_[5] = true;
 }
 
 const int32_t &ClientIdentifier::getValueOfActive() const noexcept
@@ -1182,12 +1252,12 @@ const std::shared_ptr<int32_t> &ClientIdentifier::getActive() const noexcept
 void ClientIdentifier::setActive(const int32_t &pActive) noexcept
 {
     active_ = std::make_shared<int32_t>(pActive);
-    dirtyFlag_[5] = true;
+    dirtyFlag_[6] = true;
 }
 void ClientIdentifier::setActiveToNull() noexcept
 {
     active_.reset();
-    dirtyFlag_[5] = true;
+    dirtyFlag_[6] = true;
 }
 
 const std::string &ClientIdentifier::getValueOfDescription() const noexcept
@@ -1204,17 +1274,17 @@ const std::shared_ptr<std::string> &ClientIdentifier::getDescription() const noe
 void ClientIdentifier::setDescription(const std::string &pDescription) noexcept
 {
     description_ = std::make_shared<std::string>(pDescription);
-    dirtyFlag_[6] = true;
+    dirtyFlag_[7] = true;
 }
 void ClientIdentifier::setDescription(std::string &&pDescription) noexcept
 {
     description_ = std::make_shared<std::string>(std::move(pDescription));
-    dirtyFlag_[6] = true;
+    dirtyFlag_[7] = true;
 }
 void ClientIdentifier::setDescriptionToNull() noexcept
 {
     description_.reset();
-    dirtyFlag_[6] = true;
+    dirtyFlag_[7] = true;
 }
 
 const std::string &ClientIdentifier::getValueOfCreatedBy() const noexcept
@@ -1231,12 +1301,12 @@ const std::shared_ptr<std::string> &ClientIdentifier::getCreatedBy() const noexc
 void ClientIdentifier::setCreatedBy(const std::string &pCreatedBy) noexcept
 {
     createdBy_ = std::make_shared<std::string>(pCreatedBy);
-    dirtyFlag_[7] = true;
+    dirtyFlag_[8] = true;
 }
 void ClientIdentifier::setCreatedBy(std::string &&pCreatedBy) noexcept
 {
     createdBy_ = std::make_shared<std::string>(std::move(pCreatedBy));
-    dirtyFlag_[7] = true;
+    dirtyFlag_[8] = true;
 }
 
 const std::string &ClientIdentifier::getValueOfLastModifiedBy() const noexcept
@@ -1253,12 +1323,12 @@ const std::shared_ptr<std::string> &ClientIdentifier::getLastModifiedBy() const 
 void ClientIdentifier::setLastModifiedBy(const std::string &pLastModifiedBy) noexcept
 {
     lastModifiedBy_ = std::make_shared<std::string>(pLastModifiedBy);
-    dirtyFlag_[8] = true;
+    dirtyFlag_[9] = true;
 }
 void ClientIdentifier::setLastModifiedBy(std::string &&pLastModifiedBy) noexcept
 {
     lastModifiedBy_ = std::make_shared<std::string>(std::move(pLastModifiedBy));
-    dirtyFlag_[8] = true;
+    dirtyFlag_[9] = true;
 }
 
 const ::trantor::Date &ClientIdentifier::getValueOfCreatedDate() const noexcept
@@ -1275,12 +1345,12 @@ const std::shared_ptr<::trantor::Date> &ClientIdentifier::getCreatedDate() const
 void ClientIdentifier::setCreatedDate(const ::trantor::Date &pCreatedDate) noexcept
 {
     createdDate_ = std::make_shared<::trantor::Date>(pCreatedDate);
-    dirtyFlag_[9] = true;
+    dirtyFlag_[10] = true;
 }
 void ClientIdentifier::setCreatedDateToNull() noexcept
 {
     createdDate_.reset();
-    dirtyFlag_[9] = true;
+    dirtyFlag_[10] = true;
 }
 
 const ::trantor::Date &ClientIdentifier::getValueOfLastmodifiedDate() const noexcept
@@ -1297,12 +1367,12 @@ const std::shared_ptr<::trantor::Date> &ClientIdentifier::getLastmodifiedDate() 
 void ClientIdentifier::setLastmodifiedDate(const ::trantor::Date &pLastmodifiedDate) noexcept
 {
     lastmodifiedDate_ = std::make_shared<::trantor::Date>(pLastmodifiedDate);
-    dirtyFlag_[10] = true;
+    dirtyFlag_[11] = true;
 }
 void ClientIdentifier::setLastmodifiedDateToNull() noexcept
 {
     lastmodifiedDate_.reset();
-    dirtyFlag_[10] = true;
+    dirtyFlag_[11] = true;
 }
 
 const ::trantor::Date &ClientIdentifier::getValueOfCreatedOnUtc() const noexcept
@@ -1319,12 +1389,12 @@ const std::shared_ptr<::trantor::Date> &ClientIdentifier::getCreatedOnUtc() cons
 void ClientIdentifier::setCreatedOnUtc(const ::trantor::Date &pCreatedOnUtc) noexcept
 {
     createdOnUtc_ = std::make_shared<::trantor::Date>(pCreatedOnUtc);
-    dirtyFlag_[11] = true;
+    dirtyFlag_[12] = true;
 }
 void ClientIdentifier::setCreatedOnUtcToNull() noexcept
 {
     createdOnUtc_.reset();
-    dirtyFlag_[11] = true;
+    dirtyFlag_[12] = true;
 }
 
 const ::trantor::Date &ClientIdentifier::getValueOfLastModifiedOnUtc() const noexcept
@@ -1341,12 +1411,12 @@ const std::shared_ptr<::trantor::Date> &ClientIdentifier::getLastModifiedOnUtc()
 void ClientIdentifier::setLastModifiedOnUtc(const ::trantor::Date &pLastModifiedOnUtc) noexcept
 {
     lastModifiedOnUtc_ = std::make_shared<::trantor::Date>(pLastModifiedOnUtc);
-    dirtyFlag_[12] = true;
+    dirtyFlag_[13] = true;
 }
 void ClientIdentifier::setLastModifiedOnUtcToNull() noexcept
 {
     lastModifiedOnUtc_.reset();
-    dirtyFlag_[12] = true;
+    dirtyFlag_[13] = true;
 }
 
 void ClientIdentifier::updateId(const uint64_t id)
@@ -1357,6 +1427,7 @@ const std::vector<std::string> &ClientIdentifier::insertColumns() noexcept
 {
     static const std::vector<std::string> inCols={
         "id",
+        "business_id",
         "client_id",
         "document_type_id",
         "document_key",
@@ -1388,6 +1459,17 @@ void ClientIdentifier::outputArgs(drogon::orm::internal::SqlBinder &binder) cons
     }
     if(dirtyFlag_[1])
     {
+        if(getBusinessId())
+        {
+            binder << getValueOfBusinessId();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[2])
+    {
         if(getClientId())
         {
             binder << getValueOfClientId();
@@ -1397,7 +1479,7 @@ void ClientIdentifier::outputArgs(drogon::orm::internal::SqlBinder &binder) cons
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[2])
+    if(dirtyFlag_[3])
     {
         if(getDocumentTypeId())
         {
@@ -1408,7 +1490,7 @@ void ClientIdentifier::outputArgs(drogon::orm::internal::SqlBinder &binder) cons
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[3])
+    if(dirtyFlag_[4])
     {
         if(getDocumentKey())
         {
@@ -1419,7 +1501,7 @@ void ClientIdentifier::outputArgs(drogon::orm::internal::SqlBinder &binder) cons
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[4])
+    if(dirtyFlag_[5])
     {
         if(getStatus())
         {
@@ -1430,7 +1512,7 @@ void ClientIdentifier::outputArgs(drogon::orm::internal::SqlBinder &binder) cons
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[5])
+    if(dirtyFlag_[6])
     {
         if(getActive())
         {
@@ -1441,7 +1523,7 @@ void ClientIdentifier::outputArgs(drogon::orm::internal::SqlBinder &binder) cons
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[6])
+    if(dirtyFlag_[7])
     {
         if(getDescription())
         {
@@ -1452,7 +1534,7 @@ void ClientIdentifier::outputArgs(drogon::orm::internal::SqlBinder &binder) cons
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[7])
+    if(dirtyFlag_[8])
     {
         if(getCreatedBy())
         {
@@ -1463,7 +1545,7 @@ void ClientIdentifier::outputArgs(drogon::orm::internal::SqlBinder &binder) cons
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[8])
+    if(dirtyFlag_[9])
     {
         if(getLastModifiedBy())
         {
@@ -1474,7 +1556,7 @@ void ClientIdentifier::outputArgs(drogon::orm::internal::SqlBinder &binder) cons
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[9])
+    if(dirtyFlag_[10])
     {
         if(getCreatedDate())
         {
@@ -1485,7 +1567,7 @@ void ClientIdentifier::outputArgs(drogon::orm::internal::SqlBinder &binder) cons
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[10])
+    if(dirtyFlag_[11])
     {
         if(getLastmodifiedDate())
         {
@@ -1496,7 +1578,7 @@ void ClientIdentifier::outputArgs(drogon::orm::internal::SqlBinder &binder) cons
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[11])
+    if(dirtyFlag_[12])
     {
         if(getCreatedOnUtc())
         {
@@ -1507,7 +1589,7 @@ void ClientIdentifier::outputArgs(drogon::orm::internal::SqlBinder &binder) cons
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[12])
+    if(dirtyFlag_[13])
     {
         if(getLastModifiedOnUtc())
         {
@@ -1575,6 +1657,10 @@ const std::vector<std::string> ClientIdentifier::updateColumns() const
     {
         ret.push_back(getColumnName(12));
     }
+    if(dirtyFlag_[13])
+    {
+        ret.push_back(getColumnName(13));
+    }
     return ret;
 }
 
@@ -1593,6 +1679,17 @@ void ClientIdentifier::updateArgs(drogon::orm::internal::SqlBinder &binder) cons
     }
     if(dirtyFlag_[1])
     {
+        if(getBusinessId())
+        {
+            binder << getValueOfBusinessId();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[2])
+    {
         if(getClientId())
         {
             binder << getValueOfClientId();
@@ -1602,7 +1699,7 @@ void ClientIdentifier::updateArgs(drogon::orm::internal::SqlBinder &binder) cons
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[2])
+    if(dirtyFlag_[3])
     {
         if(getDocumentTypeId())
         {
@@ -1613,7 +1710,7 @@ void ClientIdentifier::updateArgs(drogon::orm::internal::SqlBinder &binder) cons
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[3])
+    if(dirtyFlag_[4])
     {
         if(getDocumentKey())
         {
@@ -1624,7 +1721,7 @@ void ClientIdentifier::updateArgs(drogon::orm::internal::SqlBinder &binder) cons
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[4])
+    if(dirtyFlag_[5])
     {
         if(getStatus())
         {
@@ -1635,7 +1732,7 @@ void ClientIdentifier::updateArgs(drogon::orm::internal::SqlBinder &binder) cons
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[5])
+    if(dirtyFlag_[6])
     {
         if(getActive())
         {
@@ -1646,7 +1743,7 @@ void ClientIdentifier::updateArgs(drogon::orm::internal::SqlBinder &binder) cons
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[6])
+    if(dirtyFlag_[7])
     {
         if(getDescription())
         {
@@ -1657,7 +1754,7 @@ void ClientIdentifier::updateArgs(drogon::orm::internal::SqlBinder &binder) cons
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[7])
+    if(dirtyFlag_[8])
     {
         if(getCreatedBy())
         {
@@ -1668,7 +1765,7 @@ void ClientIdentifier::updateArgs(drogon::orm::internal::SqlBinder &binder) cons
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[8])
+    if(dirtyFlag_[9])
     {
         if(getLastModifiedBy())
         {
@@ -1679,7 +1776,7 @@ void ClientIdentifier::updateArgs(drogon::orm::internal::SqlBinder &binder) cons
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[9])
+    if(dirtyFlag_[10])
     {
         if(getCreatedDate())
         {
@@ -1690,7 +1787,7 @@ void ClientIdentifier::updateArgs(drogon::orm::internal::SqlBinder &binder) cons
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[10])
+    if(dirtyFlag_[11])
     {
         if(getLastmodifiedDate())
         {
@@ -1701,7 +1798,7 @@ void ClientIdentifier::updateArgs(drogon::orm::internal::SqlBinder &binder) cons
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[11])
+    if(dirtyFlag_[12])
     {
         if(getCreatedOnUtc())
         {
@@ -1712,7 +1809,7 @@ void ClientIdentifier::updateArgs(drogon::orm::internal::SqlBinder &binder) cons
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[12])
+    if(dirtyFlag_[13])
     {
         if(getLastModifiedOnUtc())
         {
@@ -1734,6 +1831,14 @@ Json::Value ClientIdentifier::toJson() const
     else
     {
         ret["id"]=Json::Value();
+    }
+    if(getBusinessId())
+    {
+        ret["business_id"]=getValueOfBusinessId();
+    }
+    else
+    {
+        ret["business_id"]=Json::Value();
     }
     if(getClientId())
     {
@@ -1843,7 +1948,7 @@ Json::Value ClientIdentifier::toMasqueradedJson(
     const std::vector<std::string> &pMasqueradingVector) const
 {
     Json::Value ret;
-    if(pMasqueradingVector.size() == 13)
+    if(pMasqueradingVector.size() == 14)
     {
         if(!pMasqueradingVector[0].empty())
         {
@@ -1858,9 +1963,9 @@ Json::Value ClientIdentifier::toMasqueradedJson(
         }
         if(!pMasqueradingVector[1].empty())
         {
-            if(getClientId())
+            if(getBusinessId())
             {
-                ret[pMasqueradingVector[1]]=getValueOfClientId();
+                ret[pMasqueradingVector[1]]=getValueOfBusinessId();
             }
             else
             {
@@ -1869,9 +1974,9 @@ Json::Value ClientIdentifier::toMasqueradedJson(
         }
         if(!pMasqueradingVector[2].empty())
         {
-            if(getDocumentTypeId())
+            if(getClientId())
             {
-                ret[pMasqueradingVector[2]]=getValueOfDocumentTypeId();
+                ret[pMasqueradingVector[2]]=getValueOfClientId();
             }
             else
             {
@@ -1880,9 +1985,9 @@ Json::Value ClientIdentifier::toMasqueradedJson(
         }
         if(!pMasqueradingVector[3].empty())
         {
-            if(getDocumentKey())
+            if(getDocumentTypeId())
             {
-                ret[pMasqueradingVector[3]]=getValueOfDocumentKey();
+                ret[pMasqueradingVector[3]]=getValueOfDocumentTypeId();
             }
             else
             {
@@ -1891,9 +1996,9 @@ Json::Value ClientIdentifier::toMasqueradedJson(
         }
         if(!pMasqueradingVector[4].empty())
         {
-            if(getStatus())
+            if(getDocumentKey())
             {
-                ret[pMasqueradingVector[4]]=getValueOfStatus();
+                ret[pMasqueradingVector[4]]=getValueOfDocumentKey();
             }
             else
             {
@@ -1902,9 +2007,9 @@ Json::Value ClientIdentifier::toMasqueradedJson(
         }
         if(!pMasqueradingVector[5].empty())
         {
-            if(getActive())
+            if(getStatus())
             {
-                ret[pMasqueradingVector[5]]=getValueOfActive();
+                ret[pMasqueradingVector[5]]=getValueOfStatus();
             }
             else
             {
@@ -1913,9 +2018,9 @@ Json::Value ClientIdentifier::toMasqueradedJson(
         }
         if(!pMasqueradingVector[6].empty())
         {
-            if(getDescription())
+            if(getActive())
             {
-                ret[pMasqueradingVector[6]]=getValueOfDescription();
+                ret[pMasqueradingVector[6]]=getValueOfActive();
             }
             else
             {
@@ -1924,9 +2029,9 @@ Json::Value ClientIdentifier::toMasqueradedJson(
         }
         if(!pMasqueradingVector[7].empty())
         {
-            if(getCreatedBy())
+            if(getDescription())
             {
-                ret[pMasqueradingVector[7]]=getValueOfCreatedBy();
+                ret[pMasqueradingVector[7]]=getValueOfDescription();
             }
             else
             {
@@ -1935,9 +2040,9 @@ Json::Value ClientIdentifier::toMasqueradedJson(
         }
         if(!pMasqueradingVector[8].empty())
         {
-            if(getLastModifiedBy())
+            if(getCreatedBy())
             {
-                ret[pMasqueradingVector[8]]=getValueOfLastModifiedBy();
+                ret[pMasqueradingVector[8]]=getValueOfCreatedBy();
             }
             else
             {
@@ -1946,9 +2051,9 @@ Json::Value ClientIdentifier::toMasqueradedJson(
         }
         if(!pMasqueradingVector[9].empty())
         {
-            if(getCreatedDate())
+            if(getLastModifiedBy())
             {
-                ret[pMasqueradingVector[9]]=getCreatedDate()->toDbStringLocal();
+                ret[pMasqueradingVector[9]]=getValueOfLastModifiedBy();
             }
             else
             {
@@ -1957,9 +2062,9 @@ Json::Value ClientIdentifier::toMasqueradedJson(
         }
         if(!pMasqueradingVector[10].empty())
         {
-            if(getLastmodifiedDate())
+            if(getCreatedDate())
             {
-                ret[pMasqueradingVector[10]]=getLastmodifiedDate()->toDbStringLocal();
+                ret[pMasqueradingVector[10]]=getCreatedDate()->toDbStringLocal();
             }
             else
             {
@@ -1968,9 +2073,9 @@ Json::Value ClientIdentifier::toMasqueradedJson(
         }
         if(!pMasqueradingVector[11].empty())
         {
-            if(getCreatedOnUtc())
+            if(getLastmodifiedDate())
             {
-                ret[pMasqueradingVector[11]]=getCreatedOnUtc()->toDbStringLocal();
+                ret[pMasqueradingVector[11]]=getLastmodifiedDate()->toDbStringLocal();
             }
             else
             {
@@ -1979,13 +2084,24 @@ Json::Value ClientIdentifier::toMasqueradedJson(
         }
         if(!pMasqueradingVector[12].empty())
         {
-            if(getLastModifiedOnUtc())
+            if(getCreatedOnUtc())
             {
-                ret[pMasqueradingVector[12]]=getLastModifiedOnUtc()->toDbStringLocal();
+                ret[pMasqueradingVector[12]]=getCreatedOnUtc()->toDbStringLocal();
             }
             else
             {
                 ret[pMasqueradingVector[12]]=Json::Value();
+            }
+        }
+        if(!pMasqueradingVector[13].empty())
+        {
+            if(getLastModifiedOnUtc())
+            {
+                ret[pMasqueradingVector[13]]=getLastModifiedOnUtc()->toDbStringLocal();
+            }
+            else
+            {
+                ret[pMasqueradingVector[13]]=Json::Value();
             }
         }
         return ret;
@@ -1998,6 +2114,14 @@ Json::Value ClientIdentifier::toMasqueradedJson(
     else
     {
         ret["id"]=Json::Value();
+    }
+    if(getBusinessId())
+    {
+        ret["business_id"]=getValueOfBusinessId();
+    }
+    else
+    {
+        ret["business_id"]=Json::Value();
     }
     if(getClientId())
     {
@@ -2105,9 +2229,14 @@ bool ClientIdentifier::validateJsonForCreation(const Json::Value &pJson, std::st
         if(!validJsonOfField(0, "id", pJson["id"], err, true))
             return false;
     }
+    if(pJson.isMember("business_id"))
+    {
+        if(!validJsonOfField(1, "business_id", pJson["business_id"], err, true))
+            return false;
+    }
     if(pJson.isMember("client_id"))
     {
-        if(!validJsonOfField(1, "client_id", pJson["client_id"], err, true))
+        if(!validJsonOfField(2, "client_id", pJson["client_id"], err, true))
             return false;
     }
     else
@@ -2117,7 +2246,7 @@ bool ClientIdentifier::validateJsonForCreation(const Json::Value &pJson, std::st
     }
     if(pJson.isMember("document_type_id"))
     {
-        if(!validJsonOfField(2, "document_type_id", pJson["document_type_id"], err, true))
+        if(!validJsonOfField(3, "document_type_id", pJson["document_type_id"], err, true))
             return false;
     }
     else
@@ -2127,7 +2256,7 @@ bool ClientIdentifier::validateJsonForCreation(const Json::Value &pJson, std::st
     }
     if(pJson.isMember("document_key"))
     {
-        if(!validJsonOfField(3, "document_key", pJson["document_key"], err, true))
+        if(!validJsonOfField(4, "document_key", pJson["document_key"], err, true))
             return false;
     }
     else
@@ -2137,22 +2266,22 @@ bool ClientIdentifier::validateJsonForCreation(const Json::Value &pJson, std::st
     }
     if(pJson.isMember("status"))
     {
-        if(!validJsonOfField(4, "status", pJson["status"], err, true))
+        if(!validJsonOfField(5, "status", pJson["status"], err, true))
             return false;
     }
     if(pJson.isMember("active"))
     {
-        if(!validJsonOfField(5, "active", pJson["active"], err, true))
+        if(!validJsonOfField(6, "active", pJson["active"], err, true))
             return false;
     }
     if(pJson.isMember("description"))
     {
-        if(!validJsonOfField(6, "description", pJson["description"], err, true))
+        if(!validJsonOfField(7, "description", pJson["description"], err, true))
             return false;
     }
     if(pJson.isMember("created_by"))
     {
-        if(!validJsonOfField(7, "created_by", pJson["created_by"], err, true))
+        if(!validJsonOfField(8, "created_by", pJson["created_by"], err, true))
             return false;
     }
     else
@@ -2162,7 +2291,7 @@ bool ClientIdentifier::validateJsonForCreation(const Json::Value &pJson, std::st
     }
     if(pJson.isMember("last_modified_by"))
     {
-        if(!validJsonOfField(8, "last_modified_by", pJson["last_modified_by"], err, true))
+        if(!validJsonOfField(9, "last_modified_by", pJson["last_modified_by"], err, true))
             return false;
     }
     else
@@ -2172,22 +2301,22 @@ bool ClientIdentifier::validateJsonForCreation(const Json::Value &pJson, std::st
     }
     if(pJson.isMember("created_date"))
     {
-        if(!validJsonOfField(9, "created_date", pJson["created_date"], err, true))
+        if(!validJsonOfField(10, "created_date", pJson["created_date"], err, true))
             return false;
     }
     if(pJson.isMember("lastmodified_date"))
     {
-        if(!validJsonOfField(10, "lastmodified_date", pJson["lastmodified_date"], err, true))
+        if(!validJsonOfField(11, "lastmodified_date", pJson["lastmodified_date"], err, true))
             return false;
     }
     if(pJson.isMember("created_on_utc"))
     {
-        if(!validJsonOfField(11, "created_on_utc", pJson["created_on_utc"], err, true))
+        if(!validJsonOfField(12, "created_on_utc", pJson["created_on_utc"], err, true))
             return false;
     }
     if(pJson.isMember("last_modified_on_utc"))
     {
-        if(!validJsonOfField(12, "last_modified_on_utc", pJson["last_modified_on_utc"], err, true))
+        if(!validJsonOfField(13, "last_modified_on_utc", pJson["last_modified_on_utc"], err, true))
             return false;
     }
     return true;
@@ -2196,7 +2325,7 @@ bool ClientIdentifier::validateMasqueradedJsonForCreation(const Json::Value &pJs
                                                           const std::vector<std::string> &pMasqueradingVector,
                                                           std::string &err)
 {
-    if(pMasqueradingVector.size() != 13)
+    if(pMasqueradingVector.size() != 14)
     {
         err = "Bad masquerading vector";
         return false;
@@ -2217,11 +2346,6 @@ bool ClientIdentifier::validateMasqueradedJsonForCreation(const Json::Value &pJs
               if(!validJsonOfField(1, pMasqueradingVector[1], pJson[pMasqueradingVector[1]], err, true))
                   return false;
           }
-        else
-        {
-            err="The " + pMasqueradingVector[1] + " column cannot be null";
-            return false;
-        }
       }
       if(!pMasqueradingVector[2].empty())
       {
@@ -2256,6 +2380,11 @@ bool ClientIdentifier::validateMasqueradedJsonForCreation(const Json::Value &pJs
               if(!validJsonOfField(4, pMasqueradingVector[4], pJson[pMasqueradingVector[4]], err, true))
                   return false;
           }
+        else
+        {
+            err="The " + pMasqueradingVector[4] + " column cannot be null";
+            return false;
+        }
       }
       if(!pMasqueradingVector[5].empty())
       {
@@ -2280,11 +2409,6 @@ bool ClientIdentifier::validateMasqueradedJsonForCreation(const Json::Value &pJs
               if(!validJsonOfField(7, pMasqueradingVector[7], pJson[pMasqueradingVector[7]], err, true))
                   return false;
           }
-        else
-        {
-            err="The " + pMasqueradingVector[7] + " column cannot be null";
-            return false;
-        }
       }
       if(!pMasqueradingVector[8].empty())
       {
@@ -2306,6 +2430,11 @@ bool ClientIdentifier::validateMasqueradedJsonForCreation(const Json::Value &pJs
               if(!validJsonOfField(9, pMasqueradingVector[9], pJson[pMasqueradingVector[9]], err, true))
                   return false;
           }
+        else
+        {
+            err="The " + pMasqueradingVector[9] + " column cannot be null";
+            return false;
+        }
       }
       if(!pMasqueradingVector[10].empty())
       {
@@ -2331,6 +2460,14 @@ bool ClientIdentifier::validateMasqueradedJsonForCreation(const Json::Value &pJs
                   return false;
           }
       }
+      if(!pMasqueradingVector[13].empty())
+      {
+          if(pJson.isMember(pMasqueradingVector[13]))
+          {
+              if(!validJsonOfField(13, pMasqueradingVector[13], pJson[pMasqueradingVector[13]], err, true))
+                  return false;
+          }
+      }
     }
     catch(const Json::LogicError &e)
     {
@@ -2351,64 +2488,69 @@ bool ClientIdentifier::validateJsonForUpdate(const Json::Value &pJson, std::stri
         err = "The value of primary key must be set in the json object for update";
         return false;
     }
+    if(pJson.isMember("business_id"))
+    {
+        if(!validJsonOfField(1, "business_id", pJson["business_id"], err, false))
+            return false;
+    }
     if(pJson.isMember("client_id"))
     {
-        if(!validJsonOfField(1, "client_id", pJson["client_id"], err, false))
+        if(!validJsonOfField(2, "client_id", pJson["client_id"], err, false))
             return false;
     }
     if(pJson.isMember("document_type_id"))
     {
-        if(!validJsonOfField(2, "document_type_id", pJson["document_type_id"], err, false))
+        if(!validJsonOfField(3, "document_type_id", pJson["document_type_id"], err, false))
             return false;
     }
     if(pJson.isMember("document_key"))
     {
-        if(!validJsonOfField(3, "document_key", pJson["document_key"], err, false))
+        if(!validJsonOfField(4, "document_key", pJson["document_key"], err, false))
             return false;
     }
     if(pJson.isMember("status"))
     {
-        if(!validJsonOfField(4, "status", pJson["status"], err, false))
+        if(!validJsonOfField(5, "status", pJson["status"], err, false))
             return false;
     }
     if(pJson.isMember("active"))
     {
-        if(!validJsonOfField(5, "active", pJson["active"], err, false))
+        if(!validJsonOfField(6, "active", pJson["active"], err, false))
             return false;
     }
     if(pJson.isMember("description"))
     {
-        if(!validJsonOfField(6, "description", pJson["description"], err, false))
+        if(!validJsonOfField(7, "description", pJson["description"], err, false))
             return false;
     }
     if(pJson.isMember("created_by"))
     {
-        if(!validJsonOfField(7, "created_by", pJson["created_by"], err, false))
+        if(!validJsonOfField(8, "created_by", pJson["created_by"], err, false))
             return false;
     }
     if(pJson.isMember("last_modified_by"))
     {
-        if(!validJsonOfField(8, "last_modified_by", pJson["last_modified_by"], err, false))
+        if(!validJsonOfField(9, "last_modified_by", pJson["last_modified_by"], err, false))
             return false;
     }
     if(pJson.isMember("created_date"))
     {
-        if(!validJsonOfField(9, "created_date", pJson["created_date"], err, false))
+        if(!validJsonOfField(10, "created_date", pJson["created_date"], err, false))
             return false;
     }
     if(pJson.isMember("lastmodified_date"))
     {
-        if(!validJsonOfField(10, "lastmodified_date", pJson["lastmodified_date"], err, false))
+        if(!validJsonOfField(11, "lastmodified_date", pJson["lastmodified_date"], err, false))
             return false;
     }
     if(pJson.isMember("created_on_utc"))
     {
-        if(!validJsonOfField(11, "created_on_utc", pJson["created_on_utc"], err, false))
+        if(!validJsonOfField(12, "created_on_utc", pJson["created_on_utc"], err, false))
             return false;
     }
     if(pJson.isMember("last_modified_on_utc"))
     {
-        if(!validJsonOfField(12, "last_modified_on_utc", pJson["last_modified_on_utc"], err, false))
+        if(!validJsonOfField(13, "last_modified_on_utc", pJson["last_modified_on_utc"], err, false))
             return false;
     }
     return true;
@@ -2417,7 +2559,7 @@ bool ClientIdentifier::validateMasqueradedJsonForUpdate(const Json::Value &pJson
                                                         const std::vector<std::string> &pMasqueradingVector,
                                                         std::string &err)
 {
-    if(pMasqueradingVector.size() != 13)
+    if(pMasqueradingVector.size() != 14)
     {
         err = "Bad masquerading vector";
         return false;
@@ -2493,6 +2635,11 @@ bool ClientIdentifier::validateMasqueradedJsonForUpdate(const Json::Value &pJson
           if(!validJsonOfField(12, pMasqueradingVector[12], pJson[pMasqueradingVector[12]], err, false))
               return false;
       }
+      if(!pMasqueradingVector[13].empty() && pJson.isMember(pMasqueradingVector[13]))
+      {
+          if(!validJsonOfField(13, pMasqueradingVector[13], pJson[pMasqueradingVector[13]], err, false))
+              return false;
+      }
     }
     catch(const Json::LogicError &e)
     {
@@ -2524,8 +2671,7 @@ bool ClientIdentifier::validJsonOfField(size_t index,
         case 1:
             if(pJson.isNull())
             {
-                err="The " + fieldName + " column cannot be null";
-                return false;
+                return true;
             }
             if(!pJson.isString())
             {
@@ -2556,6 +2702,18 @@ bool ClientIdentifier::validJsonOfField(size_t index,
                 err="Type error in the "+fieldName+" field";
                 return false;
             }
+            break;
+        case 4:
+            if(pJson.isNull())
+            {
+                err="The " + fieldName + " column cannot be null";
+                return false;
+            }
+            if(!pJson.isString())
+            {
+                err="Type error in the "+fieldName+" field";
+                return false;
+            }
             if(pJson.isString() && std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>{}
                 .from_bytes(pJson.asCString()).size() > 50)
             {
@@ -2565,7 +2723,7 @@ bool ClientIdentifier::validJsonOfField(size_t index,
                 return false;
             }
             break;
-        case 4:
+        case 5:
             if(pJson.isNull())
             {
                 err="The " + fieldName + " column cannot be null";
@@ -2577,7 +2735,7 @@ bool ClientIdentifier::validJsonOfField(size_t index,
                 return false;
             }
             break;
-        case 5:
+        case 6:
             if(pJson.isNull())
             {
                 return true;
@@ -2588,7 +2746,7 @@ bool ClientIdentifier::validJsonOfField(size_t index,
                 return false;
             }
             break;
-        case 6:
+        case 7:
             if(pJson.isNull())
             {
                 return true;
@@ -2607,18 +2765,6 @@ bool ClientIdentifier::validJsonOfField(size_t index,
                 return false;
             }
             break;
-        case 7:
-            if(pJson.isNull())
-            {
-                err="The " + fieldName + " column cannot be null";
-                return false;
-            }
-            if(!pJson.isString())
-            {
-                err="Type error in the "+fieldName+" field";
-                return false;
-            }
-            break;
         case 8:
             if(pJson.isNull())
             {
@@ -2634,7 +2780,8 @@ bool ClientIdentifier::validJsonOfField(size_t index,
         case 9:
             if(pJson.isNull())
             {
-                return true;
+                err="The " + fieldName + " column cannot be null";
+                return false;
             }
             if(!pJson.isString())
             {
@@ -2665,6 +2812,17 @@ bool ClientIdentifier::validJsonOfField(size_t index,
             }
             break;
         case 12:
+            if(pJson.isNull())
+            {
+                return true;
+            }
+            if(!pJson.isString())
+            {
+                err="Type error in the "+fieldName+" field";
+                return false;
+            }
+            break;
+        case 13:
             if(pJson.isNull())
             {
                 return true;

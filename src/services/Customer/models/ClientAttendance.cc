@@ -14,6 +14,7 @@ using namespace drogon::orm;
 using namespace drogon_model::TlCustomerDb;
 
 const std::string ClientAttendance::Cols::_id = "\"id\"";
+const std::string ClientAttendance::Cols::_business_id = "\"business_id\"";
 const std::string ClientAttendance::Cols::_client_id = "\"client_id\"";
 const std::string ClientAttendance::Cols::_meeting_id = "\"meeting_id\"";
 const std::string ClientAttendance::Cols::_attendance_type = "\"attendance_type\"";
@@ -23,6 +24,7 @@ const std::string ClientAttendance::tableName = "\"client_attendance\"";
 
 const std::vector<typename ClientAttendance::MetaData> ClientAttendance::metaData_={
 {"id","std::string","uuid",0,0,1,1},
+{"business_id","std::string","uuid",0,0,0,0},
 {"client_id","std::string","uuid",0,0,0,1},
 {"meeting_id","std::string","uuid",0,0,0,0},
 {"attendance_type","int32_t","integer",4,0,0,1}
@@ -40,6 +42,10 @@ ClientAttendance::ClientAttendance(const Row &r, const ssize_t indexOffset) noex
         {
             id_=std::make_shared<std::string>(r["id"].as<std::string>());
         }
+        if(!r["business_id"].isNull())
+        {
+            businessId_=std::make_shared<std::string>(r["business_id"].as<std::string>());
+        }
         if(!r["client_id"].isNull())
         {
             clientId_=std::make_shared<std::string>(r["client_id"].as<std::string>());
@@ -56,7 +62,7 @@ ClientAttendance::ClientAttendance(const Row &r, const ssize_t indexOffset) noex
     else
     {
         size_t offset = (size_t)indexOffset;
-        if(offset + 4 > r.size())
+        if(offset + 5 > r.size())
         {
             LOG_FATAL << "Invalid SQL result for this model";
             return;
@@ -70,14 +76,19 @@ ClientAttendance::ClientAttendance(const Row &r, const ssize_t indexOffset) noex
         index = offset + 1;
         if(!r[index].isNull())
         {
-            clientId_=std::make_shared<std::string>(r[index].as<std::string>());
+            businessId_=std::make_shared<std::string>(r[index].as<std::string>());
         }
         index = offset + 2;
         if(!r[index].isNull())
         {
-            meetingId_=std::make_shared<std::string>(r[index].as<std::string>());
+            clientId_=std::make_shared<std::string>(r[index].as<std::string>());
         }
         index = offset + 3;
+        if(!r[index].isNull())
+        {
+            meetingId_=std::make_shared<std::string>(r[index].as<std::string>());
+        }
+        index = offset + 4;
         if(!r[index].isNull())
         {
             attendanceType_=std::make_shared<int32_t>(r[index].as<int32_t>());
@@ -88,7 +99,7 @@ ClientAttendance::ClientAttendance(const Row &r, const ssize_t indexOffset) noex
 
 ClientAttendance::ClientAttendance(const Json::Value &pJson, const std::vector<std::string> &pMasqueradingVector) noexcept(false)
 {
-    if(pMasqueradingVector.size() != 4)
+    if(pMasqueradingVector.size() != 5)
     {
         LOG_ERROR << "Bad masquerading vector";
         return;
@@ -106,7 +117,7 @@ ClientAttendance::ClientAttendance(const Json::Value &pJson, const std::vector<s
         dirtyFlag_[1] = true;
         if(!pJson[pMasqueradingVector[1]].isNull())
         {
-            clientId_=std::make_shared<std::string>(pJson[pMasqueradingVector[1]].asString());
+            businessId_=std::make_shared<std::string>(pJson[pMasqueradingVector[1]].asString());
         }
     }
     if(!pMasqueradingVector[2].empty() && pJson.isMember(pMasqueradingVector[2]))
@@ -114,7 +125,7 @@ ClientAttendance::ClientAttendance(const Json::Value &pJson, const std::vector<s
         dirtyFlag_[2] = true;
         if(!pJson[pMasqueradingVector[2]].isNull())
         {
-            meetingId_=std::make_shared<std::string>(pJson[pMasqueradingVector[2]].asString());
+            clientId_=std::make_shared<std::string>(pJson[pMasqueradingVector[2]].asString());
         }
     }
     if(!pMasqueradingVector[3].empty() && pJson.isMember(pMasqueradingVector[3]))
@@ -122,7 +133,15 @@ ClientAttendance::ClientAttendance(const Json::Value &pJson, const std::vector<s
         dirtyFlag_[3] = true;
         if(!pJson[pMasqueradingVector[3]].isNull())
         {
-            attendanceType_=std::make_shared<int32_t>((int32_t)pJson[pMasqueradingVector[3]].asInt64());
+            meetingId_=std::make_shared<std::string>(pJson[pMasqueradingVector[3]].asString());
+        }
+    }
+    if(!pMasqueradingVector[4].empty() && pJson.isMember(pMasqueradingVector[4]))
+    {
+        dirtyFlag_[4] = true;
+        if(!pJson[pMasqueradingVector[4]].isNull())
+        {
+            attendanceType_=std::make_shared<int32_t>((int32_t)pJson[pMasqueradingVector[4]].asInt64());
         }
     }
 }
@@ -137,9 +156,17 @@ ClientAttendance::ClientAttendance(const Json::Value &pJson) noexcept(false)
             id_=std::make_shared<std::string>(pJson["id"].asString());
         }
     }
-    if(pJson.isMember("client_id"))
+    if(pJson.isMember("business_id"))
     {
         dirtyFlag_[1]=true;
+        if(!pJson["business_id"].isNull())
+        {
+            businessId_=std::make_shared<std::string>(pJson["business_id"].asString());
+        }
+    }
+    if(pJson.isMember("client_id"))
+    {
+        dirtyFlag_[2]=true;
         if(!pJson["client_id"].isNull())
         {
             clientId_=std::make_shared<std::string>(pJson["client_id"].asString());
@@ -147,7 +174,7 @@ ClientAttendance::ClientAttendance(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("meeting_id"))
     {
-        dirtyFlag_[2]=true;
+        dirtyFlag_[3]=true;
         if(!pJson["meeting_id"].isNull())
         {
             meetingId_=std::make_shared<std::string>(pJson["meeting_id"].asString());
@@ -155,7 +182,7 @@ ClientAttendance::ClientAttendance(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("attendance_type"))
     {
-        dirtyFlag_[3]=true;
+        dirtyFlag_[4]=true;
         if(!pJson["attendance_type"].isNull())
         {
             attendanceType_=std::make_shared<int32_t>((int32_t)pJson["attendance_type"].asInt64());
@@ -166,7 +193,7 @@ ClientAttendance::ClientAttendance(const Json::Value &pJson) noexcept(false)
 void ClientAttendance::updateByMasqueradedJson(const Json::Value &pJson,
                                             const std::vector<std::string> &pMasqueradingVector) noexcept(false)
 {
-    if(pMasqueradingVector.size() != 4)
+    if(pMasqueradingVector.size() != 5)
     {
         LOG_ERROR << "Bad masquerading vector";
         return;
@@ -183,7 +210,7 @@ void ClientAttendance::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[1] = true;
         if(!pJson[pMasqueradingVector[1]].isNull())
         {
-            clientId_=std::make_shared<std::string>(pJson[pMasqueradingVector[1]].asString());
+            businessId_=std::make_shared<std::string>(pJson[pMasqueradingVector[1]].asString());
         }
     }
     if(!pMasqueradingVector[2].empty() && pJson.isMember(pMasqueradingVector[2]))
@@ -191,7 +218,7 @@ void ClientAttendance::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[2] = true;
         if(!pJson[pMasqueradingVector[2]].isNull())
         {
-            meetingId_=std::make_shared<std::string>(pJson[pMasqueradingVector[2]].asString());
+            clientId_=std::make_shared<std::string>(pJson[pMasqueradingVector[2]].asString());
         }
     }
     if(!pMasqueradingVector[3].empty() && pJson.isMember(pMasqueradingVector[3]))
@@ -199,7 +226,15 @@ void ClientAttendance::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[3] = true;
         if(!pJson[pMasqueradingVector[3]].isNull())
         {
-            attendanceType_=std::make_shared<int32_t>((int32_t)pJson[pMasqueradingVector[3]].asInt64());
+            meetingId_=std::make_shared<std::string>(pJson[pMasqueradingVector[3]].asString());
+        }
+    }
+    if(!pMasqueradingVector[4].empty() && pJson.isMember(pMasqueradingVector[4]))
+    {
+        dirtyFlag_[4] = true;
+        if(!pJson[pMasqueradingVector[4]].isNull())
+        {
+            attendanceType_=std::make_shared<int32_t>((int32_t)pJson[pMasqueradingVector[4]].asInt64());
         }
     }
 }
@@ -213,9 +248,17 @@ void ClientAttendance::updateByJson(const Json::Value &pJson) noexcept(false)
             id_=std::make_shared<std::string>(pJson["id"].asString());
         }
     }
-    if(pJson.isMember("client_id"))
+    if(pJson.isMember("business_id"))
     {
         dirtyFlag_[1] = true;
+        if(!pJson["business_id"].isNull())
+        {
+            businessId_=std::make_shared<std::string>(pJson["business_id"].asString());
+        }
+    }
+    if(pJson.isMember("client_id"))
+    {
+        dirtyFlag_[2] = true;
         if(!pJson["client_id"].isNull())
         {
             clientId_=std::make_shared<std::string>(pJson["client_id"].asString());
@@ -223,7 +266,7 @@ void ClientAttendance::updateByJson(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("meeting_id"))
     {
-        dirtyFlag_[2] = true;
+        dirtyFlag_[3] = true;
         if(!pJson["meeting_id"].isNull())
         {
             meetingId_=std::make_shared<std::string>(pJson["meeting_id"].asString());
@@ -231,7 +274,7 @@ void ClientAttendance::updateByJson(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("attendance_type"))
     {
-        dirtyFlag_[3] = true;
+        dirtyFlag_[4] = true;
         if(!pJson["attendance_type"].isNull())
         {
             attendanceType_=std::make_shared<int32_t>((int32_t)pJson["attendance_type"].asInt64());
@@ -266,6 +309,33 @@ const typename ClientAttendance::PrimaryKeyType & ClientAttendance::getPrimaryKe
     return *id_;
 }
 
+const std::string &ClientAttendance::getValueOfBusinessId() const noexcept
+{
+    static const std::string defaultValue = std::string();
+    if(businessId_)
+        return *businessId_;
+    return defaultValue;
+}
+const std::shared_ptr<std::string> &ClientAttendance::getBusinessId() const noexcept
+{
+    return businessId_;
+}
+void ClientAttendance::setBusinessId(const std::string &pBusinessId) noexcept
+{
+    businessId_ = std::make_shared<std::string>(pBusinessId);
+    dirtyFlag_[1] = true;
+}
+void ClientAttendance::setBusinessId(std::string &&pBusinessId) noexcept
+{
+    businessId_ = std::make_shared<std::string>(std::move(pBusinessId));
+    dirtyFlag_[1] = true;
+}
+void ClientAttendance::setBusinessIdToNull() noexcept
+{
+    businessId_.reset();
+    dirtyFlag_[1] = true;
+}
+
 const std::string &ClientAttendance::getValueOfClientId() const noexcept
 {
     static const std::string defaultValue = std::string();
@@ -280,12 +350,12 @@ const std::shared_ptr<std::string> &ClientAttendance::getClientId() const noexce
 void ClientAttendance::setClientId(const std::string &pClientId) noexcept
 {
     clientId_ = std::make_shared<std::string>(pClientId);
-    dirtyFlag_[1] = true;
+    dirtyFlag_[2] = true;
 }
 void ClientAttendance::setClientId(std::string &&pClientId) noexcept
 {
     clientId_ = std::make_shared<std::string>(std::move(pClientId));
-    dirtyFlag_[1] = true;
+    dirtyFlag_[2] = true;
 }
 
 const std::string &ClientAttendance::getValueOfMeetingId() const noexcept
@@ -302,17 +372,17 @@ const std::shared_ptr<std::string> &ClientAttendance::getMeetingId() const noexc
 void ClientAttendance::setMeetingId(const std::string &pMeetingId) noexcept
 {
     meetingId_ = std::make_shared<std::string>(pMeetingId);
-    dirtyFlag_[2] = true;
+    dirtyFlag_[3] = true;
 }
 void ClientAttendance::setMeetingId(std::string &&pMeetingId) noexcept
 {
     meetingId_ = std::make_shared<std::string>(std::move(pMeetingId));
-    dirtyFlag_[2] = true;
+    dirtyFlag_[3] = true;
 }
 void ClientAttendance::setMeetingIdToNull() noexcept
 {
     meetingId_.reset();
-    dirtyFlag_[2] = true;
+    dirtyFlag_[3] = true;
 }
 
 const int32_t &ClientAttendance::getValueOfAttendanceType() const noexcept
@@ -329,7 +399,7 @@ const std::shared_ptr<int32_t> &ClientAttendance::getAttendanceType() const noex
 void ClientAttendance::setAttendanceType(const int32_t &pAttendanceType) noexcept
 {
     attendanceType_ = std::make_shared<int32_t>(pAttendanceType);
-    dirtyFlag_[3] = true;
+    dirtyFlag_[4] = true;
 }
 
 void ClientAttendance::updateId(const uint64_t id)
@@ -340,6 +410,7 @@ const std::vector<std::string> &ClientAttendance::insertColumns() noexcept
 {
     static const std::vector<std::string> inCols={
         "id",
+        "business_id",
         "client_id",
         "meeting_id",
         "attendance_type"
@@ -362,6 +433,17 @@ void ClientAttendance::outputArgs(drogon::orm::internal::SqlBinder &binder) cons
     }
     if(dirtyFlag_[1])
     {
+        if(getBusinessId())
+        {
+            binder << getValueOfBusinessId();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[2])
+    {
         if(getClientId())
         {
             binder << getValueOfClientId();
@@ -371,7 +453,7 @@ void ClientAttendance::outputArgs(drogon::orm::internal::SqlBinder &binder) cons
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[2])
+    if(dirtyFlag_[3])
     {
         if(getMeetingId())
         {
@@ -382,7 +464,7 @@ void ClientAttendance::outputArgs(drogon::orm::internal::SqlBinder &binder) cons
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[3])
+    if(dirtyFlag_[4])
     {
         if(getAttendanceType())
         {
@@ -414,6 +496,10 @@ const std::vector<std::string> ClientAttendance::updateColumns() const
     {
         ret.push_back(getColumnName(3));
     }
+    if(dirtyFlag_[4])
+    {
+        ret.push_back(getColumnName(4));
+    }
     return ret;
 }
 
@@ -432,6 +518,17 @@ void ClientAttendance::updateArgs(drogon::orm::internal::SqlBinder &binder) cons
     }
     if(dirtyFlag_[1])
     {
+        if(getBusinessId())
+        {
+            binder << getValueOfBusinessId();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[2])
+    {
         if(getClientId())
         {
             binder << getValueOfClientId();
@@ -441,7 +538,7 @@ void ClientAttendance::updateArgs(drogon::orm::internal::SqlBinder &binder) cons
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[2])
+    if(dirtyFlag_[3])
     {
         if(getMeetingId())
         {
@@ -452,7 +549,7 @@ void ClientAttendance::updateArgs(drogon::orm::internal::SqlBinder &binder) cons
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[3])
+    if(dirtyFlag_[4])
     {
         if(getAttendanceType())
         {
@@ -474,6 +571,14 @@ Json::Value ClientAttendance::toJson() const
     else
     {
         ret["id"]=Json::Value();
+    }
+    if(getBusinessId())
+    {
+        ret["business_id"]=getValueOfBusinessId();
+    }
+    else
+    {
+        ret["business_id"]=Json::Value();
     }
     if(getClientId())
     {
@@ -511,7 +616,7 @@ Json::Value ClientAttendance::toMasqueradedJson(
     const std::vector<std::string> &pMasqueradingVector) const
 {
     Json::Value ret;
-    if(pMasqueradingVector.size() == 4)
+    if(pMasqueradingVector.size() == 5)
     {
         if(!pMasqueradingVector[0].empty())
         {
@@ -526,9 +631,9 @@ Json::Value ClientAttendance::toMasqueradedJson(
         }
         if(!pMasqueradingVector[1].empty())
         {
-            if(getClientId())
+            if(getBusinessId())
             {
-                ret[pMasqueradingVector[1]]=getValueOfClientId();
+                ret[pMasqueradingVector[1]]=getValueOfBusinessId();
             }
             else
             {
@@ -537,9 +642,9 @@ Json::Value ClientAttendance::toMasqueradedJson(
         }
         if(!pMasqueradingVector[2].empty())
         {
-            if(getMeetingId())
+            if(getClientId())
             {
-                ret[pMasqueradingVector[2]]=getValueOfMeetingId();
+                ret[pMasqueradingVector[2]]=getValueOfClientId();
             }
             else
             {
@@ -548,13 +653,24 @@ Json::Value ClientAttendance::toMasqueradedJson(
         }
         if(!pMasqueradingVector[3].empty())
         {
-            if(getAttendanceType())
+            if(getMeetingId())
             {
-                ret[pMasqueradingVector[3]]=getValueOfAttendanceType();
+                ret[pMasqueradingVector[3]]=getValueOfMeetingId();
             }
             else
             {
                 ret[pMasqueradingVector[3]]=Json::Value();
+            }
+        }
+        if(!pMasqueradingVector[4].empty())
+        {
+            if(getAttendanceType())
+            {
+                ret[pMasqueradingVector[4]]=getValueOfAttendanceType();
+            }
+            else
+            {
+                ret[pMasqueradingVector[4]]=Json::Value();
             }
         }
         return ret;
@@ -567,6 +683,14 @@ Json::Value ClientAttendance::toMasqueradedJson(
     else
     {
         ret["id"]=Json::Value();
+    }
+    if(getBusinessId())
+    {
+        ret["business_id"]=getValueOfBusinessId();
+    }
+    else
+    {
+        ret["business_id"]=Json::Value();
     }
     if(getClientId())
     {
@@ -602,9 +726,14 @@ bool ClientAttendance::validateJsonForCreation(const Json::Value &pJson, std::st
         if(!validJsonOfField(0, "id", pJson["id"], err, true))
             return false;
     }
+    if(pJson.isMember("business_id"))
+    {
+        if(!validJsonOfField(1, "business_id", pJson["business_id"], err, true))
+            return false;
+    }
     if(pJson.isMember("client_id"))
     {
-        if(!validJsonOfField(1, "client_id", pJson["client_id"], err, true))
+        if(!validJsonOfField(2, "client_id", pJson["client_id"], err, true))
             return false;
     }
     else
@@ -614,12 +743,12 @@ bool ClientAttendance::validateJsonForCreation(const Json::Value &pJson, std::st
     }
     if(pJson.isMember("meeting_id"))
     {
-        if(!validJsonOfField(2, "meeting_id", pJson["meeting_id"], err, true))
+        if(!validJsonOfField(3, "meeting_id", pJson["meeting_id"], err, true))
             return false;
     }
     if(pJson.isMember("attendance_type"))
     {
-        if(!validJsonOfField(3, "attendance_type", pJson["attendance_type"], err, true))
+        if(!validJsonOfField(4, "attendance_type", pJson["attendance_type"], err, true))
             return false;
     }
     else
@@ -633,7 +762,7 @@ bool ClientAttendance::validateMasqueradedJsonForCreation(const Json::Value &pJs
                                                           const std::vector<std::string> &pMasqueradingVector,
                                                           std::string &err)
 {
-    if(pMasqueradingVector.size() != 4)
+    if(pMasqueradingVector.size() != 5)
     {
         err = "Bad masquerading vector";
         return false;
@@ -654,11 +783,6 @@ bool ClientAttendance::validateMasqueradedJsonForCreation(const Json::Value &pJs
               if(!validJsonOfField(1, pMasqueradingVector[1], pJson[pMasqueradingVector[1]], err, true))
                   return false;
           }
-        else
-        {
-            err="The " + pMasqueradingVector[1] + " column cannot be null";
-            return false;
-        }
       }
       if(!pMasqueradingVector[2].empty())
       {
@@ -667,6 +791,11 @@ bool ClientAttendance::validateMasqueradedJsonForCreation(const Json::Value &pJs
               if(!validJsonOfField(2, pMasqueradingVector[2], pJson[pMasqueradingVector[2]], err, true))
                   return false;
           }
+        else
+        {
+            err="The " + pMasqueradingVector[2] + " column cannot be null";
+            return false;
+        }
       }
       if(!pMasqueradingVector[3].empty())
       {
@@ -675,9 +804,17 @@ bool ClientAttendance::validateMasqueradedJsonForCreation(const Json::Value &pJs
               if(!validJsonOfField(3, pMasqueradingVector[3], pJson[pMasqueradingVector[3]], err, true))
                   return false;
           }
+      }
+      if(!pMasqueradingVector[4].empty())
+      {
+          if(pJson.isMember(pMasqueradingVector[4]))
+          {
+              if(!validJsonOfField(4, pMasqueradingVector[4], pJson[pMasqueradingVector[4]], err, true))
+                  return false;
+          }
         else
         {
-            err="The " + pMasqueradingVector[3] + " column cannot be null";
+            err="The " + pMasqueradingVector[4] + " column cannot be null";
             return false;
         }
       }
@@ -701,19 +838,24 @@ bool ClientAttendance::validateJsonForUpdate(const Json::Value &pJson, std::stri
         err = "The value of primary key must be set in the json object for update";
         return false;
     }
+    if(pJson.isMember("business_id"))
+    {
+        if(!validJsonOfField(1, "business_id", pJson["business_id"], err, false))
+            return false;
+    }
     if(pJson.isMember("client_id"))
     {
-        if(!validJsonOfField(1, "client_id", pJson["client_id"], err, false))
+        if(!validJsonOfField(2, "client_id", pJson["client_id"], err, false))
             return false;
     }
     if(pJson.isMember("meeting_id"))
     {
-        if(!validJsonOfField(2, "meeting_id", pJson["meeting_id"], err, false))
+        if(!validJsonOfField(3, "meeting_id", pJson["meeting_id"], err, false))
             return false;
     }
     if(pJson.isMember("attendance_type"))
     {
-        if(!validJsonOfField(3, "attendance_type", pJson["attendance_type"], err, false))
+        if(!validJsonOfField(4, "attendance_type", pJson["attendance_type"], err, false))
             return false;
     }
     return true;
@@ -722,7 +864,7 @@ bool ClientAttendance::validateMasqueradedJsonForUpdate(const Json::Value &pJson
                                                         const std::vector<std::string> &pMasqueradingVector,
                                                         std::string &err)
 {
-    if(pMasqueradingVector.size() != 4)
+    if(pMasqueradingVector.size() != 5)
     {
         err = "Bad masquerading vector";
         return false;
@@ -751,6 +893,11 @@ bool ClientAttendance::validateMasqueradedJsonForUpdate(const Json::Value &pJson
       if(!pMasqueradingVector[3].empty() && pJson.isMember(pMasqueradingVector[3]))
       {
           if(!validJsonOfField(3, pMasqueradingVector[3], pJson[pMasqueradingVector[3]], err, false))
+              return false;
+      }
+      if(!pMasqueradingVector[4].empty() && pJson.isMember(pMasqueradingVector[4]))
+      {
+          if(!validJsonOfField(4, pMasqueradingVector[4], pJson[pMasqueradingVector[4]], err, false))
               return false;
       }
     }
@@ -784,8 +931,7 @@ bool ClientAttendance::validJsonOfField(size_t index,
         case 1:
             if(pJson.isNull())
             {
-                err="The " + fieldName + " column cannot be null";
-                return false;
+                return true;
             }
             if(!pJson.isString())
             {
@@ -796,7 +942,8 @@ bool ClientAttendance::validJsonOfField(size_t index,
         case 2:
             if(pJson.isNull())
             {
-                return true;
+                err="The " + fieldName + " column cannot be null";
+                return false;
             }
             if(!pJson.isString())
             {
@@ -805,6 +952,17 @@ bool ClientAttendance::validJsonOfField(size_t index,
             }
             break;
         case 3:
+            if(pJson.isNull())
+            {
+                return true;
+            }
+            if(!pJson.isString())
+            {
+                err="Type error in the "+fieldName+" field";
+                return false;
+            }
+            break;
+        case 4:
             if(pJson.isNull())
             {
                 err="The " + fieldName + " column cannot be null";

@@ -1,8 +1,0 @@
-//
-// Created by Emmanuel Addo-Odame on 19/04/2026.
-//
-
-#ifndef GROUP_COLLECTIONSHEETDTO_H
-#define GROUP_COLLECTIONSHEETDTO_H
-
-#endif //GROUP_COLLECTIONSHEETDTO_H

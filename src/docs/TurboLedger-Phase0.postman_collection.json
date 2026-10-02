@@ -1,0 +1,265 @@
+{
+	"info": {
+		"name": "Turbo Ledger — Phase 0",
+		"description": "Phase 0 acceptance requests against the ApiGateway (default http://127.0.0.1:7499).\n\nRun '03 Sign in' first — it stores the JWT into the collection variable {{token}} automatically.\n\nSeeded demo credentials (see src/docs/LOCAL_DEV_CLION.md): tenant 'default', user 'admin', password 'Passw0rd!'.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{ "key": "gateway", "value": "http://127.0.0.1:7499" },
+		{ "key": "tenant", "value": "default" },
+		{ "key": "token", "value": "" }
+	],
+	"item": [
+		{
+			"name": "01 Gateway health (fan-out)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('status 200', () => pm.response.to.have.status(200));",
+							"pm.test('aggregate UP', () => pm.expect(pm.response.json().status).to.eql('UP'));",
+							"pm.test('identity UP', () => pm.expect(pm.response.json().services.identity.status).to.eql('UP'));",
+							"pm.test('accounting UP', () => pm.expect(pm.response.json().services.accounting.status).to.eql('UP'));"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"url": "{{gateway}}/health"
+			}
+		},
+		{
+			"name": "02 Gateway route table",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('status 200', () => pm.response.to.have.status(200));",
+							"pm.test('routes present', () => pm.expect(pm.response.json().length).to.be.above(0));"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"url": "{{gateway}}/gateway/routes"
+			}
+		},
+		{
+			"name": "03 Sign in (stores {{token}})",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('status 200', () => pm.response.to.have.status(200));",
+							"const body = pm.response.json();",
+							"pm.test('success true', () => pm.expect(body.success).to.be.true);",
+							"pm.test('token returned', () => pm.expect(body.result.token).to.be.a('string'));",
+							"pm.collectionVariables.set('token', body.result.token);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{ "key": "TL-Tenant-Id", "value": "{{tenant}}" },
+					{ "key": "Content-Type", "value": "application/json" }
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"usernameOrEmail\": \"admin\",\n  \"password\": \"Passw0rd!\"\n}"
+				},
+				"url": "{{gateway}}/api/v1/auth/signin"
+			}
+		},
+		{
+			"name": "04 GL accounts list (authenticated, 501 stub)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('status 501 (Phase 3 will implement)', () => pm.response.to.have.status(501));",
+							"pm.test('structured error envelope', () => pm.expect(pm.response.json().error.userMessageGlobalisationCode).to.eql('error.msg.platform.not.implemented'));",
+							"pm.test('request id propagated', () => pm.expect(pm.response.headers.get('X-Request-Id')).to.be.a('string'));"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{ "key": "TL-Tenant-Id", "value": "{{tenant}}" },
+					{ "key": "Authorization", "value": "Bearer {{token}}" }
+				],
+				"url": "{{gateway}}/api/v1/accounting/gl-accounts/get-all"
+			}
+		},
+		{
+			"name": "05 Create GL account with Idempotency-Key",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// keep the same key across two sends to see the replay;",
+							"// change it to start a fresh idempotent operation",
+							"if (!pm.collectionVariables.get('idemKey')) {",
+							"    pm.collectionVariables.set('idemKey', 'postman-' + Date.now());",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('status 501 (stub)', () => pm.response.to.have.status(501));",
+							"const replayed = pm.response.headers.get('Idempotency-Replayed');",
+							"console.log('Idempotency-Replayed:', replayed);",
+							"pm.test('send this request TWICE: second run must be a replay', () => {",
+							"    // first send: header absent; second send with same key: 'true'",
+							"    pm.expect([null, 'true']).to.include(replayed);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{ "key": "TL-Tenant-Id", "value": "{{tenant}}" },
+					{ "key": "Authorization", "value": "Bearer {{token}}" },
+					{ "key": "Content-Type", "value": "application/json" },
+					{ "key": "Idempotency-Key", "value": "{{idemKey}}" }
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"name\": \"Cash\",\n  \"glCode\": \"1001\",\n  \"type\": \"ASSET\"\n}"
+				},
+				"url": "{{gateway}}/api/v1/accounting/gl-accounts/create"
+			}
+		},
+		{
+			"name": "Negative tests",
+			"item": [
+				{
+					"name": "N1 Missing TL-Tenant-Id -> 400",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [ "pm.test('status 400', () => pm.response.to.have.status(400));" ],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"url": "{{gateway}}/api/v1/auth/signin"
+					}
+				},
+				{
+					"name": "N2 Unknown tenant -> 404",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [ "pm.test('status 404', () => pm.response.to.have.status(404));" ],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [ { "key": "TL-Tenant-Id", "value": "no_such_tenant" } ],
+						"url": "{{gateway}}/api/v1/auth/signin"
+					}
+				},
+				{
+					"name": "N3 Suspended tenant -> 403",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [ "pm.test('status 403', () => pm.response.to.have.status(403));" ],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [ { "key": "TL-Tenant-Id", "value": "closed_bank" } ],
+						"url": "{{gateway}}/api/v1/auth/signin"
+					}
+				},
+				{
+					"name": "N4 Protected route without token -> 401",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [ "pm.test('status 401', () => pm.response.to.have.status(401));" ],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [ { "key": "TL-Tenant-Id", "value": "{{tenant}}" } ],
+						"url": "{{gateway}}/api/v1/accounting/gl-accounts/get-all"
+					}
+				},
+				{
+					"name": "N5 Tampered bearer token -> 401",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [ "pm.test('status 401', () => pm.response.to.have.status(401));" ],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "TL-Tenant-Id", "value": "{{tenant}}" },
+							{ "key": "Authorization", "value": "Bearer {{token}}TAMPERED" }
+						],
+						"url": "{{gateway}}/api/v1/accounting/gl-accounts/get-all"
+					}
+				},
+				{
+					"name": "N6 Direct service call bypassing gateway -> 401",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('status 401 (no signed TL-Context)', () => pm.response.to.have.status(401));"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"url": "http://127.0.0.1:7501/api/v1/accounting/gl-accounts/get-all"
+					}
+				}
+			]
+		}
+	]
+}

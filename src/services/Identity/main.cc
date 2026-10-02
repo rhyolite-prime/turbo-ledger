@@ -1,4 +1,10 @@
 #include <drogon/drogon.h>
+#include "turbo/Health.h"
+#include "turbo/filters/TrustedContextFilter.h"
+
+// Anchor: force the linker to keep libturbo's TrustedContextFilter object file
+// so its drogon auto-registration runs (static libraries drop unreferenced TUs).
+static const turbo::TrustedContextFilter kTrustedContextFilterAnchor{};
 
 
 int main() {
@@ -8,6 +14,9 @@ int main() {
 
     //drogon::app().loadConfigFile("config.json");
     drogon::app().loadConfigFile("../config.json");
+
+    // Standard platform /health endpoint (used by the ApiGateway fan-out).
+    turbo::registerHealthEndpoint("Identity", "0.1");
 
     drogon::app().registerPostHandlingAdvice(
       [](const drogon::HttpRequestPtr &req,

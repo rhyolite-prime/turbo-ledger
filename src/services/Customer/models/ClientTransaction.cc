@@ -14,6 +14,7 @@ using namespace drogon::orm;
 using namespace drogon_model::TlCustomerDb;
 
 const std::string ClientTransaction::Cols::_id = "\"id\"";
+const std::string ClientTransaction::Cols::_business_id = "\"business_id\"";
 const std::string ClientTransaction::Cols::_client_id = "\"client_id\"";
 const std::string ClientTransaction::Cols::_office_id = "\"office_id\"";
 const std::string ClientTransaction::Cols::_currency_code = "\"currency_code\"";
@@ -21,13 +22,12 @@ const std::string ClientTransaction::Cols::_payment_detail_id = "\"payment_detai
 const std::string ClientTransaction::Cols::_is_reversed = "\"is_reversed\"";
 const std::string ClientTransaction::Cols::_external_id = "\"external_id\"";
 const std::string ClientTransaction::Cols::_transaction_date = "\"transaction_date\"";
-const std::string ClientTransaction::Cols::_transaction_type_enum = "\"transaction_type_enum\"";
+const std::string ClientTransaction::Cols::_transaction_type = "\"transaction_type\"";
 const std::string ClientTransaction::Cols::_amount = "\"amount\"";
-const std::string ClientTransaction::Cols::_created_date = "\"created_date\"";
-const std::string ClientTransaction::Cols::_created_on_utc = "\"created_on_utc\"";
 const std::string ClientTransaction::Cols::_created_by = "\"created_by\"";
-const std::string ClientTransaction::Cols::_last_modified_by = "\"last_modified_by\"";
-const std::string ClientTransaction::Cols::_last_modified_on_utc = "\"last_modified_on_utc\"";
+const std::string ClientTransaction::Cols::_created_at = "\"created_at\"";
+const std::string ClientTransaction::Cols::_modified_by = "\"modified_by\"";
+const std::string ClientTransaction::Cols::_modified_at = "\"modified_at\"";
 const std::string ClientTransaction::Cols::_submitted_on_date = "\"submitted_on_date\"";
 const std::string ClientTransaction::primaryKeyName = "id";
 const bool ClientTransaction::hasPrimaryKey = true;
@@ -35,6 +35,7 @@ const std::string ClientTransaction::tableName = "\"client_transaction\"";
 
 const std::vector<typename ClientTransaction::MetaData> ClientTransaction::metaData_={
 {"id","std::string","uuid",0,0,1,1},
+{"business_id","std::string","uuid",0,0,0,0},
 {"client_id","std::string","uuid",0,0,0,1},
 {"office_id","std::string","uuid",0,0,0,1},
 {"currency_code","std::string","character varying",20,0,0,1},
@@ -42,13 +43,12 @@ const std::vector<typename ClientTransaction::MetaData> ClientTransaction::metaD
 {"is_reversed","bool","boolean",1,0,0,1},
 {"external_id","std::string","character varying",50,0,0,0},
 {"transaction_date","::trantor::Date","date",0,0,0,1},
-{"transaction_type_enum","int32_t","integer",4,0,0,1},
+{"transaction_type","int32_t","integer",4,0,0,1},
 {"amount","std::string","numeric",0,0,0,1},
-{"created_date","::trantor::Date","timestamp without time zone",0,0,0,0},
-{"created_on_utc","::trantor::Date","timestamp without time zone",0,0,0,0},
-{"created_by","std::string","uuid",0,0,0,1},
-{"last_modified_by","std::string","uuid",0,0,0,1},
-{"last_modified_on_utc","::trantor::Date","timestamp without time zone",0,0,0,0},
+{"created_by","std::string","uuid",0,0,0,0},
+{"created_at","::trantor::Date","timestamp with time zone",0,0,0,0},
+{"modified_by","std::string","uuid",0,0,0,0},
+{"modified_at","::trantor::Date","timestamp with time zone",0,0,0,0},
 {"submitted_on_date","::trantor::Date","date",0,0,0,1}
 };
 const std::string &ClientTransaction::getColumnName(size_t index) noexcept(false)
@@ -63,6 +63,10 @@ ClientTransaction::ClientTransaction(const Row &r, const ssize_t indexOffset) no
         if(!r["id"].isNull())
         {
             id_=std::make_shared<std::string>(r["id"].as<std::string>());
+        }
+        if(!r["business_id"].isNull())
+        {
+            businessId_=std::make_shared<std::string>(r["business_id"].as<std::string>());
         }
         if(!r["client_id"].isNull())
         {
@@ -97,69 +101,21 @@ ClientTransaction::ClientTransaction(const Row &r, const ssize_t indexOffset) no
             time_t t = mktime(&stm);
             transactionDate_=std::make_shared<::trantor::Date>(t*1000000);
         }
-        if(!r["transaction_type_enum"].isNull())
+        if(!r["transaction_type"].isNull())
         {
-            transactionTypeEnum_=std::make_shared<int32_t>(r["transaction_type_enum"].as<int32_t>());
+            transactionType_=std::make_shared<int32_t>(r["transaction_type"].as<int32_t>());
         }
         if(!r["amount"].isNull())
         {
             amount_=std::make_shared<std::string>(r["amount"].as<std::string>());
         }
-        if(!r["created_date"].isNull())
-        {
-            auto timeStr = r["created_date"].as<std::string>();
-            struct tm stm;
-            memset(&stm,0,sizeof(stm));
-            auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
-            time_t t = mktime(&stm);
-            size_t decimalNum = 0;
-            if(p)
-            {
-                if(*p=='.')
-                {
-                    std::string decimals(p+1,&timeStr[timeStr.length()]);
-                    while(decimals.length()<6)
-                    {
-                        decimals += "0";
-                    }
-                    decimalNum = (size_t)atol(decimals.c_str());
-                }
-                createdDate_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
-            }
-        }
-        if(!r["created_on_utc"].isNull())
-        {
-            auto timeStr = r["created_on_utc"].as<std::string>();
-            struct tm stm;
-            memset(&stm,0,sizeof(stm));
-            auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
-            time_t t = mktime(&stm);
-            size_t decimalNum = 0;
-            if(p)
-            {
-                if(*p=='.')
-                {
-                    std::string decimals(p+1,&timeStr[timeStr.length()]);
-                    while(decimals.length()<6)
-                    {
-                        decimals += "0";
-                    }
-                    decimalNum = (size_t)atol(decimals.c_str());
-                }
-                createdOnUtc_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
-            }
-        }
         if(!r["created_by"].isNull())
         {
             createdBy_=std::make_shared<std::string>(r["created_by"].as<std::string>());
         }
-        if(!r["last_modified_by"].isNull())
+        if(!r["created_at"].isNull())
         {
-            lastModifiedBy_=std::make_shared<std::string>(r["last_modified_by"].as<std::string>());
-        }
-        if(!r["last_modified_on_utc"].isNull())
-        {
-            auto timeStr = r["last_modified_on_utc"].as<std::string>();
+            auto timeStr = r["created_at"].as<std::string>();
             struct tm stm;
             memset(&stm,0,sizeof(stm));
             auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
@@ -176,7 +132,33 @@ ClientTransaction::ClientTransaction(const Row &r, const ssize_t indexOffset) no
                     }
                     decimalNum = (size_t)atol(decimals.c_str());
                 }
-                lastModifiedOnUtc_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+                createdAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+            }
+        }
+        if(!r["modified_by"].isNull())
+        {
+            modifiedBy_=std::make_shared<std::string>(r["modified_by"].as<std::string>());
+        }
+        if(!r["modified_at"].isNull())
+        {
+            auto timeStr = r["modified_at"].as<std::string>();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
+            time_t t = mktime(&stm);
+            size_t decimalNum = 0;
+            if(p)
+            {
+                if(*p=='.')
+                {
+                    std::string decimals(p+1,&timeStr[timeStr.length()]);
+                    while(decimals.length()<6)
+                    {
+                        decimals += "0";
+                    }
+                    decimalNum = (size_t)atol(decimals.c_str());
+                }
+                modifiedAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
         }
         if(!r["submitted_on_date"].isNull())
@@ -206,34 +188,39 @@ ClientTransaction::ClientTransaction(const Row &r, const ssize_t indexOffset) no
         index = offset + 1;
         if(!r[index].isNull())
         {
-            clientId_=std::make_shared<std::string>(r[index].as<std::string>());
+            businessId_=std::make_shared<std::string>(r[index].as<std::string>());
         }
         index = offset + 2;
         if(!r[index].isNull())
         {
-            officeId_=std::make_shared<std::string>(r[index].as<std::string>());
+            clientId_=std::make_shared<std::string>(r[index].as<std::string>());
         }
         index = offset + 3;
         if(!r[index].isNull())
         {
-            currencyCode_=std::make_shared<std::string>(r[index].as<std::string>());
+            officeId_=std::make_shared<std::string>(r[index].as<std::string>());
         }
         index = offset + 4;
         if(!r[index].isNull())
         {
-            paymentDetailId_=std::make_shared<std::string>(r[index].as<std::string>());
+            currencyCode_=std::make_shared<std::string>(r[index].as<std::string>());
         }
         index = offset + 5;
         if(!r[index].isNull())
         {
-            isReversed_=std::make_shared<bool>(r[index].as<bool>());
+            paymentDetailId_=std::make_shared<std::string>(r[index].as<std::string>());
         }
         index = offset + 6;
         if(!r[index].isNull())
         {
-            externalId_=std::make_shared<std::string>(r[index].as<std::string>());
+            isReversed_=std::make_shared<bool>(r[index].as<bool>());
         }
         index = offset + 7;
+        if(!r[index].isNull())
+        {
+            externalId_=std::make_shared<std::string>(r[index].as<std::string>());
+        }
+        index = offset + 8;
         if(!r[index].isNull())
         {
             auto daysStr = r[index].as<std::string>();
@@ -243,42 +230,24 @@ ClientTransaction::ClientTransaction(const Row &r, const ssize_t indexOffset) no
             time_t t = mktime(&stm);
             transactionDate_=std::make_shared<::trantor::Date>(t*1000000);
         }
-        index = offset + 8;
-        if(!r[index].isNull())
-        {
-            transactionTypeEnum_=std::make_shared<int32_t>(r[index].as<int32_t>());
-        }
         index = offset + 9;
         if(!r[index].isNull())
         {
-            amount_=std::make_shared<std::string>(r[index].as<std::string>());
+            transactionType_=std::make_shared<int32_t>(r[index].as<int32_t>());
         }
         index = offset + 10;
         if(!r[index].isNull())
         {
-            auto timeStr = r[index].as<std::string>();
-            struct tm stm;
-            memset(&stm,0,sizeof(stm));
-            auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
-            time_t t = mktime(&stm);
-            size_t decimalNum = 0;
-            if(p)
-            {
-                if(*p=='.')
-                {
-                    std::string decimals(p+1,&timeStr[timeStr.length()]);
-                    while(decimals.length()<6)
-                    {
-                        decimals += "0";
-                    }
-                    decimalNum = (size_t)atol(decimals.c_str());
-                }
-                createdDate_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
-            }
+            amount_=std::make_shared<std::string>(r[index].as<std::string>());
         }
         index = offset + 11;
         if(!r[index].isNull())
         {
+            createdBy_=std::make_shared<std::string>(r[index].as<std::string>());
+        }
+        index = offset + 12;
+        if(!r[index].isNull())
+        {
             auto timeStr = r[index].as<std::string>();
             struct tm stm;
             memset(&stm,0,sizeof(stm));
@@ -296,18 +265,13 @@ ClientTransaction::ClientTransaction(const Row &r, const ssize_t indexOffset) no
                     }
                     decimalNum = (size_t)atol(decimals.c_str());
                 }
-                createdOnUtc_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+                createdAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
-        }
-        index = offset + 12;
-        if(!r[index].isNull())
-        {
-            createdBy_=std::make_shared<std::string>(r[index].as<std::string>());
         }
         index = offset + 13;
         if(!r[index].isNull())
         {
-            lastModifiedBy_=std::make_shared<std::string>(r[index].as<std::string>());
+            modifiedBy_=std::make_shared<std::string>(r[index].as<std::string>());
         }
         index = offset + 14;
         if(!r[index].isNull())
@@ -329,7 +293,7 @@ ClientTransaction::ClientTransaction(const Row &r, const ssize_t indexOffset) no
                     }
                     decimalNum = (size_t)atol(decimals.c_str());
                 }
-                lastModifiedOnUtc_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+                modifiedAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
         }
         index = offset + 15;
@@ -366,7 +330,7 @@ ClientTransaction::ClientTransaction(const Json::Value &pJson, const std::vector
         dirtyFlag_[1] = true;
         if(!pJson[pMasqueradingVector[1]].isNull())
         {
-            clientId_=std::make_shared<std::string>(pJson[pMasqueradingVector[1]].asString());
+            businessId_=std::make_shared<std::string>(pJson[pMasqueradingVector[1]].asString());
         }
     }
     if(!pMasqueradingVector[2].empty() && pJson.isMember(pMasqueradingVector[2]))
@@ -374,7 +338,7 @@ ClientTransaction::ClientTransaction(const Json::Value &pJson, const std::vector
         dirtyFlag_[2] = true;
         if(!pJson[pMasqueradingVector[2]].isNull())
         {
-            officeId_=std::make_shared<std::string>(pJson[pMasqueradingVector[2]].asString());
+            clientId_=std::make_shared<std::string>(pJson[pMasqueradingVector[2]].asString());
         }
     }
     if(!pMasqueradingVector[3].empty() && pJson.isMember(pMasqueradingVector[3]))
@@ -382,7 +346,7 @@ ClientTransaction::ClientTransaction(const Json::Value &pJson, const std::vector
         dirtyFlag_[3] = true;
         if(!pJson[pMasqueradingVector[3]].isNull())
         {
-            currencyCode_=std::make_shared<std::string>(pJson[pMasqueradingVector[3]].asString());
+            officeId_=std::make_shared<std::string>(pJson[pMasqueradingVector[3]].asString());
         }
     }
     if(!pMasqueradingVector[4].empty() && pJson.isMember(pMasqueradingVector[4]))
@@ -390,7 +354,7 @@ ClientTransaction::ClientTransaction(const Json::Value &pJson, const std::vector
         dirtyFlag_[4] = true;
         if(!pJson[pMasqueradingVector[4]].isNull())
         {
-            paymentDetailId_=std::make_shared<std::string>(pJson[pMasqueradingVector[4]].asString());
+            currencyCode_=std::make_shared<std::string>(pJson[pMasqueradingVector[4]].asString());
         }
     }
     if(!pMasqueradingVector[5].empty() && pJson.isMember(pMasqueradingVector[5]))
@@ -398,7 +362,7 @@ ClientTransaction::ClientTransaction(const Json::Value &pJson, const std::vector
         dirtyFlag_[5] = true;
         if(!pJson[pMasqueradingVector[5]].isNull())
         {
-            isReversed_=std::make_shared<bool>(pJson[pMasqueradingVector[5]].asBool());
+            paymentDetailId_=std::make_shared<std::string>(pJson[pMasqueradingVector[5]].asString());
         }
     }
     if(!pMasqueradingVector[6].empty() && pJson.isMember(pMasqueradingVector[6]))
@@ -406,7 +370,7 @@ ClientTransaction::ClientTransaction(const Json::Value &pJson, const std::vector
         dirtyFlag_[6] = true;
         if(!pJson[pMasqueradingVector[6]].isNull())
         {
-            externalId_=std::make_shared<std::string>(pJson[pMasqueradingVector[6]].asString());
+            isReversed_=std::make_shared<bool>(pJson[pMasqueradingVector[6]].asBool());
         }
     }
     if(!pMasqueradingVector[7].empty() && pJson.isMember(pMasqueradingVector[7]))
@@ -414,12 +378,7 @@ ClientTransaction::ClientTransaction(const Json::Value &pJson, const std::vector
         dirtyFlag_[7] = true;
         if(!pJson[pMasqueradingVector[7]].isNull())
         {
-            auto daysStr = pJson[pMasqueradingVector[7]].asString();
-            struct tm stm;
-            memset(&stm,0,sizeof(stm));
-            strptime(daysStr.c_str(),"%Y-%m-%d",&stm);
-            time_t t = mktime(&stm);
-            transactionDate_=std::make_shared<::trantor::Date>(t*1000000);
+            externalId_=std::make_shared<std::string>(pJson[pMasqueradingVector[7]].asString());
         }
     }
     if(!pMasqueradingVector[8].empty() && pJson.isMember(pMasqueradingVector[8]))
@@ -427,7 +386,12 @@ ClientTransaction::ClientTransaction(const Json::Value &pJson, const std::vector
         dirtyFlag_[8] = true;
         if(!pJson[pMasqueradingVector[8]].isNull())
         {
-            transactionTypeEnum_=std::make_shared<int32_t>((int32_t)pJson[pMasqueradingVector[8]].asInt64());
+            auto daysStr = pJson[pMasqueradingVector[8]].asString();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            strptime(daysStr.c_str(),"%Y-%m-%d",&stm);
+            time_t t = mktime(&stm);
+            transactionDate_=std::make_shared<::trantor::Date>(t*1000000);
         }
     }
     if(!pMasqueradingVector[9].empty() && pJson.isMember(pMasqueradingVector[9]))
@@ -435,7 +399,7 @@ ClientTransaction::ClientTransaction(const Json::Value &pJson, const std::vector
         dirtyFlag_[9] = true;
         if(!pJson[pMasqueradingVector[9]].isNull())
         {
-            amount_=std::make_shared<std::string>(pJson[pMasqueradingVector[9]].asString());
+            transactionType_=std::make_shared<int32_t>((int32_t)pJson[pMasqueradingVector[9]].asInt64());
         }
     }
     if(!pMasqueradingVector[10].empty() && pJson.isMember(pMasqueradingVector[10]))
@@ -443,25 +407,7 @@ ClientTransaction::ClientTransaction(const Json::Value &pJson, const std::vector
         dirtyFlag_[10] = true;
         if(!pJson[pMasqueradingVector[10]].isNull())
         {
-            auto timeStr = pJson[pMasqueradingVector[10]].asString();
-            struct tm stm;
-            memset(&stm,0,sizeof(stm));
-            auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
-            time_t t = mktime(&stm);
-            size_t decimalNum = 0;
-            if(p)
-            {
-                if(*p=='.')
-                {
-                    std::string decimals(p+1,&timeStr[timeStr.length()]);
-                    while(decimals.length()<6)
-                    {
-                        decimals += "0";
-                    }
-                    decimalNum = (size_t)atol(decimals.c_str());
-                }
-                createdDate_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
-            }
+            amount_=std::make_shared<std::string>(pJson[pMasqueradingVector[10]].asString());
         }
     }
     if(!pMasqueradingVector[11].empty() && pJson.isMember(pMasqueradingVector[11]))
@@ -469,7 +415,15 @@ ClientTransaction::ClientTransaction(const Json::Value &pJson, const std::vector
         dirtyFlag_[11] = true;
         if(!pJson[pMasqueradingVector[11]].isNull())
         {
-            auto timeStr = pJson[pMasqueradingVector[11]].asString();
+            createdBy_=std::make_shared<std::string>(pJson[pMasqueradingVector[11]].asString());
+        }
+    }
+    if(!pMasqueradingVector[12].empty() && pJson.isMember(pMasqueradingVector[12]))
+    {
+        dirtyFlag_[12] = true;
+        if(!pJson[pMasqueradingVector[12]].isNull())
+        {
+            auto timeStr = pJson[pMasqueradingVector[12]].asString();
             struct tm stm;
             memset(&stm,0,sizeof(stm));
             auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
@@ -486,16 +440,8 @@ ClientTransaction::ClientTransaction(const Json::Value &pJson, const std::vector
                     }
                     decimalNum = (size_t)atol(decimals.c_str());
                 }
-                createdOnUtc_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+                createdAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
-        }
-    }
-    if(!pMasqueradingVector[12].empty() && pJson.isMember(pMasqueradingVector[12]))
-    {
-        dirtyFlag_[12] = true;
-        if(!pJson[pMasqueradingVector[12]].isNull())
-        {
-            createdBy_=std::make_shared<std::string>(pJson[pMasqueradingVector[12]].asString());
         }
     }
     if(!pMasqueradingVector[13].empty() && pJson.isMember(pMasqueradingVector[13]))
@@ -503,7 +449,7 @@ ClientTransaction::ClientTransaction(const Json::Value &pJson, const std::vector
         dirtyFlag_[13] = true;
         if(!pJson[pMasqueradingVector[13]].isNull())
         {
-            lastModifiedBy_=std::make_shared<std::string>(pJson[pMasqueradingVector[13]].asString());
+            modifiedBy_=std::make_shared<std::string>(pJson[pMasqueradingVector[13]].asString());
         }
     }
     if(!pMasqueradingVector[14].empty() && pJson.isMember(pMasqueradingVector[14]))
@@ -528,7 +474,7 @@ ClientTransaction::ClientTransaction(const Json::Value &pJson, const std::vector
                     }
                     decimalNum = (size_t)atol(decimals.c_str());
                 }
-                lastModifiedOnUtc_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+                modifiedAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
         }
     }
@@ -557,9 +503,17 @@ ClientTransaction::ClientTransaction(const Json::Value &pJson) noexcept(false)
             id_=std::make_shared<std::string>(pJson["id"].asString());
         }
     }
-    if(pJson.isMember("client_id"))
+    if(pJson.isMember("business_id"))
     {
         dirtyFlag_[1]=true;
+        if(!pJson["business_id"].isNull())
+        {
+            businessId_=std::make_shared<std::string>(pJson["business_id"].asString());
+        }
+    }
+    if(pJson.isMember("client_id"))
+    {
+        dirtyFlag_[2]=true;
         if(!pJson["client_id"].isNull())
         {
             clientId_=std::make_shared<std::string>(pJson["client_id"].asString());
@@ -567,7 +521,7 @@ ClientTransaction::ClientTransaction(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("office_id"))
     {
-        dirtyFlag_[2]=true;
+        dirtyFlag_[3]=true;
         if(!pJson["office_id"].isNull())
         {
             officeId_=std::make_shared<std::string>(pJson["office_id"].asString());
@@ -575,7 +529,7 @@ ClientTransaction::ClientTransaction(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("currency_code"))
     {
-        dirtyFlag_[3]=true;
+        dirtyFlag_[4]=true;
         if(!pJson["currency_code"].isNull())
         {
             currencyCode_=std::make_shared<std::string>(pJson["currency_code"].asString());
@@ -583,7 +537,7 @@ ClientTransaction::ClientTransaction(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("payment_detail_id"))
     {
-        dirtyFlag_[4]=true;
+        dirtyFlag_[5]=true;
         if(!pJson["payment_detail_id"].isNull())
         {
             paymentDetailId_=std::make_shared<std::string>(pJson["payment_detail_id"].asString());
@@ -591,7 +545,7 @@ ClientTransaction::ClientTransaction(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("is_reversed"))
     {
-        dirtyFlag_[5]=true;
+        dirtyFlag_[6]=true;
         if(!pJson["is_reversed"].isNull())
         {
             isReversed_=std::make_shared<bool>(pJson["is_reversed"].asBool());
@@ -599,7 +553,7 @@ ClientTransaction::ClientTransaction(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("external_id"))
     {
-        dirtyFlag_[6]=true;
+        dirtyFlag_[7]=true;
         if(!pJson["external_id"].isNull())
         {
             externalId_=std::make_shared<std::string>(pJson["external_id"].asString());
@@ -607,7 +561,7 @@ ClientTransaction::ClientTransaction(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("transaction_date"))
     {
-        dirtyFlag_[7]=true;
+        dirtyFlag_[8]=true;
         if(!pJson["transaction_date"].isNull())
         {
             auto daysStr = pJson["transaction_date"].asString();
@@ -618,96 +572,36 @@ ClientTransaction::ClientTransaction(const Json::Value &pJson) noexcept(false)
             transactionDate_=std::make_shared<::trantor::Date>(t*1000000);
         }
     }
-    if(pJson.isMember("transaction_type_enum"))
+    if(pJson.isMember("transaction_type"))
     {
-        dirtyFlag_[8]=true;
-        if(!pJson["transaction_type_enum"].isNull())
+        dirtyFlag_[9]=true;
+        if(!pJson["transaction_type"].isNull())
         {
-            transactionTypeEnum_=std::make_shared<int32_t>((int32_t)pJson["transaction_type_enum"].asInt64());
+            transactionType_=std::make_shared<int32_t>((int32_t)pJson["transaction_type"].asInt64());
         }
     }
     if(pJson.isMember("amount"))
     {
-        dirtyFlag_[9]=true;
+        dirtyFlag_[10]=true;
         if(!pJson["amount"].isNull())
         {
             amount_=std::make_shared<std::string>(pJson["amount"].asString());
         }
     }
-    if(pJson.isMember("created_date"))
-    {
-        dirtyFlag_[10]=true;
-        if(!pJson["created_date"].isNull())
-        {
-            auto timeStr = pJson["created_date"].asString();
-            struct tm stm;
-            memset(&stm,0,sizeof(stm));
-            auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
-            time_t t = mktime(&stm);
-            size_t decimalNum = 0;
-            if(p)
-            {
-                if(*p=='.')
-                {
-                    std::string decimals(p+1,&timeStr[timeStr.length()]);
-                    while(decimals.length()<6)
-                    {
-                        decimals += "0";
-                    }
-                    decimalNum = (size_t)atol(decimals.c_str());
-                }
-                createdDate_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
-            }
-        }
-    }
-    if(pJson.isMember("created_on_utc"))
-    {
-        dirtyFlag_[11]=true;
-        if(!pJson["created_on_utc"].isNull())
-        {
-            auto timeStr = pJson["created_on_utc"].asString();
-            struct tm stm;
-            memset(&stm,0,sizeof(stm));
-            auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
-            time_t t = mktime(&stm);
-            size_t decimalNum = 0;
-            if(p)
-            {
-                if(*p=='.')
-                {
-                    std::string decimals(p+1,&timeStr[timeStr.length()]);
-                    while(decimals.length()<6)
-                    {
-                        decimals += "0";
-                    }
-                    decimalNum = (size_t)atol(decimals.c_str());
-                }
-                createdOnUtc_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
-            }
-        }
-    }
     if(pJson.isMember("created_by"))
     {
-        dirtyFlag_[12]=true;
+        dirtyFlag_[11]=true;
         if(!pJson["created_by"].isNull())
         {
             createdBy_=std::make_shared<std::string>(pJson["created_by"].asString());
         }
     }
-    if(pJson.isMember("last_modified_by"))
+    if(pJson.isMember("created_at"))
     {
-        dirtyFlag_[13]=true;
-        if(!pJson["last_modified_by"].isNull())
+        dirtyFlag_[12]=true;
+        if(!pJson["created_at"].isNull())
         {
-            lastModifiedBy_=std::make_shared<std::string>(pJson["last_modified_by"].asString());
-        }
-    }
-    if(pJson.isMember("last_modified_on_utc"))
-    {
-        dirtyFlag_[14]=true;
-        if(!pJson["last_modified_on_utc"].isNull())
-        {
-            auto timeStr = pJson["last_modified_on_utc"].asString();
+            auto timeStr = pJson["created_at"].asString();
             struct tm stm;
             memset(&stm,0,sizeof(stm));
             auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
@@ -724,7 +618,41 @@ ClientTransaction::ClientTransaction(const Json::Value &pJson) noexcept(false)
                     }
                     decimalNum = (size_t)atol(decimals.c_str());
                 }
-                lastModifiedOnUtc_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+                createdAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+            }
+        }
+    }
+    if(pJson.isMember("modified_by"))
+    {
+        dirtyFlag_[13]=true;
+        if(!pJson["modified_by"].isNull())
+        {
+            modifiedBy_=std::make_shared<std::string>(pJson["modified_by"].asString());
+        }
+    }
+    if(pJson.isMember("modified_at"))
+    {
+        dirtyFlag_[14]=true;
+        if(!pJson["modified_at"].isNull())
+        {
+            auto timeStr = pJson["modified_at"].asString();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
+            time_t t = mktime(&stm);
+            size_t decimalNum = 0;
+            if(p)
+            {
+                if(*p=='.')
+                {
+                    std::string decimals(p+1,&timeStr[timeStr.length()]);
+                    while(decimals.length()<6)
+                    {
+                        decimals += "0";
+                    }
+                    decimalNum = (size_t)atol(decimals.c_str());
+                }
+                modifiedAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
         }
     }
@@ -763,7 +691,7 @@ void ClientTransaction::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[1] = true;
         if(!pJson[pMasqueradingVector[1]].isNull())
         {
-            clientId_=std::make_shared<std::string>(pJson[pMasqueradingVector[1]].asString());
+            businessId_=std::make_shared<std::string>(pJson[pMasqueradingVector[1]].asString());
         }
     }
     if(!pMasqueradingVector[2].empty() && pJson.isMember(pMasqueradingVector[2]))
@@ -771,7 +699,7 @@ void ClientTransaction::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[2] = true;
         if(!pJson[pMasqueradingVector[2]].isNull())
         {
-            officeId_=std::make_shared<std::string>(pJson[pMasqueradingVector[2]].asString());
+            clientId_=std::make_shared<std::string>(pJson[pMasqueradingVector[2]].asString());
         }
     }
     if(!pMasqueradingVector[3].empty() && pJson.isMember(pMasqueradingVector[3]))
@@ -779,7 +707,7 @@ void ClientTransaction::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[3] = true;
         if(!pJson[pMasqueradingVector[3]].isNull())
         {
-            currencyCode_=std::make_shared<std::string>(pJson[pMasqueradingVector[3]].asString());
+            officeId_=std::make_shared<std::string>(pJson[pMasqueradingVector[3]].asString());
         }
     }
     if(!pMasqueradingVector[4].empty() && pJson.isMember(pMasqueradingVector[4]))
@@ -787,7 +715,7 @@ void ClientTransaction::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[4] = true;
         if(!pJson[pMasqueradingVector[4]].isNull())
         {
-            paymentDetailId_=std::make_shared<std::string>(pJson[pMasqueradingVector[4]].asString());
+            currencyCode_=std::make_shared<std::string>(pJson[pMasqueradingVector[4]].asString());
         }
     }
     if(!pMasqueradingVector[5].empty() && pJson.isMember(pMasqueradingVector[5]))
@@ -795,7 +723,7 @@ void ClientTransaction::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[5] = true;
         if(!pJson[pMasqueradingVector[5]].isNull())
         {
-            isReversed_=std::make_shared<bool>(pJson[pMasqueradingVector[5]].asBool());
+            paymentDetailId_=std::make_shared<std::string>(pJson[pMasqueradingVector[5]].asString());
         }
     }
     if(!pMasqueradingVector[6].empty() && pJson.isMember(pMasqueradingVector[6]))
@@ -803,7 +731,7 @@ void ClientTransaction::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[6] = true;
         if(!pJson[pMasqueradingVector[6]].isNull())
         {
-            externalId_=std::make_shared<std::string>(pJson[pMasqueradingVector[6]].asString());
+            isReversed_=std::make_shared<bool>(pJson[pMasqueradingVector[6]].asBool());
         }
     }
     if(!pMasqueradingVector[7].empty() && pJson.isMember(pMasqueradingVector[7]))
@@ -811,12 +739,7 @@ void ClientTransaction::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[7] = true;
         if(!pJson[pMasqueradingVector[7]].isNull())
         {
-            auto daysStr = pJson[pMasqueradingVector[7]].asString();
-            struct tm stm;
-            memset(&stm,0,sizeof(stm));
-            strptime(daysStr.c_str(),"%Y-%m-%d",&stm);
-            time_t t = mktime(&stm);
-            transactionDate_=std::make_shared<::trantor::Date>(t*1000000);
+            externalId_=std::make_shared<std::string>(pJson[pMasqueradingVector[7]].asString());
         }
     }
     if(!pMasqueradingVector[8].empty() && pJson.isMember(pMasqueradingVector[8]))
@@ -824,7 +747,12 @@ void ClientTransaction::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[8] = true;
         if(!pJson[pMasqueradingVector[8]].isNull())
         {
-            transactionTypeEnum_=std::make_shared<int32_t>((int32_t)pJson[pMasqueradingVector[8]].asInt64());
+            auto daysStr = pJson[pMasqueradingVector[8]].asString();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            strptime(daysStr.c_str(),"%Y-%m-%d",&stm);
+            time_t t = mktime(&stm);
+            transactionDate_=std::make_shared<::trantor::Date>(t*1000000);
         }
     }
     if(!pMasqueradingVector[9].empty() && pJson.isMember(pMasqueradingVector[9]))
@@ -832,7 +760,7 @@ void ClientTransaction::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[9] = true;
         if(!pJson[pMasqueradingVector[9]].isNull())
         {
-            amount_=std::make_shared<std::string>(pJson[pMasqueradingVector[9]].asString());
+            transactionType_=std::make_shared<int32_t>((int32_t)pJson[pMasqueradingVector[9]].asInt64());
         }
     }
     if(!pMasqueradingVector[10].empty() && pJson.isMember(pMasqueradingVector[10]))
@@ -840,25 +768,7 @@ void ClientTransaction::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[10] = true;
         if(!pJson[pMasqueradingVector[10]].isNull())
         {
-            auto timeStr = pJson[pMasqueradingVector[10]].asString();
-            struct tm stm;
-            memset(&stm,0,sizeof(stm));
-            auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
-            time_t t = mktime(&stm);
-            size_t decimalNum = 0;
-            if(p)
-            {
-                if(*p=='.')
-                {
-                    std::string decimals(p+1,&timeStr[timeStr.length()]);
-                    while(decimals.length()<6)
-                    {
-                        decimals += "0";
-                    }
-                    decimalNum = (size_t)atol(decimals.c_str());
-                }
-                createdDate_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
-            }
+            amount_=std::make_shared<std::string>(pJson[pMasqueradingVector[10]].asString());
         }
     }
     if(!pMasqueradingVector[11].empty() && pJson.isMember(pMasqueradingVector[11]))
@@ -866,7 +776,15 @@ void ClientTransaction::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[11] = true;
         if(!pJson[pMasqueradingVector[11]].isNull())
         {
-            auto timeStr = pJson[pMasqueradingVector[11]].asString();
+            createdBy_=std::make_shared<std::string>(pJson[pMasqueradingVector[11]].asString());
+        }
+    }
+    if(!pMasqueradingVector[12].empty() && pJson.isMember(pMasqueradingVector[12]))
+    {
+        dirtyFlag_[12] = true;
+        if(!pJson[pMasqueradingVector[12]].isNull())
+        {
+            auto timeStr = pJson[pMasqueradingVector[12]].asString();
             struct tm stm;
             memset(&stm,0,sizeof(stm));
             auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
@@ -883,16 +801,8 @@ void ClientTransaction::updateByMasqueradedJson(const Json::Value &pJson,
                     }
                     decimalNum = (size_t)atol(decimals.c_str());
                 }
-                createdOnUtc_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+                createdAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
-        }
-    }
-    if(!pMasqueradingVector[12].empty() && pJson.isMember(pMasqueradingVector[12]))
-    {
-        dirtyFlag_[12] = true;
-        if(!pJson[pMasqueradingVector[12]].isNull())
-        {
-            createdBy_=std::make_shared<std::string>(pJson[pMasqueradingVector[12]].asString());
         }
     }
     if(!pMasqueradingVector[13].empty() && pJson.isMember(pMasqueradingVector[13]))
@@ -900,7 +810,7 @@ void ClientTransaction::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[13] = true;
         if(!pJson[pMasqueradingVector[13]].isNull())
         {
-            lastModifiedBy_=std::make_shared<std::string>(pJson[pMasqueradingVector[13]].asString());
+            modifiedBy_=std::make_shared<std::string>(pJson[pMasqueradingVector[13]].asString());
         }
     }
     if(!pMasqueradingVector[14].empty() && pJson.isMember(pMasqueradingVector[14]))
@@ -925,7 +835,7 @@ void ClientTransaction::updateByMasqueradedJson(const Json::Value &pJson,
                     }
                     decimalNum = (size_t)atol(decimals.c_str());
                 }
-                lastModifiedOnUtc_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+                modifiedAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
         }
     }
@@ -953,9 +863,17 @@ void ClientTransaction::updateByJson(const Json::Value &pJson) noexcept(false)
             id_=std::make_shared<std::string>(pJson["id"].asString());
         }
     }
-    if(pJson.isMember("client_id"))
+    if(pJson.isMember("business_id"))
     {
         dirtyFlag_[1] = true;
+        if(!pJson["business_id"].isNull())
+        {
+            businessId_=std::make_shared<std::string>(pJson["business_id"].asString());
+        }
+    }
+    if(pJson.isMember("client_id"))
+    {
+        dirtyFlag_[2] = true;
         if(!pJson["client_id"].isNull())
         {
             clientId_=std::make_shared<std::string>(pJson["client_id"].asString());
@@ -963,7 +881,7 @@ void ClientTransaction::updateByJson(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("office_id"))
     {
-        dirtyFlag_[2] = true;
+        dirtyFlag_[3] = true;
         if(!pJson["office_id"].isNull())
         {
             officeId_=std::make_shared<std::string>(pJson["office_id"].asString());
@@ -971,7 +889,7 @@ void ClientTransaction::updateByJson(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("currency_code"))
     {
-        dirtyFlag_[3] = true;
+        dirtyFlag_[4] = true;
         if(!pJson["currency_code"].isNull())
         {
             currencyCode_=std::make_shared<std::string>(pJson["currency_code"].asString());
@@ -979,7 +897,7 @@ void ClientTransaction::updateByJson(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("payment_detail_id"))
     {
-        dirtyFlag_[4] = true;
+        dirtyFlag_[5] = true;
         if(!pJson["payment_detail_id"].isNull())
         {
             paymentDetailId_=std::make_shared<std::string>(pJson["payment_detail_id"].asString());
@@ -987,7 +905,7 @@ void ClientTransaction::updateByJson(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("is_reversed"))
     {
-        dirtyFlag_[5] = true;
+        dirtyFlag_[6] = true;
         if(!pJson["is_reversed"].isNull())
         {
             isReversed_=std::make_shared<bool>(pJson["is_reversed"].asBool());
@@ -995,7 +913,7 @@ void ClientTransaction::updateByJson(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("external_id"))
     {
-        dirtyFlag_[6] = true;
+        dirtyFlag_[7] = true;
         if(!pJson["external_id"].isNull())
         {
             externalId_=std::make_shared<std::string>(pJson["external_id"].asString());
@@ -1003,7 +921,7 @@ void ClientTransaction::updateByJson(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("transaction_date"))
     {
-        dirtyFlag_[7] = true;
+        dirtyFlag_[8] = true;
         if(!pJson["transaction_date"].isNull())
         {
             auto daysStr = pJson["transaction_date"].asString();
@@ -1014,96 +932,36 @@ void ClientTransaction::updateByJson(const Json::Value &pJson) noexcept(false)
             transactionDate_=std::make_shared<::trantor::Date>(t*1000000);
         }
     }
-    if(pJson.isMember("transaction_type_enum"))
+    if(pJson.isMember("transaction_type"))
     {
-        dirtyFlag_[8] = true;
-        if(!pJson["transaction_type_enum"].isNull())
+        dirtyFlag_[9] = true;
+        if(!pJson["transaction_type"].isNull())
         {
-            transactionTypeEnum_=std::make_shared<int32_t>((int32_t)pJson["transaction_type_enum"].asInt64());
+            transactionType_=std::make_shared<int32_t>((int32_t)pJson["transaction_type"].asInt64());
         }
     }
     if(pJson.isMember("amount"))
     {
-        dirtyFlag_[9] = true;
+        dirtyFlag_[10] = true;
         if(!pJson["amount"].isNull())
         {
             amount_=std::make_shared<std::string>(pJson["amount"].asString());
         }
     }
-    if(pJson.isMember("created_date"))
-    {
-        dirtyFlag_[10] = true;
-        if(!pJson["created_date"].isNull())
-        {
-            auto timeStr = pJson["created_date"].asString();
-            struct tm stm;
-            memset(&stm,0,sizeof(stm));
-            auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
-            time_t t = mktime(&stm);
-            size_t decimalNum = 0;
-            if(p)
-            {
-                if(*p=='.')
-                {
-                    std::string decimals(p+1,&timeStr[timeStr.length()]);
-                    while(decimals.length()<6)
-                    {
-                        decimals += "0";
-                    }
-                    decimalNum = (size_t)atol(decimals.c_str());
-                }
-                createdDate_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
-            }
-        }
-    }
-    if(pJson.isMember("created_on_utc"))
-    {
-        dirtyFlag_[11] = true;
-        if(!pJson["created_on_utc"].isNull())
-        {
-            auto timeStr = pJson["created_on_utc"].asString();
-            struct tm stm;
-            memset(&stm,0,sizeof(stm));
-            auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
-            time_t t = mktime(&stm);
-            size_t decimalNum = 0;
-            if(p)
-            {
-                if(*p=='.')
-                {
-                    std::string decimals(p+1,&timeStr[timeStr.length()]);
-                    while(decimals.length()<6)
-                    {
-                        decimals += "0";
-                    }
-                    decimalNum = (size_t)atol(decimals.c_str());
-                }
-                createdOnUtc_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
-            }
-        }
-    }
     if(pJson.isMember("created_by"))
     {
-        dirtyFlag_[12] = true;
+        dirtyFlag_[11] = true;
         if(!pJson["created_by"].isNull())
         {
             createdBy_=std::make_shared<std::string>(pJson["created_by"].asString());
         }
     }
-    if(pJson.isMember("last_modified_by"))
+    if(pJson.isMember("created_at"))
     {
-        dirtyFlag_[13] = true;
-        if(!pJson["last_modified_by"].isNull())
+        dirtyFlag_[12] = true;
+        if(!pJson["created_at"].isNull())
         {
-            lastModifiedBy_=std::make_shared<std::string>(pJson["last_modified_by"].asString());
-        }
-    }
-    if(pJson.isMember("last_modified_on_utc"))
-    {
-        dirtyFlag_[14] = true;
-        if(!pJson["last_modified_on_utc"].isNull())
-        {
-            auto timeStr = pJson["last_modified_on_utc"].asString();
+            auto timeStr = pJson["created_at"].asString();
             struct tm stm;
             memset(&stm,0,sizeof(stm));
             auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
@@ -1120,7 +978,41 @@ void ClientTransaction::updateByJson(const Json::Value &pJson) noexcept(false)
                     }
                     decimalNum = (size_t)atol(decimals.c_str());
                 }
-                lastModifiedOnUtc_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+                createdAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+            }
+        }
+    }
+    if(pJson.isMember("modified_by"))
+    {
+        dirtyFlag_[13] = true;
+        if(!pJson["modified_by"].isNull())
+        {
+            modifiedBy_=std::make_shared<std::string>(pJson["modified_by"].asString());
+        }
+    }
+    if(pJson.isMember("modified_at"))
+    {
+        dirtyFlag_[14] = true;
+        if(!pJson["modified_at"].isNull())
+        {
+            auto timeStr = pJson["modified_at"].asString();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
+            time_t t = mktime(&stm);
+            size_t decimalNum = 0;
+            if(p)
+            {
+                if(*p=='.')
+                {
+                    std::string decimals(p+1,&timeStr[timeStr.length()]);
+                    while(decimals.length()<6)
+                    {
+                        decimals += "0";
+                    }
+                    decimalNum = (size_t)atol(decimals.c_str());
+                }
+                modifiedAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
             }
         }
     }
@@ -1166,6 +1058,33 @@ const typename ClientTransaction::PrimaryKeyType & ClientTransaction::getPrimary
     return *id_;
 }
 
+const std::string &ClientTransaction::getValueOfBusinessId() const noexcept
+{
+    static const std::string defaultValue = std::string();
+    if(businessId_)
+        return *businessId_;
+    return defaultValue;
+}
+const std::shared_ptr<std::string> &ClientTransaction::getBusinessId() const noexcept
+{
+    return businessId_;
+}
+void ClientTransaction::setBusinessId(const std::string &pBusinessId) noexcept
+{
+    businessId_ = std::make_shared<std::string>(pBusinessId);
+    dirtyFlag_[1] = true;
+}
+void ClientTransaction::setBusinessId(std::string &&pBusinessId) noexcept
+{
+    businessId_ = std::make_shared<std::string>(std::move(pBusinessId));
+    dirtyFlag_[1] = true;
+}
+void ClientTransaction::setBusinessIdToNull() noexcept
+{
+    businessId_.reset();
+    dirtyFlag_[1] = true;
+}
+
 const std::string &ClientTransaction::getValueOfClientId() const noexcept
 {
     static const std::string defaultValue = std::string();
@@ -1180,12 +1099,12 @@ const std::shared_ptr<std::string> &ClientTransaction::getClientId() const noexc
 void ClientTransaction::setClientId(const std::string &pClientId) noexcept
 {
     clientId_ = std::make_shared<std::string>(pClientId);
-    dirtyFlag_[1] = true;
+    dirtyFlag_[2] = true;
 }
 void ClientTransaction::setClientId(std::string &&pClientId) noexcept
 {
     clientId_ = std::make_shared<std::string>(std::move(pClientId));
-    dirtyFlag_[1] = true;
+    dirtyFlag_[2] = true;
 }
 
 const std::string &ClientTransaction::getValueOfOfficeId() const noexcept
@@ -1202,12 +1121,12 @@ const std::shared_ptr<std::string> &ClientTransaction::getOfficeId() const noexc
 void ClientTransaction::setOfficeId(const std::string &pOfficeId) noexcept
 {
     officeId_ = std::make_shared<std::string>(pOfficeId);
-    dirtyFlag_[2] = true;
+    dirtyFlag_[3] = true;
 }
 void ClientTransaction::setOfficeId(std::string &&pOfficeId) noexcept
 {
     officeId_ = std::make_shared<std::string>(std::move(pOfficeId));
-    dirtyFlag_[2] = true;
+    dirtyFlag_[3] = true;
 }
 
 const std::string &ClientTransaction::getValueOfCurrencyCode() const noexcept
@@ -1224,12 +1143,12 @@ const std::shared_ptr<std::string> &ClientTransaction::getCurrencyCode() const n
 void ClientTransaction::setCurrencyCode(const std::string &pCurrencyCode) noexcept
 {
     currencyCode_ = std::make_shared<std::string>(pCurrencyCode);
-    dirtyFlag_[3] = true;
+    dirtyFlag_[4] = true;
 }
 void ClientTransaction::setCurrencyCode(std::string &&pCurrencyCode) noexcept
 {
     currencyCode_ = std::make_shared<std::string>(std::move(pCurrencyCode));
-    dirtyFlag_[3] = true;
+    dirtyFlag_[4] = true;
 }
 
 const std::string &ClientTransaction::getValueOfPaymentDetailId() const noexcept
@@ -1246,17 +1165,17 @@ const std::shared_ptr<std::string> &ClientTransaction::getPaymentDetailId() cons
 void ClientTransaction::setPaymentDetailId(const std::string &pPaymentDetailId) noexcept
 {
     paymentDetailId_ = std::make_shared<std::string>(pPaymentDetailId);
-    dirtyFlag_[4] = true;
+    dirtyFlag_[5] = true;
 }
 void ClientTransaction::setPaymentDetailId(std::string &&pPaymentDetailId) noexcept
 {
     paymentDetailId_ = std::make_shared<std::string>(std::move(pPaymentDetailId));
-    dirtyFlag_[4] = true;
+    dirtyFlag_[5] = true;
 }
 void ClientTransaction::setPaymentDetailIdToNull() noexcept
 {
     paymentDetailId_.reset();
-    dirtyFlag_[4] = true;
+    dirtyFlag_[5] = true;
 }
 
 const bool &ClientTransaction::getValueOfIsReversed() const noexcept
@@ -1273,7 +1192,7 @@ const std::shared_ptr<bool> &ClientTransaction::getIsReversed() const noexcept
 void ClientTransaction::setIsReversed(const bool &pIsReversed) noexcept
 {
     isReversed_ = std::make_shared<bool>(pIsReversed);
-    dirtyFlag_[5] = true;
+    dirtyFlag_[6] = true;
 }
 
 const std::string &ClientTransaction::getValueOfExternalId() const noexcept
@@ -1290,17 +1209,17 @@ const std::shared_ptr<std::string> &ClientTransaction::getExternalId() const noe
 void ClientTransaction::setExternalId(const std::string &pExternalId) noexcept
 {
     externalId_ = std::make_shared<std::string>(pExternalId);
-    dirtyFlag_[6] = true;
+    dirtyFlag_[7] = true;
 }
 void ClientTransaction::setExternalId(std::string &&pExternalId) noexcept
 {
     externalId_ = std::make_shared<std::string>(std::move(pExternalId));
-    dirtyFlag_[6] = true;
+    dirtyFlag_[7] = true;
 }
 void ClientTransaction::setExternalIdToNull() noexcept
 {
     externalId_.reset();
-    dirtyFlag_[6] = true;
+    dirtyFlag_[7] = true;
 }
 
 const ::trantor::Date &ClientTransaction::getValueOfTransactionDate() const noexcept
@@ -1317,24 +1236,24 @@ const std::shared_ptr<::trantor::Date> &ClientTransaction::getTransactionDate() 
 void ClientTransaction::setTransactionDate(const ::trantor::Date &pTransactionDate) noexcept
 {
     transactionDate_ = std::make_shared<::trantor::Date>(pTransactionDate.roundDay());
-    dirtyFlag_[7] = true;
+    dirtyFlag_[8] = true;
 }
 
-const int32_t &ClientTransaction::getValueOfTransactionTypeEnum() const noexcept
+const int32_t &ClientTransaction::getValueOfTransactionType() const noexcept
 {
     static const int32_t defaultValue = int32_t();
-    if(transactionTypeEnum_)
-        return *transactionTypeEnum_;
+    if(transactionType_)
+        return *transactionType_;
     return defaultValue;
 }
-const std::shared_ptr<int32_t> &ClientTransaction::getTransactionTypeEnum() const noexcept
+const std::shared_ptr<int32_t> &ClientTransaction::getTransactionType() const noexcept
 {
-    return transactionTypeEnum_;
+    return transactionType_;
 }
-void ClientTransaction::setTransactionTypeEnum(const int32_t &pTransactionTypeEnum) noexcept
+void ClientTransaction::setTransactionType(const int32_t &pTransactionType) noexcept
 {
-    transactionTypeEnum_ = std::make_shared<int32_t>(pTransactionTypeEnum);
-    dirtyFlag_[8] = true;
+    transactionType_ = std::make_shared<int32_t>(pTransactionType);
+    dirtyFlag_[9] = true;
 }
 
 const std::string &ClientTransaction::getValueOfAmount() const noexcept
@@ -1351,56 +1270,12 @@ const std::shared_ptr<std::string> &ClientTransaction::getAmount() const noexcep
 void ClientTransaction::setAmount(const std::string &pAmount) noexcept
 {
     amount_ = std::make_shared<std::string>(pAmount);
-    dirtyFlag_[9] = true;
+    dirtyFlag_[10] = true;
 }
 void ClientTransaction::setAmount(std::string &&pAmount) noexcept
 {
     amount_ = std::make_shared<std::string>(std::move(pAmount));
-    dirtyFlag_[9] = true;
-}
-
-const ::trantor::Date &ClientTransaction::getValueOfCreatedDate() const noexcept
-{
-    static const ::trantor::Date defaultValue = ::trantor::Date();
-    if(createdDate_)
-        return *createdDate_;
-    return defaultValue;
-}
-const std::shared_ptr<::trantor::Date> &ClientTransaction::getCreatedDate() const noexcept
-{
-    return createdDate_;
-}
-void ClientTransaction::setCreatedDate(const ::trantor::Date &pCreatedDate) noexcept
-{
-    createdDate_ = std::make_shared<::trantor::Date>(pCreatedDate);
     dirtyFlag_[10] = true;
-}
-void ClientTransaction::setCreatedDateToNull() noexcept
-{
-    createdDate_.reset();
-    dirtyFlag_[10] = true;
-}
-
-const ::trantor::Date &ClientTransaction::getValueOfCreatedOnUtc() const noexcept
-{
-    static const ::trantor::Date defaultValue = ::trantor::Date();
-    if(createdOnUtc_)
-        return *createdOnUtc_;
-    return defaultValue;
-}
-const std::shared_ptr<::trantor::Date> &ClientTransaction::getCreatedOnUtc() const noexcept
-{
-    return createdOnUtc_;
-}
-void ClientTransaction::setCreatedOnUtc(const ::trantor::Date &pCreatedOnUtc) noexcept
-{
-    createdOnUtc_ = std::make_shared<::trantor::Date>(pCreatedOnUtc);
-    dirtyFlag_[11] = true;
-}
-void ClientTransaction::setCreatedOnUtcToNull() noexcept
-{
-    createdOnUtc_.reset();
-    dirtyFlag_[11] = true;
 }
 
 const std::string &ClientTransaction::getValueOfCreatedBy() const noexcept
@@ -1417,55 +1292,87 @@ const std::shared_ptr<std::string> &ClientTransaction::getCreatedBy() const noex
 void ClientTransaction::setCreatedBy(const std::string &pCreatedBy) noexcept
 {
     createdBy_ = std::make_shared<std::string>(pCreatedBy);
-    dirtyFlag_[12] = true;
+    dirtyFlag_[11] = true;
 }
 void ClientTransaction::setCreatedBy(std::string &&pCreatedBy) noexcept
 {
     createdBy_ = std::make_shared<std::string>(std::move(pCreatedBy));
+    dirtyFlag_[11] = true;
+}
+void ClientTransaction::setCreatedByToNull() noexcept
+{
+    createdBy_.reset();
+    dirtyFlag_[11] = true;
+}
+
+const ::trantor::Date &ClientTransaction::getValueOfCreatedAt() const noexcept
+{
+    static const ::trantor::Date defaultValue = ::trantor::Date();
+    if(createdAt_)
+        return *createdAt_;
+    return defaultValue;
+}
+const std::shared_ptr<::trantor::Date> &ClientTransaction::getCreatedAt() const noexcept
+{
+    return createdAt_;
+}
+void ClientTransaction::setCreatedAt(const ::trantor::Date &pCreatedAt) noexcept
+{
+    createdAt_ = std::make_shared<::trantor::Date>(pCreatedAt);
+    dirtyFlag_[12] = true;
+}
+void ClientTransaction::setCreatedAtToNull() noexcept
+{
+    createdAt_.reset();
     dirtyFlag_[12] = true;
 }
 
-const std::string &ClientTransaction::getValueOfLastModifiedBy() const noexcept
+const std::string &ClientTransaction::getValueOfModifiedBy() const noexcept
 {
     static const std::string defaultValue = std::string();
-    if(lastModifiedBy_)
-        return *lastModifiedBy_;
+    if(modifiedBy_)
+        return *modifiedBy_;
     return defaultValue;
 }
-const std::shared_ptr<std::string> &ClientTransaction::getLastModifiedBy() const noexcept
+const std::shared_ptr<std::string> &ClientTransaction::getModifiedBy() const noexcept
 {
-    return lastModifiedBy_;
+    return modifiedBy_;
 }
-void ClientTransaction::setLastModifiedBy(const std::string &pLastModifiedBy) noexcept
+void ClientTransaction::setModifiedBy(const std::string &pModifiedBy) noexcept
 {
-    lastModifiedBy_ = std::make_shared<std::string>(pLastModifiedBy);
+    modifiedBy_ = std::make_shared<std::string>(pModifiedBy);
     dirtyFlag_[13] = true;
 }
-void ClientTransaction::setLastModifiedBy(std::string &&pLastModifiedBy) noexcept
+void ClientTransaction::setModifiedBy(std::string &&pModifiedBy) noexcept
 {
-    lastModifiedBy_ = std::make_shared<std::string>(std::move(pLastModifiedBy));
+    modifiedBy_ = std::make_shared<std::string>(std::move(pModifiedBy));
+    dirtyFlag_[13] = true;
+}
+void ClientTransaction::setModifiedByToNull() noexcept
+{
+    modifiedBy_.reset();
     dirtyFlag_[13] = true;
 }
 
-const ::trantor::Date &ClientTransaction::getValueOfLastModifiedOnUtc() const noexcept
+const ::trantor::Date &ClientTransaction::getValueOfModifiedAt() const noexcept
 {
     static const ::trantor::Date defaultValue = ::trantor::Date();
-    if(lastModifiedOnUtc_)
-        return *lastModifiedOnUtc_;
+    if(modifiedAt_)
+        return *modifiedAt_;
     return defaultValue;
 }
-const std::shared_ptr<::trantor::Date> &ClientTransaction::getLastModifiedOnUtc() const noexcept
+const std::shared_ptr<::trantor::Date> &ClientTransaction::getModifiedAt() const noexcept
 {
-    return lastModifiedOnUtc_;
+    return modifiedAt_;
 }
-void ClientTransaction::setLastModifiedOnUtc(const ::trantor::Date &pLastModifiedOnUtc) noexcept
+void ClientTransaction::setModifiedAt(const ::trantor::Date &pModifiedAt) noexcept
 {
-    lastModifiedOnUtc_ = std::make_shared<::trantor::Date>(pLastModifiedOnUtc);
+    modifiedAt_ = std::make_shared<::trantor::Date>(pModifiedAt);
     dirtyFlag_[14] = true;
 }
-void ClientTransaction::setLastModifiedOnUtcToNull() noexcept
+void ClientTransaction::setModifiedAtToNull() noexcept
 {
-    lastModifiedOnUtc_.reset();
+    modifiedAt_.reset();
     dirtyFlag_[14] = true;
 }
 
@@ -1494,6 +1401,7 @@ const std::vector<std::string> &ClientTransaction::insertColumns() noexcept
 {
     static const std::vector<std::string> inCols={
         "id",
+        "business_id",
         "client_id",
         "office_id",
         "currency_code",
@@ -1501,13 +1409,12 @@ const std::vector<std::string> &ClientTransaction::insertColumns() noexcept
         "is_reversed",
         "external_id",
         "transaction_date",
-        "transaction_type_enum",
+        "transaction_type",
         "amount",
-        "created_date",
-        "created_on_utc",
         "created_by",
-        "last_modified_by",
-        "last_modified_on_utc",
+        "created_at",
+        "modified_by",
+        "modified_at",
         "submitted_on_date"
     };
     return inCols;
@@ -1528,6 +1435,17 @@ void ClientTransaction::outputArgs(drogon::orm::internal::SqlBinder &binder) con
     }
     if(dirtyFlag_[1])
     {
+        if(getBusinessId())
+        {
+            binder << getValueOfBusinessId();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[2])
+    {
         if(getClientId())
         {
             binder << getValueOfClientId();
@@ -1537,7 +1455,7 @@ void ClientTransaction::outputArgs(drogon::orm::internal::SqlBinder &binder) con
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[2])
+    if(dirtyFlag_[3])
     {
         if(getOfficeId())
         {
@@ -1548,7 +1466,7 @@ void ClientTransaction::outputArgs(drogon::orm::internal::SqlBinder &binder) con
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[3])
+    if(dirtyFlag_[4])
     {
         if(getCurrencyCode())
         {
@@ -1559,7 +1477,7 @@ void ClientTransaction::outputArgs(drogon::orm::internal::SqlBinder &binder) con
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[4])
+    if(dirtyFlag_[5])
     {
         if(getPaymentDetailId())
         {
@@ -1570,7 +1488,7 @@ void ClientTransaction::outputArgs(drogon::orm::internal::SqlBinder &binder) con
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[5])
+    if(dirtyFlag_[6])
     {
         if(getIsReversed())
         {
@@ -1581,7 +1499,7 @@ void ClientTransaction::outputArgs(drogon::orm::internal::SqlBinder &binder) con
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[6])
+    if(dirtyFlag_[7])
     {
         if(getExternalId())
         {
@@ -1592,7 +1510,7 @@ void ClientTransaction::outputArgs(drogon::orm::internal::SqlBinder &binder) con
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[7])
+    if(dirtyFlag_[8])
     {
         if(getTransactionDate())
         {
@@ -1603,18 +1521,18 @@ void ClientTransaction::outputArgs(drogon::orm::internal::SqlBinder &binder) con
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[8])
+    if(dirtyFlag_[9])
     {
-        if(getTransactionTypeEnum())
+        if(getTransactionType())
         {
-            binder << getValueOfTransactionTypeEnum();
+            binder << getValueOfTransactionType();
         }
         else
         {
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[9])
+    if(dirtyFlag_[10])
     {
         if(getAmount())
         {
@@ -1625,29 +1543,7 @@ void ClientTransaction::outputArgs(drogon::orm::internal::SqlBinder &binder) con
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[10])
-    {
-        if(getCreatedDate())
-        {
-            binder << getValueOfCreatedDate();
-        }
-        else
-        {
-            binder << nullptr;
-        }
-    }
     if(dirtyFlag_[11])
-    {
-        if(getCreatedOnUtc())
-        {
-            binder << getValueOfCreatedOnUtc();
-        }
-        else
-        {
-            binder << nullptr;
-        }
-    }
-    if(dirtyFlag_[12])
     {
         if(getCreatedBy())
         {
@@ -1658,11 +1554,22 @@ void ClientTransaction::outputArgs(drogon::orm::internal::SqlBinder &binder) con
             binder << nullptr;
         }
     }
+    if(dirtyFlag_[12])
+    {
+        if(getCreatedAt())
+        {
+            binder << getValueOfCreatedAt();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
     if(dirtyFlag_[13])
     {
-        if(getLastModifiedBy())
+        if(getModifiedBy())
         {
-            binder << getValueOfLastModifiedBy();
+            binder << getValueOfModifiedBy();
         }
         else
         {
@@ -1671,9 +1578,9 @@ void ClientTransaction::outputArgs(drogon::orm::internal::SqlBinder &binder) con
     }
     if(dirtyFlag_[14])
     {
-        if(getLastModifiedOnUtc())
+        if(getModifiedAt())
         {
-            binder << getValueOfLastModifiedOnUtc();
+            binder << getValueOfModifiedAt();
         }
         else
         {
@@ -1778,6 +1685,17 @@ void ClientTransaction::updateArgs(drogon::orm::internal::SqlBinder &binder) con
     }
     if(dirtyFlag_[1])
     {
+        if(getBusinessId())
+        {
+            binder << getValueOfBusinessId();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[2])
+    {
         if(getClientId())
         {
             binder << getValueOfClientId();
@@ -1787,7 +1705,7 @@ void ClientTransaction::updateArgs(drogon::orm::internal::SqlBinder &binder) con
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[2])
+    if(dirtyFlag_[3])
     {
         if(getOfficeId())
         {
@@ -1798,7 +1716,7 @@ void ClientTransaction::updateArgs(drogon::orm::internal::SqlBinder &binder) con
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[3])
+    if(dirtyFlag_[4])
     {
         if(getCurrencyCode())
         {
@@ -1809,7 +1727,7 @@ void ClientTransaction::updateArgs(drogon::orm::internal::SqlBinder &binder) con
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[4])
+    if(dirtyFlag_[5])
     {
         if(getPaymentDetailId())
         {
@@ -1820,7 +1738,7 @@ void ClientTransaction::updateArgs(drogon::orm::internal::SqlBinder &binder) con
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[5])
+    if(dirtyFlag_[6])
     {
         if(getIsReversed())
         {
@@ -1831,7 +1749,7 @@ void ClientTransaction::updateArgs(drogon::orm::internal::SqlBinder &binder) con
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[6])
+    if(dirtyFlag_[7])
     {
         if(getExternalId())
         {
@@ -1842,7 +1760,7 @@ void ClientTransaction::updateArgs(drogon::orm::internal::SqlBinder &binder) con
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[7])
+    if(dirtyFlag_[8])
     {
         if(getTransactionDate())
         {
@@ -1853,18 +1771,18 @@ void ClientTransaction::updateArgs(drogon::orm::internal::SqlBinder &binder) con
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[8])
+    if(dirtyFlag_[9])
     {
-        if(getTransactionTypeEnum())
+        if(getTransactionType())
         {
-            binder << getValueOfTransactionTypeEnum();
+            binder << getValueOfTransactionType();
         }
         else
         {
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[9])
+    if(dirtyFlag_[10])
     {
         if(getAmount())
         {
@@ -1875,29 +1793,7 @@ void ClientTransaction::updateArgs(drogon::orm::internal::SqlBinder &binder) con
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[10])
-    {
-        if(getCreatedDate())
-        {
-            binder << getValueOfCreatedDate();
-        }
-        else
-        {
-            binder << nullptr;
-        }
-    }
     if(dirtyFlag_[11])
-    {
-        if(getCreatedOnUtc())
-        {
-            binder << getValueOfCreatedOnUtc();
-        }
-        else
-        {
-            binder << nullptr;
-        }
-    }
-    if(dirtyFlag_[12])
     {
         if(getCreatedBy())
         {
@@ -1908,11 +1804,22 @@ void ClientTransaction::updateArgs(drogon::orm::internal::SqlBinder &binder) con
             binder << nullptr;
         }
     }
+    if(dirtyFlag_[12])
+    {
+        if(getCreatedAt())
+        {
+            binder << getValueOfCreatedAt();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
     if(dirtyFlag_[13])
     {
-        if(getLastModifiedBy())
+        if(getModifiedBy())
         {
-            binder << getValueOfLastModifiedBy();
+            binder << getValueOfModifiedBy();
         }
         else
         {
@@ -1921,9 +1828,9 @@ void ClientTransaction::updateArgs(drogon::orm::internal::SqlBinder &binder) con
     }
     if(dirtyFlag_[14])
     {
-        if(getLastModifiedOnUtc())
+        if(getModifiedAt())
         {
-            binder << getValueOfLastModifiedOnUtc();
+            binder << getValueOfModifiedAt();
         }
         else
         {
@@ -1952,6 +1859,14 @@ Json::Value ClientTransaction::toJson() const
     else
     {
         ret["id"]=Json::Value();
+    }
+    if(getBusinessId())
+    {
+        ret["business_id"]=getValueOfBusinessId();
+    }
+    else
+    {
+        ret["business_id"]=Json::Value();
     }
     if(getClientId())
     {
@@ -2009,13 +1924,13 @@ Json::Value ClientTransaction::toJson() const
     {
         ret["transaction_date"]=Json::Value();
     }
-    if(getTransactionTypeEnum())
+    if(getTransactionType())
     {
-        ret["transaction_type_enum"]=getValueOfTransactionTypeEnum();
+        ret["transaction_type"]=getValueOfTransactionType();
     }
     else
     {
-        ret["transaction_type_enum"]=Json::Value();
+        ret["transaction_type"]=Json::Value();
     }
     if(getAmount())
     {
@@ -2025,22 +1940,6 @@ Json::Value ClientTransaction::toJson() const
     {
         ret["amount"]=Json::Value();
     }
-    if(getCreatedDate())
-    {
-        ret["created_date"]=getCreatedDate()->toDbStringLocal();
-    }
-    else
-    {
-        ret["created_date"]=Json::Value();
-    }
-    if(getCreatedOnUtc())
-    {
-        ret["created_on_utc"]=getCreatedOnUtc()->toDbStringLocal();
-    }
-    else
-    {
-        ret["created_on_utc"]=Json::Value();
-    }
     if(getCreatedBy())
     {
         ret["created_by"]=getValueOfCreatedBy();
@@ -2049,21 +1948,29 @@ Json::Value ClientTransaction::toJson() const
     {
         ret["created_by"]=Json::Value();
     }
-    if(getLastModifiedBy())
+    if(getCreatedAt())
     {
-        ret["last_modified_by"]=getValueOfLastModifiedBy();
+        ret["created_at"]=getCreatedAt()->toDbStringLocal();
     }
     else
     {
-        ret["last_modified_by"]=Json::Value();
+        ret["created_at"]=Json::Value();
     }
-    if(getLastModifiedOnUtc())
+    if(getModifiedBy())
     {
-        ret["last_modified_on_utc"]=getLastModifiedOnUtc()->toDbStringLocal();
+        ret["modified_by"]=getValueOfModifiedBy();
     }
     else
     {
-        ret["last_modified_on_utc"]=Json::Value();
+        ret["modified_by"]=Json::Value();
+    }
+    if(getModifiedAt())
+    {
+        ret["modified_at"]=getModifiedAt()->toDbStringLocal();
+    }
+    else
+    {
+        ret["modified_at"]=Json::Value();
     }
     if(getSubmittedOnDate())
     {
@@ -2100,9 +2007,9 @@ Json::Value ClientTransaction::toMasqueradedJson(
         }
         if(!pMasqueradingVector[1].empty())
         {
-            if(getClientId())
+            if(getBusinessId())
             {
-                ret[pMasqueradingVector[1]]=getValueOfClientId();
+                ret[pMasqueradingVector[1]]=getValueOfBusinessId();
             }
             else
             {
@@ -2111,9 +2018,9 @@ Json::Value ClientTransaction::toMasqueradedJson(
         }
         if(!pMasqueradingVector[2].empty())
         {
-            if(getOfficeId())
+            if(getClientId())
             {
-                ret[pMasqueradingVector[2]]=getValueOfOfficeId();
+                ret[pMasqueradingVector[2]]=getValueOfClientId();
             }
             else
             {
@@ -2122,9 +2029,9 @@ Json::Value ClientTransaction::toMasqueradedJson(
         }
         if(!pMasqueradingVector[3].empty())
         {
-            if(getCurrencyCode())
+            if(getOfficeId())
             {
-                ret[pMasqueradingVector[3]]=getValueOfCurrencyCode();
+                ret[pMasqueradingVector[3]]=getValueOfOfficeId();
             }
             else
             {
@@ -2133,9 +2040,9 @@ Json::Value ClientTransaction::toMasqueradedJson(
         }
         if(!pMasqueradingVector[4].empty())
         {
-            if(getPaymentDetailId())
+            if(getCurrencyCode())
             {
-                ret[pMasqueradingVector[4]]=getValueOfPaymentDetailId();
+                ret[pMasqueradingVector[4]]=getValueOfCurrencyCode();
             }
             else
             {
@@ -2144,9 +2051,9 @@ Json::Value ClientTransaction::toMasqueradedJson(
         }
         if(!pMasqueradingVector[5].empty())
         {
-            if(getIsReversed())
+            if(getPaymentDetailId())
             {
-                ret[pMasqueradingVector[5]]=getValueOfIsReversed();
+                ret[pMasqueradingVector[5]]=getValueOfPaymentDetailId();
             }
             else
             {
@@ -2155,9 +2062,9 @@ Json::Value ClientTransaction::toMasqueradedJson(
         }
         if(!pMasqueradingVector[6].empty())
         {
-            if(getExternalId())
+            if(getIsReversed())
             {
-                ret[pMasqueradingVector[6]]=getValueOfExternalId();
+                ret[pMasqueradingVector[6]]=getValueOfIsReversed();
             }
             else
             {
@@ -2166,9 +2073,9 @@ Json::Value ClientTransaction::toMasqueradedJson(
         }
         if(!pMasqueradingVector[7].empty())
         {
-            if(getTransactionDate())
+            if(getExternalId())
             {
-                ret[pMasqueradingVector[7]]=getTransactionDate()->toDbStringLocal();
+                ret[pMasqueradingVector[7]]=getValueOfExternalId();
             }
             else
             {
@@ -2177,9 +2084,9 @@ Json::Value ClientTransaction::toMasqueradedJson(
         }
         if(!pMasqueradingVector[8].empty())
         {
-            if(getTransactionTypeEnum())
+            if(getTransactionDate())
             {
-                ret[pMasqueradingVector[8]]=getValueOfTransactionTypeEnum();
+                ret[pMasqueradingVector[8]]=getTransactionDate()->toDbStringLocal();
             }
             else
             {
@@ -2188,9 +2095,9 @@ Json::Value ClientTransaction::toMasqueradedJson(
         }
         if(!pMasqueradingVector[9].empty())
         {
-            if(getAmount())
+            if(getTransactionType())
             {
-                ret[pMasqueradingVector[9]]=getValueOfAmount();
+                ret[pMasqueradingVector[9]]=getValueOfTransactionType();
             }
             else
             {
@@ -2199,9 +2106,9 @@ Json::Value ClientTransaction::toMasqueradedJson(
         }
         if(!pMasqueradingVector[10].empty())
         {
-            if(getCreatedDate())
+            if(getAmount())
             {
-                ret[pMasqueradingVector[10]]=getCreatedDate()->toDbStringLocal();
+                ret[pMasqueradingVector[10]]=getValueOfAmount();
             }
             else
             {
@@ -2210,9 +2117,9 @@ Json::Value ClientTransaction::toMasqueradedJson(
         }
         if(!pMasqueradingVector[11].empty())
         {
-            if(getCreatedOnUtc())
+            if(getCreatedBy())
             {
-                ret[pMasqueradingVector[11]]=getCreatedOnUtc()->toDbStringLocal();
+                ret[pMasqueradingVector[11]]=getValueOfCreatedBy();
             }
             else
             {
@@ -2221,9 +2128,9 @@ Json::Value ClientTransaction::toMasqueradedJson(
         }
         if(!pMasqueradingVector[12].empty())
         {
-            if(getCreatedBy())
+            if(getCreatedAt())
             {
-                ret[pMasqueradingVector[12]]=getValueOfCreatedBy();
+                ret[pMasqueradingVector[12]]=getCreatedAt()->toDbStringLocal();
             }
             else
             {
@@ -2232,9 +2139,9 @@ Json::Value ClientTransaction::toMasqueradedJson(
         }
         if(!pMasqueradingVector[13].empty())
         {
-            if(getLastModifiedBy())
+            if(getModifiedBy())
             {
-                ret[pMasqueradingVector[13]]=getValueOfLastModifiedBy();
+                ret[pMasqueradingVector[13]]=getValueOfModifiedBy();
             }
             else
             {
@@ -2243,9 +2150,9 @@ Json::Value ClientTransaction::toMasqueradedJson(
         }
         if(!pMasqueradingVector[14].empty())
         {
-            if(getLastModifiedOnUtc())
+            if(getModifiedAt())
             {
-                ret[pMasqueradingVector[14]]=getLastModifiedOnUtc()->toDbStringLocal();
+                ret[pMasqueradingVector[14]]=getModifiedAt()->toDbStringLocal();
             }
             else
             {
@@ -2273,6 +2180,14 @@ Json::Value ClientTransaction::toMasqueradedJson(
     else
     {
         ret["id"]=Json::Value();
+    }
+    if(getBusinessId())
+    {
+        ret["business_id"]=getValueOfBusinessId();
+    }
+    else
+    {
+        ret["business_id"]=Json::Value();
     }
     if(getClientId())
     {
@@ -2330,13 +2245,13 @@ Json::Value ClientTransaction::toMasqueradedJson(
     {
         ret["transaction_date"]=Json::Value();
     }
-    if(getTransactionTypeEnum())
+    if(getTransactionType())
     {
-        ret["transaction_type_enum"]=getValueOfTransactionTypeEnum();
+        ret["transaction_type"]=getValueOfTransactionType();
     }
     else
     {
-        ret["transaction_type_enum"]=Json::Value();
+        ret["transaction_type"]=Json::Value();
     }
     if(getAmount())
     {
@@ -2346,22 +2261,6 @@ Json::Value ClientTransaction::toMasqueradedJson(
     {
         ret["amount"]=Json::Value();
     }
-    if(getCreatedDate())
-    {
-        ret["created_date"]=getCreatedDate()->toDbStringLocal();
-    }
-    else
-    {
-        ret["created_date"]=Json::Value();
-    }
-    if(getCreatedOnUtc())
-    {
-        ret["created_on_utc"]=getCreatedOnUtc()->toDbStringLocal();
-    }
-    else
-    {
-        ret["created_on_utc"]=Json::Value();
-    }
     if(getCreatedBy())
     {
         ret["created_by"]=getValueOfCreatedBy();
@@ -2370,21 +2269,29 @@ Json::Value ClientTransaction::toMasqueradedJson(
     {
         ret["created_by"]=Json::Value();
     }
-    if(getLastModifiedBy())
+    if(getCreatedAt())
     {
-        ret["last_modified_by"]=getValueOfLastModifiedBy();
+        ret["created_at"]=getCreatedAt()->toDbStringLocal();
     }
     else
     {
-        ret["last_modified_by"]=Json::Value();
+        ret["created_at"]=Json::Value();
     }
-    if(getLastModifiedOnUtc())
+    if(getModifiedBy())
     {
-        ret["last_modified_on_utc"]=getLastModifiedOnUtc()->toDbStringLocal();
+        ret["modified_by"]=getValueOfModifiedBy();
     }
     else
     {
-        ret["last_modified_on_utc"]=Json::Value();
+        ret["modified_by"]=Json::Value();
+    }
+    if(getModifiedAt())
+    {
+        ret["modified_at"]=getModifiedAt()->toDbStringLocal();
+    }
+    else
+    {
+        ret["modified_at"]=Json::Value();
     }
     if(getSubmittedOnDate())
     {
@@ -2404,9 +2311,14 @@ bool ClientTransaction::validateJsonForCreation(const Json::Value &pJson, std::s
         if(!validJsonOfField(0, "id", pJson["id"], err, true))
             return false;
     }
+    if(pJson.isMember("business_id"))
+    {
+        if(!validJsonOfField(1, "business_id", pJson["business_id"], err, true))
+            return false;
+    }
     if(pJson.isMember("client_id"))
     {
-        if(!validJsonOfField(1, "client_id", pJson["client_id"], err, true))
+        if(!validJsonOfField(2, "client_id", pJson["client_id"], err, true))
             return false;
     }
     else
@@ -2416,7 +2328,7 @@ bool ClientTransaction::validateJsonForCreation(const Json::Value &pJson, std::s
     }
     if(pJson.isMember("office_id"))
     {
-        if(!validJsonOfField(2, "office_id", pJson["office_id"], err, true))
+        if(!validJsonOfField(3, "office_id", pJson["office_id"], err, true))
             return false;
     }
     else
@@ -2426,7 +2338,7 @@ bool ClientTransaction::validateJsonForCreation(const Json::Value &pJson, std::s
     }
     if(pJson.isMember("currency_code"))
     {
-        if(!validJsonOfField(3, "currency_code", pJson["currency_code"], err, true))
+        if(!validJsonOfField(4, "currency_code", pJson["currency_code"], err, true))
             return false;
     }
     else
@@ -2436,12 +2348,12 @@ bool ClientTransaction::validateJsonForCreation(const Json::Value &pJson, std::s
     }
     if(pJson.isMember("payment_detail_id"))
     {
-        if(!validJsonOfField(4, "payment_detail_id", pJson["payment_detail_id"], err, true))
+        if(!validJsonOfField(5, "payment_detail_id", pJson["payment_detail_id"], err, true))
             return false;
     }
     if(pJson.isMember("is_reversed"))
     {
-        if(!validJsonOfField(5, "is_reversed", pJson["is_reversed"], err, true))
+        if(!validJsonOfField(6, "is_reversed", pJson["is_reversed"], err, true))
             return false;
     }
     else
@@ -2451,12 +2363,12 @@ bool ClientTransaction::validateJsonForCreation(const Json::Value &pJson, std::s
     }
     if(pJson.isMember("external_id"))
     {
-        if(!validJsonOfField(6, "external_id", pJson["external_id"], err, true))
+        if(!validJsonOfField(7, "external_id", pJson["external_id"], err, true))
             return false;
     }
     if(pJson.isMember("transaction_date"))
     {
-        if(!validJsonOfField(7, "transaction_date", pJson["transaction_date"], err, true))
+        if(!validJsonOfField(8, "transaction_date", pJson["transaction_date"], err, true))
             return false;
     }
     else
@@ -2464,19 +2376,19 @@ bool ClientTransaction::validateJsonForCreation(const Json::Value &pJson, std::s
         err="The transaction_date column cannot be null";
         return false;
     }
-    if(pJson.isMember("transaction_type_enum"))
+    if(pJson.isMember("transaction_type"))
     {
-        if(!validJsonOfField(8, "transaction_type_enum", pJson["transaction_type_enum"], err, true))
+        if(!validJsonOfField(9, "transaction_type", pJson["transaction_type"], err, true))
             return false;
     }
     else
     {
-        err="The transaction_type_enum column cannot be null";
+        err="The transaction_type column cannot be null";
         return false;
     }
     if(pJson.isMember("amount"))
     {
-        if(!validJsonOfField(9, "amount", pJson["amount"], err, true))
+        if(!validJsonOfField(10, "amount", pJson["amount"], err, true))
             return false;
     }
     else
@@ -2484,39 +2396,24 @@ bool ClientTransaction::validateJsonForCreation(const Json::Value &pJson, std::s
         err="The amount column cannot be null";
         return false;
     }
-    if(pJson.isMember("created_date"))
-    {
-        if(!validJsonOfField(10, "created_date", pJson["created_date"], err, true))
-            return false;
-    }
-    if(pJson.isMember("created_on_utc"))
-    {
-        if(!validJsonOfField(11, "created_on_utc", pJson["created_on_utc"], err, true))
-            return false;
-    }
     if(pJson.isMember("created_by"))
     {
-        if(!validJsonOfField(12, "created_by", pJson["created_by"], err, true))
+        if(!validJsonOfField(11, "created_by", pJson["created_by"], err, true))
             return false;
     }
-    else
+    if(pJson.isMember("created_at"))
     {
-        err="The created_by column cannot be null";
-        return false;
-    }
-    if(pJson.isMember("last_modified_by"))
-    {
-        if(!validJsonOfField(13, "last_modified_by", pJson["last_modified_by"], err, true))
+        if(!validJsonOfField(12, "created_at", pJson["created_at"], err, true))
             return false;
     }
-    else
+    if(pJson.isMember("modified_by"))
     {
-        err="The last_modified_by column cannot be null";
-        return false;
+        if(!validJsonOfField(13, "modified_by", pJson["modified_by"], err, true))
+            return false;
     }
-    if(pJson.isMember("last_modified_on_utc"))
+    if(pJson.isMember("modified_at"))
     {
-        if(!validJsonOfField(14, "last_modified_on_utc", pJson["last_modified_on_utc"], err, true))
+        if(!validJsonOfField(14, "modified_at", pJson["modified_at"], err, true))
             return false;
     }
     if(pJson.isMember("submitted_on_date"))
@@ -2556,11 +2453,6 @@ bool ClientTransaction::validateMasqueradedJsonForCreation(const Json::Value &pJ
               if(!validJsonOfField(1, pMasqueradingVector[1], pJson[pMasqueradingVector[1]], err, true))
                   return false;
           }
-        else
-        {
-            err="The " + pMasqueradingVector[1] + " column cannot be null";
-            return false;
-        }
       }
       if(!pMasqueradingVector[2].empty())
       {
@@ -2595,6 +2487,11 @@ bool ClientTransaction::validateMasqueradedJsonForCreation(const Json::Value &pJ
               if(!validJsonOfField(4, pMasqueradingVector[4], pJson[pMasqueradingVector[4]], err, true))
                   return false;
           }
+        else
+        {
+            err="The " + pMasqueradingVector[4] + " column cannot be null";
+            return false;
+        }
       }
       if(!pMasqueradingVector[5].empty())
       {
@@ -2603,11 +2500,6 @@ bool ClientTransaction::validateMasqueradedJsonForCreation(const Json::Value &pJ
               if(!validJsonOfField(5, pMasqueradingVector[5], pJson[pMasqueradingVector[5]], err, true))
                   return false;
           }
-        else
-        {
-            err="The " + pMasqueradingVector[5] + " column cannot be null";
-            return false;
-        }
       }
       if(!pMasqueradingVector[6].empty())
       {
@@ -2616,6 +2508,11 @@ bool ClientTransaction::validateMasqueradedJsonForCreation(const Json::Value &pJ
               if(!validJsonOfField(6, pMasqueradingVector[6], pJson[pMasqueradingVector[6]], err, true))
                   return false;
           }
+        else
+        {
+            err="The " + pMasqueradingVector[6] + " column cannot be null";
+            return false;
+        }
       }
       if(!pMasqueradingVector[7].empty())
       {
@@ -2624,11 +2521,6 @@ bool ClientTransaction::validateMasqueradedJsonForCreation(const Json::Value &pJ
               if(!validJsonOfField(7, pMasqueradingVector[7], pJson[pMasqueradingVector[7]], err, true))
                   return false;
           }
-        else
-        {
-            err="The " + pMasqueradingVector[7] + " column cannot be null";
-            return false;
-        }
       }
       if(!pMasqueradingVector[8].empty())
       {
@@ -2663,6 +2555,11 @@ bool ClientTransaction::validateMasqueradedJsonForCreation(const Json::Value &pJ
               if(!validJsonOfField(10, pMasqueradingVector[10], pJson[pMasqueradingVector[10]], err, true))
                   return false;
           }
+        else
+        {
+            err="The " + pMasqueradingVector[10] + " column cannot be null";
+            return false;
+        }
       }
       if(!pMasqueradingVector[11].empty())
       {
@@ -2679,11 +2576,6 @@ bool ClientTransaction::validateMasqueradedJsonForCreation(const Json::Value &pJ
               if(!validJsonOfField(12, pMasqueradingVector[12], pJson[pMasqueradingVector[12]], err, true))
                   return false;
           }
-        else
-        {
-            err="The " + pMasqueradingVector[12] + " column cannot be null";
-            return false;
-        }
       }
       if(!pMasqueradingVector[13].empty())
       {
@@ -2692,11 +2584,6 @@ bool ClientTransaction::validateMasqueradedJsonForCreation(const Json::Value &pJ
               if(!validJsonOfField(13, pMasqueradingVector[13], pJson[pMasqueradingVector[13]], err, true))
                   return false;
           }
-        else
-        {
-            err="The " + pMasqueradingVector[13] + " column cannot be null";
-            return false;
-        }
       }
       if(!pMasqueradingVector[14].empty())
       {
@@ -2739,74 +2626,74 @@ bool ClientTransaction::validateJsonForUpdate(const Json::Value &pJson, std::str
         err = "The value of primary key must be set in the json object for update";
         return false;
     }
+    if(pJson.isMember("business_id"))
+    {
+        if(!validJsonOfField(1, "business_id", pJson["business_id"], err, false))
+            return false;
+    }
     if(pJson.isMember("client_id"))
     {
-        if(!validJsonOfField(1, "client_id", pJson["client_id"], err, false))
+        if(!validJsonOfField(2, "client_id", pJson["client_id"], err, false))
             return false;
     }
     if(pJson.isMember("office_id"))
     {
-        if(!validJsonOfField(2, "office_id", pJson["office_id"], err, false))
+        if(!validJsonOfField(3, "office_id", pJson["office_id"], err, false))
             return false;
     }
     if(pJson.isMember("currency_code"))
     {
-        if(!validJsonOfField(3, "currency_code", pJson["currency_code"], err, false))
+        if(!validJsonOfField(4, "currency_code", pJson["currency_code"], err, false))
             return false;
     }
     if(pJson.isMember("payment_detail_id"))
     {
-        if(!validJsonOfField(4, "payment_detail_id", pJson["payment_detail_id"], err, false))
+        if(!validJsonOfField(5, "payment_detail_id", pJson["payment_detail_id"], err, false))
             return false;
     }
     if(pJson.isMember("is_reversed"))
     {
-        if(!validJsonOfField(5, "is_reversed", pJson["is_reversed"], err, false))
+        if(!validJsonOfField(6, "is_reversed", pJson["is_reversed"], err, false))
             return false;
     }
     if(pJson.isMember("external_id"))
     {
-        if(!validJsonOfField(6, "external_id", pJson["external_id"], err, false))
+        if(!validJsonOfField(7, "external_id", pJson["external_id"], err, false))
             return false;
     }
     if(pJson.isMember("transaction_date"))
     {
-        if(!validJsonOfField(7, "transaction_date", pJson["transaction_date"], err, false))
+        if(!validJsonOfField(8, "transaction_date", pJson["transaction_date"], err, false))
             return false;
     }
-    if(pJson.isMember("transaction_type_enum"))
+    if(pJson.isMember("transaction_type"))
     {
-        if(!validJsonOfField(8, "transaction_type_enum", pJson["transaction_type_enum"], err, false))
+        if(!validJsonOfField(9, "transaction_type", pJson["transaction_type"], err, false))
             return false;
     }
     if(pJson.isMember("amount"))
     {
-        if(!validJsonOfField(9, "amount", pJson["amount"], err, false))
-            return false;
-    }
-    if(pJson.isMember("created_date"))
-    {
-        if(!validJsonOfField(10, "created_date", pJson["created_date"], err, false))
-            return false;
-    }
-    if(pJson.isMember("created_on_utc"))
-    {
-        if(!validJsonOfField(11, "created_on_utc", pJson["created_on_utc"], err, false))
+        if(!validJsonOfField(10, "amount", pJson["amount"], err, false))
             return false;
     }
     if(pJson.isMember("created_by"))
     {
-        if(!validJsonOfField(12, "created_by", pJson["created_by"], err, false))
+        if(!validJsonOfField(11, "created_by", pJson["created_by"], err, false))
             return false;
     }
-    if(pJson.isMember("last_modified_by"))
+    if(pJson.isMember("created_at"))
     {
-        if(!validJsonOfField(13, "last_modified_by", pJson["last_modified_by"], err, false))
+        if(!validJsonOfField(12, "created_at", pJson["created_at"], err, false))
             return false;
     }
-    if(pJson.isMember("last_modified_on_utc"))
+    if(pJson.isMember("modified_by"))
     {
-        if(!validJsonOfField(14, "last_modified_on_utc", pJson["last_modified_on_utc"], err, false))
+        if(!validJsonOfField(13, "modified_by", pJson["modified_by"], err, false))
+            return false;
+    }
+    if(pJson.isMember("modified_at"))
+    {
+        if(!validJsonOfField(14, "modified_at", pJson["modified_at"], err, false))
             return false;
     }
     if(pJson.isMember("submitted_on_date"))
@@ -2942,8 +2829,7 @@ bool ClientTransaction::validJsonOfField(size_t index,
         case 1:
             if(pJson.isNull())
             {
-                err="The " + fieldName + " column cannot be null";
-                return false;
+                return true;
             }
             if(!pJson.isString())
             {
@@ -2974,6 +2860,18 @@ bool ClientTransaction::validJsonOfField(size_t index,
                 err="Type error in the "+fieldName+" field";
                 return false;
             }
+            break;
+        case 4:
+            if(pJson.isNull())
+            {
+                err="The " + fieldName + " column cannot be null";
+                return false;
+            }
+            if(!pJson.isString())
+            {
+                err="Type error in the "+fieldName+" field";
+                return false;
+            }
             if(pJson.isString() && std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>{}
                 .from_bytes(pJson.asCString()).size() > 20)
             {
@@ -2983,7 +2881,7 @@ bool ClientTransaction::validJsonOfField(size_t index,
                 return false;
             }
             break;
-        case 4:
+        case 5:
             if(pJson.isNull())
             {
                 return true;
@@ -2994,7 +2892,7 @@ bool ClientTransaction::validJsonOfField(size_t index,
                 return false;
             }
             break;
-        case 5:
+        case 6:
             if(pJson.isNull())
             {
                 err="The " + fieldName + " column cannot be null";
@@ -3006,7 +2904,7 @@ bool ClientTransaction::validJsonOfField(size_t index,
                 return false;
             }
             break;
-        case 6:
+        case 7:
             if(pJson.isNull())
             {
                 return true;
@@ -3025,25 +2923,13 @@ bool ClientTransaction::validJsonOfField(size_t index,
                 return false;
             }
             break;
-        case 7:
-            if(pJson.isNull())
-            {
-                err="The " + fieldName + " column cannot be null";
-                return false;
-            }
-            if(!pJson.isString())
-            {
-                err="Type error in the "+fieldName+" field";
-                return false;
-            }
-            break;
         case 8:
             if(pJson.isNull())
             {
                 err="The " + fieldName + " column cannot be null";
                 return false;
             }
-            if(!pJson.isInt())
+            if(!pJson.isString())
             {
                 err="Type error in the "+fieldName+" field";
                 return false;
@@ -3055,7 +2941,7 @@ bool ClientTransaction::validJsonOfField(size_t index,
                 err="The " + fieldName + " column cannot be null";
                 return false;
             }
-            if(!pJson.isString())
+            if(!pJson.isInt())
             {
                 err="Type error in the "+fieldName+" field";
                 return false;
@@ -3064,7 +2950,8 @@ bool ClientTransaction::validJsonOfField(size_t index,
         case 10:
             if(pJson.isNull())
             {
-                return true;
+                err="The " + fieldName + " column cannot be null";
+                return false;
             }
             if(!pJson.isString())
             {
@@ -3086,8 +2973,7 @@ bool ClientTransaction::validJsonOfField(size_t index,
         case 12:
             if(pJson.isNull())
             {
-                err="The " + fieldName + " column cannot be null";
-                return false;
+                return true;
             }
             if(!pJson.isString())
             {
@@ -3098,8 +2984,7 @@ bool ClientTransaction::validJsonOfField(size_t index,
         case 13:
             if(pJson.isNull())
             {
-                err="The " + fieldName + " column cannot be null";
-                return false;
+                return true;
             }
             if(!pJson.isString())
             {

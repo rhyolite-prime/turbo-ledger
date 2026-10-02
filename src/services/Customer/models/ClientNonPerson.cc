@@ -14,6 +14,7 @@ using namespace drogon::orm;
 using namespace drogon_model::TlCustomerDb;
 
 const std::string ClientNonPerson::Cols::_id = "\"id\"";
+const std::string ClientNonPerson::Cols::_business_id = "\"business_id\"";
 const std::string ClientNonPerson::Cols::_client_id = "\"client_id\"";
 const std::string ClientNonPerson::Cols::_constitution_cv_id = "\"constitution_cv_id\"";
 const std::string ClientNonPerson::Cols::_incorp_no = "\"incorp_no\"";
@@ -26,6 +27,7 @@ const std::string ClientNonPerson::tableName = "\"client_non_person\"";
 
 const std::vector<typename ClientNonPerson::MetaData> ClientNonPerson::metaData_={
 {"id","std::string","uuid",0,0,1,1},
+{"business_id","std::string","uuid",0,0,0,0},
 {"client_id","std::string","uuid",0,0,0,1},
 {"constitution_cv_id","std::string","uuid",0,0,0,1},
 {"incorp_no","std::string","character varying",50,0,0,0},
@@ -45,6 +47,10 @@ ClientNonPerson::ClientNonPerson(const Row &r, const ssize_t indexOffset) noexce
         if(!r["id"].isNull())
         {
             id_=std::make_shared<std::string>(r["id"].as<std::string>());
+        }
+        if(!r["business_id"].isNull())
+        {
+            businessId_=std::make_shared<std::string>(r["business_id"].as<std::string>());
         }
         if(!r["client_id"].isNull())
         {
@@ -79,7 +85,7 @@ ClientNonPerson::ClientNonPerson(const Row &r, const ssize_t indexOffset) noexce
     else
     {
         size_t offset = (size_t)indexOffset;
-        if(offset + 7 > r.size())
+        if(offset + 8 > r.size())
         {
             LOG_FATAL << "Invalid SQL result for this model";
             return;
@@ -93,19 +99,24 @@ ClientNonPerson::ClientNonPerson(const Row &r, const ssize_t indexOffset) noexce
         index = offset + 1;
         if(!r[index].isNull())
         {
-            clientId_=std::make_shared<std::string>(r[index].as<std::string>());
+            businessId_=std::make_shared<std::string>(r[index].as<std::string>());
         }
         index = offset + 2;
         if(!r[index].isNull())
         {
-            constitutionCvId_=std::make_shared<std::string>(r[index].as<std::string>());
+            clientId_=std::make_shared<std::string>(r[index].as<std::string>());
         }
         index = offset + 3;
         if(!r[index].isNull())
         {
-            incorpNo_=std::make_shared<std::string>(r[index].as<std::string>());
+            constitutionCvId_=std::make_shared<std::string>(r[index].as<std::string>());
         }
         index = offset + 4;
+        if(!r[index].isNull())
+        {
+            incorpNo_=std::make_shared<std::string>(r[index].as<std::string>());
+        }
+        index = offset + 5;
         if(!r[index].isNull())
         {
             auto daysStr = r[index].as<std::string>();
@@ -115,12 +126,12 @@ ClientNonPerson::ClientNonPerson(const Row &r, const ssize_t indexOffset) noexce
             time_t t = mktime(&stm);
             incorpValidityTill_=std::make_shared<::trantor::Date>(t*1000000);
         }
-        index = offset + 5;
+        index = offset + 6;
         if(!r[index].isNull())
         {
             mainBusinessLineCvId_=std::make_shared<std::string>(r[index].as<std::string>());
         }
-        index = offset + 6;
+        index = offset + 7;
         if(!r[index].isNull())
         {
             remarks_=std::make_shared<std::string>(r[index].as<std::string>());
@@ -131,7 +142,7 @@ ClientNonPerson::ClientNonPerson(const Row &r, const ssize_t indexOffset) noexce
 
 ClientNonPerson::ClientNonPerson(const Json::Value &pJson, const std::vector<std::string> &pMasqueradingVector) noexcept(false)
 {
-    if(pMasqueradingVector.size() != 7)
+    if(pMasqueradingVector.size() != 8)
     {
         LOG_ERROR << "Bad masquerading vector";
         return;
@@ -149,7 +160,7 @@ ClientNonPerson::ClientNonPerson(const Json::Value &pJson, const std::vector<std
         dirtyFlag_[1] = true;
         if(!pJson[pMasqueradingVector[1]].isNull())
         {
-            clientId_=std::make_shared<std::string>(pJson[pMasqueradingVector[1]].asString());
+            businessId_=std::make_shared<std::string>(pJson[pMasqueradingVector[1]].asString());
         }
     }
     if(!pMasqueradingVector[2].empty() && pJson.isMember(pMasqueradingVector[2]))
@@ -157,7 +168,7 @@ ClientNonPerson::ClientNonPerson(const Json::Value &pJson, const std::vector<std
         dirtyFlag_[2] = true;
         if(!pJson[pMasqueradingVector[2]].isNull())
         {
-            constitutionCvId_=std::make_shared<std::string>(pJson[pMasqueradingVector[2]].asString());
+            clientId_=std::make_shared<std::string>(pJson[pMasqueradingVector[2]].asString());
         }
     }
     if(!pMasqueradingVector[3].empty() && pJson.isMember(pMasqueradingVector[3]))
@@ -165,7 +176,7 @@ ClientNonPerson::ClientNonPerson(const Json::Value &pJson, const std::vector<std
         dirtyFlag_[3] = true;
         if(!pJson[pMasqueradingVector[3]].isNull())
         {
-            incorpNo_=std::make_shared<std::string>(pJson[pMasqueradingVector[3]].asString());
+            constitutionCvId_=std::make_shared<std::string>(pJson[pMasqueradingVector[3]].asString());
         }
     }
     if(!pMasqueradingVector[4].empty() && pJson.isMember(pMasqueradingVector[4]))
@@ -173,12 +184,7 @@ ClientNonPerson::ClientNonPerson(const Json::Value &pJson, const std::vector<std
         dirtyFlag_[4] = true;
         if(!pJson[pMasqueradingVector[4]].isNull())
         {
-            auto daysStr = pJson[pMasqueradingVector[4]].asString();
-            struct tm stm;
-            memset(&stm,0,sizeof(stm));
-            strptime(daysStr.c_str(),"%Y-%m-%d",&stm);
-            time_t t = mktime(&stm);
-            incorpValidityTill_=std::make_shared<::trantor::Date>(t*1000000);
+            incorpNo_=std::make_shared<std::string>(pJson[pMasqueradingVector[4]].asString());
         }
     }
     if(!pMasqueradingVector[5].empty() && pJson.isMember(pMasqueradingVector[5]))
@@ -186,7 +192,12 @@ ClientNonPerson::ClientNonPerson(const Json::Value &pJson, const std::vector<std
         dirtyFlag_[5] = true;
         if(!pJson[pMasqueradingVector[5]].isNull())
         {
-            mainBusinessLineCvId_=std::make_shared<std::string>(pJson[pMasqueradingVector[5]].asString());
+            auto daysStr = pJson[pMasqueradingVector[5]].asString();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            strptime(daysStr.c_str(),"%Y-%m-%d",&stm);
+            time_t t = mktime(&stm);
+            incorpValidityTill_=std::make_shared<::trantor::Date>(t*1000000);
         }
     }
     if(!pMasqueradingVector[6].empty() && pJson.isMember(pMasqueradingVector[6]))
@@ -194,7 +205,15 @@ ClientNonPerson::ClientNonPerson(const Json::Value &pJson, const std::vector<std
         dirtyFlag_[6] = true;
         if(!pJson[pMasqueradingVector[6]].isNull())
         {
-            remarks_=std::make_shared<std::string>(pJson[pMasqueradingVector[6]].asString());
+            mainBusinessLineCvId_=std::make_shared<std::string>(pJson[pMasqueradingVector[6]].asString());
+        }
+    }
+    if(!pMasqueradingVector[7].empty() && pJson.isMember(pMasqueradingVector[7]))
+    {
+        dirtyFlag_[7] = true;
+        if(!pJson[pMasqueradingVector[7]].isNull())
+        {
+            remarks_=std::make_shared<std::string>(pJson[pMasqueradingVector[7]].asString());
         }
     }
 }
@@ -209,9 +228,17 @@ ClientNonPerson::ClientNonPerson(const Json::Value &pJson) noexcept(false)
             id_=std::make_shared<std::string>(pJson["id"].asString());
         }
     }
-    if(pJson.isMember("client_id"))
+    if(pJson.isMember("business_id"))
     {
         dirtyFlag_[1]=true;
+        if(!pJson["business_id"].isNull())
+        {
+            businessId_=std::make_shared<std::string>(pJson["business_id"].asString());
+        }
+    }
+    if(pJson.isMember("client_id"))
+    {
+        dirtyFlag_[2]=true;
         if(!pJson["client_id"].isNull())
         {
             clientId_=std::make_shared<std::string>(pJson["client_id"].asString());
@@ -219,7 +246,7 @@ ClientNonPerson::ClientNonPerson(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("constitution_cv_id"))
     {
-        dirtyFlag_[2]=true;
+        dirtyFlag_[3]=true;
         if(!pJson["constitution_cv_id"].isNull())
         {
             constitutionCvId_=std::make_shared<std::string>(pJson["constitution_cv_id"].asString());
@@ -227,7 +254,7 @@ ClientNonPerson::ClientNonPerson(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("incorp_no"))
     {
-        dirtyFlag_[3]=true;
+        dirtyFlag_[4]=true;
         if(!pJson["incorp_no"].isNull())
         {
             incorpNo_=std::make_shared<std::string>(pJson["incorp_no"].asString());
@@ -235,7 +262,7 @@ ClientNonPerson::ClientNonPerson(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("incorp_validity_till"))
     {
-        dirtyFlag_[4]=true;
+        dirtyFlag_[5]=true;
         if(!pJson["incorp_validity_till"].isNull())
         {
             auto daysStr = pJson["incorp_validity_till"].asString();
@@ -248,7 +275,7 @@ ClientNonPerson::ClientNonPerson(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("main_business_line_cv_id"))
     {
-        dirtyFlag_[5]=true;
+        dirtyFlag_[6]=true;
         if(!pJson["main_business_line_cv_id"].isNull())
         {
             mainBusinessLineCvId_=std::make_shared<std::string>(pJson["main_business_line_cv_id"].asString());
@@ -256,7 +283,7 @@ ClientNonPerson::ClientNonPerson(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("remarks"))
     {
-        dirtyFlag_[6]=true;
+        dirtyFlag_[7]=true;
         if(!pJson["remarks"].isNull())
         {
             remarks_=std::make_shared<std::string>(pJson["remarks"].asString());
@@ -267,7 +294,7 @@ ClientNonPerson::ClientNonPerson(const Json::Value &pJson) noexcept(false)
 void ClientNonPerson::updateByMasqueradedJson(const Json::Value &pJson,
                                             const std::vector<std::string> &pMasqueradingVector) noexcept(false)
 {
-    if(pMasqueradingVector.size() != 7)
+    if(pMasqueradingVector.size() != 8)
     {
         LOG_ERROR << "Bad masquerading vector";
         return;
@@ -284,7 +311,7 @@ void ClientNonPerson::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[1] = true;
         if(!pJson[pMasqueradingVector[1]].isNull())
         {
-            clientId_=std::make_shared<std::string>(pJson[pMasqueradingVector[1]].asString());
+            businessId_=std::make_shared<std::string>(pJson[pMasqueradingVector[1]].asString());
         }
     }
     if(!pMasqueradingVector[2].empty() && pJson.isMember(pMasqueradingVector[2]))
@@ -292,7 +319,7 @@ void ClientNonPerson::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[2] = true;
         if(!pJson[pMasqueradingVector[2]].isNull())
         {
-            constitutionCvId_=std::make_shared<std::string>(pJson[pMasqueradingVector[2]].asString());
+            clientId_=std::make_shared<std::string>(pJson[pMasqueradingVector[2]].asString());
         }
     }
     if(!pMasqueradingVector[3].empty() && pJson.isMember(pMasqueradingVector[3]))
@@ -300,7 +327,7 @@ void ClientNonPerson::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[3] = true;
         if(!pJson[pMasqueradingVector[3]].isNull())
         {
-            incorpNo_=std::make_shared<std::string>(pJson[pMasqueradingVector[3]].asString());
+            constitutionCvId_=std::make_shared<std::string>(pJson[pMasqueradingVector[3]].asString());
         }
     }
     if(!pMasqueradingVector[4].empty() && pJson.isMember(pMasqueradingVector[4]))
@@ -308,12 +335,7 @@ void ClientNonPerson::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[4] = true;
         if(!pJson[pMasqueradingVector[4]].isNull())
         {
-            auto daysStr = pJson[pMasqueradingVector[4]].asString();
-            struct tm stm;
-            memset(&stm,0,sizeof(stm));
-            strptime(daysStr.c_str(),"%Y-%m-%d",&stm);
-            time_t t = mktime(&stm);
-            incorpValidityTill_=std::make_shared<::trantor::Date>(t*1000000);
+            incorpNo_=std::make_shared<std::string>(pJson[pMasqueradingVector[4]].asString());
         }
     }
     if(!pMasqueradingVector[5].empty() && pJson.isMember(pMasqueradingVector[5]))
@@ -321,7 +343,12 @@ void ClientNonPerson::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[5] = true;
         if(!pJson[pMasqueradingVector[5]].isNull())
         {
-            mainBusinessLineCvId_=std::make_shared<std::string>(pJson[pMasqueradingVector[5]].asString());
+            auto daysStr = pJson[pMasqueradingVector[5]].asString();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            strptime(daysStr.c_str(),"%Y-%m-%d",&stm);
+            time_t t = mktime(&stm);
+            incorpValidityTill_=std::make_shared<::trantor::Date>(t*1000000);
         }
     }
     if(!pMasqueradingVector[6].empty() && pJson.isMember(pMasqueradingVector[6]))
@@ -329,7 +356,15 @@ void ClientNonPerson::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[6] = true;
         if(!pJson[pMasqueradingVector[6]].isNull())
         {
-            remarks_=std::make_shared<std::string>(pJson[pMasqueradingVector[6]].asString());
+            mainBusinessLineCvId_=std::make_shared<std::string>(pJson[pMasqueradingVector[6]].asString());
+        }
+    }
+    if(!pMasqueradingVector[7].empty() && pJson.isMember(pMasqueradingVector[7]))
+    {
+        dirtyFlag_[7] = true;
+        if(!pJson[pMasqueradingVector[7]].isNull())
+        {
+            remarks_=std::make_shared<std::string>(pJson[pMasqueradingVector[7]].asString());
         }
     }
 }
@@ -343,9 +378,17 @@ void ClientNonPerson::updateByJson(const Json::Value &pJson) noexcept(false)
             id_=std::make_shared<std::string>(pJson["id"].asString());
         }
     }
-    if(pJson.isMember("client_id"))
+    if(pJson.isMember("business_id"))
     {
         dirtyFlag_[1] = true;
+        if(!pJson["business_id"].isNull())
+        {
+            businessId_=std::make_shared<std::string>(pJson["business_id"].asString());
+        }
+    }
+    if(pJson.isMember("client_id"))
+    {
+        dirtyFlag_[2] = true;
         if(!pJson["client_id"].isNull())
         {
             clientId_=std::make_shared<std::string>(pJson["client_id"].asString());
@@ -353,7 +396,7 @@ void ClientNonPerson::updateByJson(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("constitution_cv_id"))
     {
-        dirtyFlag_[2] = true;
+        dirtyFlag_[3] = true;
         if(!pJson["constitution_cv_id"].isNull())
         {
             constitutionCvId_=std::make_shared<std::string>(pJson["constitution_cv_id"].asString());
@@ -361,7 +404,7 @@ void ClientNonPerson::updateByJson(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("incorp_no"))
     {
-        dirtyFlag_[3] = true;
+        dirtyFlag_[4] = true;
         if(!pJson["incorp_no"].isNull())
         {
             incorpNo_=std::make_shared<std::string>(pJson["incorp_no"].asString());
@@ -369,7 +412,7 @@ void ClientNonPerson::updateByJson(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("incorp_validity_till"))
     {
-        dirtyFlag_[4] = true;
+        dirtyFlag_[5] = true;
         if(!pJson["incorp_validity_till"].isNull())
         {
             auto daysStr = pJson["incorp_validity_till"].asString();
@@ -382,7 +425,7 @@ void ClientNonPerson::updateByJson(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("main_business_line_cv_id"))
     {
-        dirtyFlag_[5] = true;
+        dirtyFlag_[6] = true;
         if(!pJson["main_business_line_cv_id"].isNull())
         {
             mainBusinessLineCvId_=std::make_shared<std::string>(pJson["main_business_line_cv_id"].asString());
@@ -390,7 +433,7 @@ void ClientNonPerson::updateByJson(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("remarks"))
     {
-        dirtyFlag_[6] = true;
+        dirtyFlag_[7] = true;
         if(!pJson["remarks"].isNull())
         {
             remarks_=std::make_shared<std::string>(pJson["remarks"].asString());
@@ -425,6 +468,33 @@ const typename ClientNonPerson::PrimaryKeyType & ClientNonPerson::getPrimaryKey(
     return *id_;
 }
 
+const std::string &ClientNonPerson::getValueOfBusinessId() const noexcept
+{
+    static const std::string defaultValue = std::string();
+    if(businessId_)
+        return *businessId_;
+    return defaultValue;
+}
+const std::shared_ptr<std::string> &ClientNonPerson::getBusinessId() const noexcept
+{
+    return businessId_;
+}
+void ClientNonPerson::setBusinessId(const std::string &pBusinessId) noexcept
+{
+    businessId_ = std::make_shared<std::string>(pBusinessId);
+    dirtyFlag_[1] = true;
+}
+void ClientNonPerson::setBusinessId(std::string &&pBusinessId) noexcept
+{
+    businessId_ = std::make_shared<std::string>(std::move(pBusinessId));
+    dirtyFlag_[1] = true;
+}
+void ClientNonPerson::setBusinessIdToNull() noexcept
+{
+    businessId_.reset();
+    dirtyFlag_[1] = true;
+}
+
 const std::string &ClientNonPerson::getValueOfClientId() const noexcept
 {
     static const std::string defaultValue = std::string();
@@ -439,12 +509,12 @@ const std::shared_ptr<std::string> &ClientNonPerson::getClientId() const noexcep
 void ClientNonPerson::setClientId(const std::string &pClientId) noexcept
 {
     clientId_ = std::make_shared<std::string>(pClientId);
-    dirtyFlag_[1] = true;
+    dirtyFlag_[2] = true;
 }
 void ClientNonPerson::setClientId(std::string &&pClientId) noexcept
 {
     clientId_ = std::make_shared<std::string>(std::move(pClientId));
-    dirtyFlag_[1] = true;
+    dirtyFlag_[2] = true;
 }
 
 const std::string &ClientNonPerson::getValueOfConstitutionCvId() const noexcept
@@ -461,12 +531,12 @@ const std::shared_ptr<std::string> &ClientNonPerson::getConstitutionCvId() const
 void ClientNonPerson::setConstitutionCvId(const std::string &pConstitutionCvId) noexcept
 {
     constitutionCvId_ = std::make_shared<std::string>(pConstitutionCvId);
-    dirtyFlag_[2] = true;
+    dirtyFlag_[3] = true;
 }
 void ClientNonPerson::setConstitutionCvId(std::string &&pConstitutionCvId) noexcept
 {
     constitutionCvId_ = std::make_shared<std::string>(std::move(pConstitutionCvId));
-    dirtyFlag_[2] = true;
+    dirtyFlag_[3] = true;
 }
 
 const std::string &ClientNonPerson::getValueOfIncorpNo() const noexcept
@@ -483,17 +553,17 @@ const std::shared_ptr<std::string> &ClientNonPerson::getIncorpNo() const noexcep
 void ClientNonPerson::setIncorpNo(const std::string &pIncorpNo) noexcept
 {
     incorpNo_ = std::make_shared<std::string>(pIncorpNo);
-    dirtyFlag_[3] = true;
+    dirtyFlag_[4] = true;
 }
 void ClientNonPerson::setIncorpNo(std::string &&pIncorpNo) noexcept
 {
     incorpNo_ = std::make_shared<std::string>(std::move(pIncorpNo));
-    dirtyFlag_[3] = true;
+    dirtyFlag_[4] = true;
 }
 void ClientNonPerson::setIncorpNoToNull() noexcept
 {
     incorpNo_.reset();
-    dirtyFlag_[3] = true;
+    dirtyFlag_[4] = true;
 }
 
 const ::trantor::Date &ClientNonPerson::getValueOfIncorpValidityTill() const noexcept
@@ -510,12 +580,12 @@ const std::shared_ptr<::trantor::Date> &ClientNonPerson::getIncorpValidityTill()
 void ClientNonPerson::setIncorpValidityTill(const ::trantor::Date &pIncorpValidityTill) noexcept
 {
     incorpValidityTill_ = std::make_shared<::trantor::Date>(pIncorpValidityTill.roundDay());
-    dirtyFlag_[4] = true;
+    dirtyFlag_[5] = true;
 }
 void ClientNonPerson::setIncorpValidityTillToNull() noexcept
 {
     incorpValidityTill_.reset();
-    dirtyFlag_[4] = true;
+    dirtyFlag_[5] = true;
 }
 
 const std::string &ClientNonPerson::getValueOfMainBusinessLineCvId() const noexcept
@@ -532,17 +602,17 @@ const std::shared_ptr<std::string> &ClientNonPerson::getMainBusinessLineCvId() c
 void ClientNonPerson::setMainBusinessLineCvId(const std::string &pMainBusinessLineCvId) noexcept
 {
     mainBusinessLineCvId_ = std::make_shared<std::string>(pMainBusinessLineCvId);
-    dirtyFlag_[5] = true;
+    dirtyFlag_[6] = true;
 }
 void ClientNonPerson::setMainBusinessLineCvId(std::string &&pMainBusinessLineCvId) noexcept
 {
     mainBusinessLineCvId_ = std::make_shared<std::string>(std::move(pMainBusinessLineCvId));
-    dirtyFlag_[5] = true;
+    dirtyFlag_[6] = true;
 }
 void ClientNonPerson::setMainBusinessLineCvIdToNull() noexcept
 {
     mainBusinessLineCvId_.reset();
-    dirtyFlag_[5] = true;
+    dirtyFlag_[6] = true;
 }
 
 const std::string &ClientNonPerson::getValueOfRemarks() const noexcept
@@ -559,17 +629,17 @@ const std::shared_ptr<std::string> &ClientNonPerson::getRemarks() const noexcept
 void ClientNonPerson::setRemarks(const std::string &pRemarks) noexcept
 {
     remarks_ = std::make_shared<std::string>(pRemarks);
-    dirtyFlag_[6] = true;
+    dirtyFlag_[7] = true;
 }
 void ClientNonPerson::setRemarks(std::string &&pRemarks) noexcept
 {
     remarks_ = std::make_shared<std::string>(std::move(pRemarks));
-    dirtyFlag_[6] = true;
+    dirtyFlag_[7] = true;
 }
 void ClientNonPerson::setRemarksToNull() noexcept
 {
     remarks_.reset();
-    dirtyFlag_[6] = true;
+    dirtyFlag_[7] = true;
 }
 
 void ClientNonPerson::updateId(const uint64_t id)
@@ -580,6 +650,7 @@ const std::vector<std::string> &ClientNonPerson::insertColumns() noexcept
 {
     static const std::vector<std::string> inCols={
         "id",
+        "business_id",
         "client_id",
         "constitution_cv_id",
         "incorp_no",
@@ -605,6 +676,17 @@ void ClientNonPerson::outputArgs(drogon::orm::internal::SqlBinder &binder) const
     }
     if(dirtyFlag_[1])
     {
+        if(getBusinessId())
+        {
+            binder << getValueOfBusinessId();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[2])
+    {
         if(getClientId())
         {
             binder << getValueOfClientId();
@@ -614,7 +696,7 @@ void ClientNonPerson::outputArgs(drogon::orm::internal::SqlBinder &binder) const
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[2])
+    if(dirtyFlag_[3])
     {
         if(getConstitutionCvId())
         {
@@ -625,7 +707,7 @@ void ClientNonPerson::outputArgs(drogon::orm::internal::SqlBinder &binder) const
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[3])
+    if(dirtyFlag_[4])
     {
         if(getIncorpNo())
         {
@@ -636,7 +718,7 @@ void ClientNonPerson::outputArgs(drogon::orm::internal::SqlBinder &binder) const
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[4])
+    if(dirtyFlag_[5])
     {
         if(getIncorpValidityTill())
         {
@@ -647,7 +729,7 @@ void ClientNonPerson::outputArgs(drogon::orm::internal::SqlBinder &binder) const
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[5])
+    if(dirtyFlag_[6])
     {
         if(getMainBusinessLineCvId())
         {
@@ -658,7 +740,7 @@ void ClientNonPerson::outputArgs(drogon::orm::internal::SqlBinder &binder) const
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[6])
+    if(dirtyFlag_[7])
     {
         if(getRemarks())
         {
@@ -702,6 +784,10 @@ const std::vector<std::string> ClientNonPerson::updateColumns() const
     {
         ret.push_back(getColumnName(6));
     }
+    if(dirtyFlag_[7])
+    {
+        ret.push_back(getColumnName(7));
+    }
     return ret;
 }
 
@@ -720,6 +806,17 @@ void ClientNonPerson::updateArgs(drogon::orm::internal::SqlBinder &binder) const
     }
     if(dirtyFlag_[1])
     {
+        if(getBusinessId())
+        {
+            binder << getValueOfBusinessId();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[2])
+    {
         if(getClientId())
         {
             binder << getValueOfClientId();
@@ -729,7 +826,7 @@ void ClientNonPerson::updateArgs(drogon::orm::internal::SqlBinder &binder) const
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[2])
+    if(dirtyFlag_[3])
     {
         if(getConstitutionCvId())
         {
@@ -740,7 +837,7 @@ void ClientNonPerson::updateArgs(drogon::orm::internal::SqlBinder &binder) const
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[3])
+    if(dirtyFlag_[4])
     {
         if(getIncorpNo())
         {
@@ -751,7 +848,7 @@ void ClientNonPerson::updateArgs(drogon::orm::internal::SqlBinder &binder) const
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[4])
+    if(dirtyFlag_[5])
     {
         if(getIncorpValidityTill())
         {
@@ -762,7 +859,7 @@ void ClientNonPerson::updateArgs(drogon::orm::internal::SqlBinder &binder) const
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[5])
+    if(dirtyFlag_[6])
     {
         if(getMainBusinessLineCvId())
         {
@@ -773,7 +870,7 @@ void ClientNonPerson::updateArgs(drogon::orm::internal::SqlBinder &binder) const
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[6])
+    if(dirtyFlag_[7])
     {
         if(getRemarks())
         {
@@ -795,6 +892,14 @@ Json::Value ClientNonPerson::toJson() const
     else
     {
         ret["id"]=Json::Value();
+    }
+    if(getBusinessId())
+    {
+        ret["business_id"]=getValueOfBusinessId();
+    }
+    else
+    {
+        ret["business_id"]=Json::Value();
     }
     if(getClientId())
     {
@@ -856,7 +961,7 @@ Json::Value ClientNonPerson::toMasqueradedJson(
     const std::vector<std::string> &pMasqueradingVector) const
 {
     Json::Value ret;
-    if(pMasqueradingVector.size() == 7)
+    if(pMasqueradingVector.size() == 8)
     {
         if(!pMasqueradingVector[0].empty())
         {
@@ -871,9 +976,9 @@ Json::Value ClientNonPerson::toMasqueradedJson(
         }
         if(!pMasqueradingVector[1].empty())
         {
-            if(getClientId())
+            if(getBusinessId())
             {
-                ret[pMasqueradingVector[1]]=getValueOfClientId();
+                ret[pMasqueradingVector[1]]=getValueOfBusinessId();
             }
             else
             {
@@ -882,9 +987,9 @@ Json::Value ClientNonPerson::toMasqueradedJson(
         }
         if(!pMasqueradingVector[2].empty())
         {
-            if(getConstitutionCvId())
+            if(getClientId())
             {
-                ret[pMasqueradingVector[2]]=getValueOfConstitutionCvId();
+                ret[pMasqueradingVector[2]]=getValueOfClientId();
             }
             else
             {
@@ -893,9 +998,9 @@ Json::Value ClientNonPerson::toMasqueradedJson(
         }
         if(!pMasqueradingVector[3].empty())
         {
-            if(getIncorpNo())
+            if(getConstitutionCvId())
             {
-                ret[pMasqueradingVector[3]]=getValueOfIncorpNo();
+                ret[pMasqueradingVector[3]]=getValueOfConstitutionCvId();
             }
             else
             {
@@ -904,9 +1009,9 @@ Json::Value ClientNonPerson::toMasqueradedJson(
         }
         if(!pMasqueradingVector[4].empty())
         {
-            if(getIncorpValidityTill())
+            if(getIncorpNo())
             {
-                ret[pMasqueradingVector[4]]=getIncorpValidityTill()->toDbStringLocal();
+                ret[pMasqueradingVector[4]]=getValueOfIncorpNo();
             }
             else
             {
@@ -915,9 +1020,9 @@ Json::Value ClientNonPerson::toMasqueradedJson(
         }
         if(!pMasqueradingVector[5].empty())
         {
-            if(getMainBusinessLineCvId())
+            if(getIncorpValidityTill())
             {
-                ret[pMasqueradingVector[5]]=getValueOfMainBusinessLineCvId();
+                ret[pMasqueradingVector[5]]=getIncorpValidityTill()->toDbStringLocal();
             }
             else
             {
@@ -926,13 +1031,24 @@ Json::Value ClientNonPerson::toMasqueradedJson(
         }
         if(!pMasqueradingVector[6].empty())
         {
-            if(getRemarks())
+            if(getMainBusinessLineCvId())
             {
-                ret[pMasqueradingVector[6]]=getValueOfRemarks();
+                ret[pMasqueradingVector[6]]=getValueOfMainBusinessLineCvId();
             }
             else
             {
                 ret[pMasqueradingVector[6]]=Json::Value();
+            }
+        }
+        if(!pMasqueradingVector[7].empty())
+        {
+            if(getRemarks())
+            {
+                ret[pMasqueradingVector[7]]=getValueOfRemarks();
+            }
+            else
+            {
+                ret[pMasqueradingVector[7]]=Json::Value();
             }
         }
         return ret;
@@ -945,6 +1061,14 @@ Json::Value ClientNonPerson::toMasqueradedJson(
     else
     {
         ret["id"]=Json::Value();
+    }
+    if(getBusinessId())
+    {
+        ret["business_id"]=getValueOfBusinessId();
+    }
+    else
+    {
+        ret["business_id"]=Json::Value();
     }
     if(getClientId())
     {
@@ -1004,9 +1128,14 @@ bool ClientNonPerson::validateJsonForCreation(const Json::Value &pJson, std::str
         if(!validJsonOfField(0, "id", pJson["id"], err, true))
             return false;
     }
+    if(pJson.isMember("business_id"))
+    {
+        if(!validJsonOfField(1, "business_id", pJson["business_id"], err, true))
+            return false;
+    }
     if(pJson.isMember("client_id"))
     {
-        if(!validJsonOfField(1, "client_id", pJson["client_id"], err, true))
+        if(!validJsonOfField(2, "client_id", pJson["client_id"], err, true))
             return false;
     }
     else
@@ -1016,7 +1145,7 @@ bool ClientNonPerson::validateJsonForCreation(const Json::Value &pJson, std::str
     }
     if(pJson.isMember("constitution_cv_id"))
     {
-        if(!validJsonOfField(2, "constitution_cv_id", pJson["constitution_cv_id"], err, true))
+        if(!validJsonOfField(3, "constitution_cv_id", pJson["constitution_cv_id"], err, true))
             return false;
     }
     else
@@ -1026,22 +1155,22 @@ bool ClientNonPerson::validateJsonForCreation(const Json::Value &pJson, std::str
     }
     if(pJson.isMember("incorp_no"))
     {
-        if(!validJsonOfField(3, "incorp_no", pJson["incorp_no"], err, true))
+        if(!validJsonOfField(4, "incorp_no", pJson["incorp_no"], err, true))
             return false;
     }
     if(pJson.isMember("incorp_validity_till"))
     {
-        if(!validJsonOfField(4, "incorp_validity_till", pJson["incorp_validity_till"], err, true))
+        if(!validJsonOfField(5, "incorp_validity_till", pJson["incorp_validity_till"], err, true))
             return false;
     }
     if(pJson.isMember("main_business_line_cv_id"))
     {
-        if(!validJsonOfField(5, "main_business_line_cv_id", pJson["main_business_line_cv_id"], err, true))
+        if(!validJsonOfField(6, "main_business_line_cv_id", pJson["main_business_line_cv_id"], err, true))
             return false;
     }
     if(pJson.isMember("remarks"))
     {
-        if(!validJsonOfField(6, "remarks", pJson["remarks"], err, true))
+        if(!validJsonOfField(7, "remarks", pJson["remarks"], err, true))
             return false;
     }
     return true;
@@ -1050,7 +1179,7 @@ bool ClientNonPerson::validateMasqueradedJsonForCreation(const Json::Value &pJso
                                                          const std::vector<std::string> &pMasqueradingVector,
                                                          std::string &err)
 {
-    if(pMasqueradingVector.size() != 7)
+    if(pMasqueradingVector.size() != 8)
     {
         err = "Bad masquerading vector";
         return false;
@@ -1071,11 +1200,6 @@ bool ClientNonPerson::validateMasqueradedJsonForCreation(const Json::Value &pJso
               if(!validJsonOfField(1, pMasqueradingVector[1], pJson[pMasqueradingVector[1]], err, true))
                   return false;
           }
-        else
-        {
-            err="The " + pMasqueradingVector[1] + " column cannot be null";
-            return false;
-        }
       }
       if(!pMasqueradingVector[2].empty())
       {
@@ -1097,6 +1221,11 @@ bool ClientNonPerson::validateMasqueradedJsonForCreation(const Json::Value &pJso
               if(!validJsonOfField(3, pMasqueradingVector[3], pJson[pMasqueradingVector[3]], err, true))
                   return false;
           }
+        else
+        {
+            err="The " + pMasqueradingVector[3] + " column cannot be null";
+            return false;
+        }
       }
       if(!pMasqueradingVector[4].empty())
       {
@@ -1122,6 +1251,14 @@ bool ClientNonPerson::validateMasqueradedJsonForCreation(const Json::Value &pJso
                   return false;
           }
       }
+      if(!pMasqueradingVector[7].empty())
+      {
+          if(pJson.isMember(pMasqueradingVector[7]))
+          {
+              if(!validJsonOfField(7, pMasqueradingVector[7], pJson[pMasqueradingVector[7]], err, true))
+                  return false;
+          }
+      }
     }
     catch(const Json::LogicError &e)
     {
@@ -1142,34 +1279,39 @@ bool ClientNonPerson::validateJsonForUpdate(const Json::Value &pJson, std::strin
         err = "The value of primary key must be set in the json object for update";
         return false;
     }
+    if(pJson.isMember("business_id"))
+    {
+        if(!validJsonOfField(1, "business_id", pJson["business_id"], err, false))
+            return false;
+    }
     if(pJson.isMember("client_id"))
     {
-        if(!validJsonOfField(1, "client_id", pJson["client_id"], err, false))
+        if(!validJsonOfField(2, "client_id", pJson["client_id"], err, false))
             return false;
     }
     if(pJson.isMember("constitution_cv_id"))
     {
-        if(!validJsonOfField(2, "constitution_cv_id", pJson["constitution_cv_id"], err, false))
+        if(!validJsonOfField(3, "constitution_cv_id", pJson["constitution_cv_id"], err, false))
             return false;
     }
     if(pJson.isMember("incorp_no"))
     {
-        if(!validJsonOfField(3, "incorp_no", pJson["incorp_no"], err, false))
+        if(!validJsonOfField(4, "incorp_no", pJson["incorp_no"], err, false))
             return false;
     }
     if(pJson.isMember("incorp_validity_till"))
     {
-        if(!validJsonOfField(4, "incorp_validity_till", pJson["incorp_validity_till"], err, false))
+        if(!validJsonOfField(5, "incorp_validity_till", pJson["incorp_validity_till"], err, false))
             return false;
     }
     if(pJson.isMember("main_business_line_cv_id"))
     {
-        if(!validJsonOfField(5, "main_business_line_cv_id", pJson["main_business_line_cv_id"], err, false))
+        if(!validJsonOfField(6, "main_business_line_cv_id", pJson["main_business_line_cv_id"], err, false))
             return false;
     }
     if(pJson.isMember("remarks"))
     {
-        if(!validJsonOfField(6, "remarks", pJson["remarks"], err, false))
+        if(!validJsonOfField(7, "remarks", pJson["remarks"], err, false))
             return false;
     }
     return true;
@@ -1178,7 +1320,7 @@ bool ClientNonPerson::validateMasqueradedJsonForUpdate(const Json::Value &pJson,
                                                        const std::vector<std::string> &pMasqueradingVector,
                                                        std::string &err)
 {
-    if(pMasqueradingVector.size() != 7)
+    if(pMasqueradingVector.size() != 8)
     {
         err = "Bad masquerading vector";
         return false;
@@ -1224,6 +1366,11 @@ bool ClientNonPerson::validateMasqueradedJsonForUpdate(const Json::Value &pJson,
           if(!validJsonOfField(6, pMasqueradingVector[6], pJson[pMasqueradingVector[6]], err, false))
               return false;
       }
+      if(!pMasqueradingVector[7].empty() && pJson.isMember(pMasqueradingVector[7]))
+      {
+          if(!validJsonOfField(7, pMasqueradingVector[7], pJson[pMasqueradingVector[7]], err, false))
+              return false;
+      }
     }
     catch(const Json::LogicError &e)
     {
@@ -1255,8 +1402,7 @@ bool ClientNonPerson::validJsonOfField(size_t index,
         case 1:
             if(pJson.isNull())
             {
-                err="The " + fieldName + " column cannot be null";
-                return false;
+                return true;
             }
             if(!pJson.isString())
             {
@@ -1279,6 +1425,18 @@ bool ClientNonPerson::validJsonOfField(size_t index,
         case 3:
             if(pJson.isNull())
             {
+                err="The " + fieldName + " column cannot be null";
+                return false;
+            }
+            if(!pJson.isString())
+            {
+                err="Type error in the "+fieldName+" field";
+                return false;
+            }
+            break;
+        case 4:
+            if(pJson.isNull())
+            {
                 return true;
             }
             if(!pJson.isString())
@@ -1295,17 +1453,6 @@ bool ClientNonPerson::validJsonOfField(size_t index,
                 return false;
             }
             break;
-        case 4:
-            if(pJson.isNull())
-            {
-                return true;
-            }
-            if(!pJson.isString())
-            {
-                err="Type error in the "+fieldName+" field";
-                return false;
-            }
-            break;
         case 5:
             if(pJson.isNull())
             {
@@ -1318,6 +1465,17 @@ bool ClientNonPerson::validJsonOfField(size_t index,
             }
             break;
         case 6:
+            if(pJson.isNull())
+            {
+                return true;
+            }
+            if(!pJson.isString())
+            {
+                err="Type error in the "+fieldName+" field";
+                return false;
+            }
+            break;
+        case 7:
             if(pJson.isNull())
             {
                 return true;

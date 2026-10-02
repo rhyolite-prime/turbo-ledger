@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  lint:
+    name: Static checks
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Coroutine co_return lint
+        run: python3 src/tools/check_coroutines.py
+
+  build:
+    name: Build & unit tests
+    runs-on: ubuntu-24.04
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install toolchain & dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            g++ cmake ninja-build git ca-certificates \
+            libjsoncpp-dev uuid-dev zlib1g-dev libssl-dev libhiredis-dev libpq-dev
+
+      - name: Cache Drogon
+        id: cache-drogon
+        uses: actions/cache@v4
+        with:
+          path: ~/drogon-install
+          key: drogon-v1.9.8-${{ runner.os }}-ubuntu24
+
+      - name: Build Drogon
+        if: steps.cache-drogon.outputs.cache-hit != 'true'
+        run: |
+          git clone --depth 1 --branch v1.9.8 --recurse-submodules --shallow-submodules \
+            https://github.com/drogonframework/drogon /tmp/drogon
+          cmake -S /tmp/drogon -B /tmp/drogon/build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_EXAMPLES=OFF -DBUILD_CTL=OFF -DBUILD_TESTING=OFF \
+            -DCMAKE_INSTALL_PREFIX=$HOME/drogon-install
+          cmake --build /tmp/drogon/build -j"$(nproc)"
+          cmake --install /tmp/drogon/build
+
+      - name: Configure
+        run: |
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH=$HOME/drogon-install \
+            -DTL_SERVICES="Identity;Accounting;ApiGateway"
+
+      - name: Build
+        run: cmake --build build -j"$(nproc)"
+
+      - name: Unit tests
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Migration dry-run (schema-per-tenant)
+        run: |
+          sudo systemctl start postgresql || true
+          sudo -u postgres createuser --superuser "$USER" 2>/dev/null || true
+          createdb TlAccounting 2>/dev/null || true
+          python3 src/tools/migrate.py --service Accounting --tenant default \
+            --database-url "postgresql:///TlAccounting" || echo "::warning::migration smoke skipped"

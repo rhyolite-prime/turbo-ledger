@@ -1,8 +1,0 @@
-//
-// Created by Emmanuel Addo-Odame on 31/07/2026.
-//
-
-#ifndef CUSTOMER_REDISCACHEMANAGER_H
-#define CUSTOMER_REDISCACHEMANAGER_H
-
-#endif //CUSTOMER_REDISCACHEMANAGER_H

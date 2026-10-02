@@ -1,37 +1,43 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.10)
 project(HeartBeat CXX)
 
 include(CheckIncludeFileCXX)
 
-check_include_file_cxx(any HAS_ANY)
-check_include_file_cxx(string_view HAS_STRING_VIEW)
-check_include_file_cxx(coroutine HAS_COROUTINE)
-if (NOT "${CMAKE_CXX_STANDARD}" STREQUAL "")
-    # Do nothing
-elseif (HAS_ANY AND HAS_STRING_VIEW AND HAS_COROUTINE)
-    set(CMAKE_CXX_STANDARD 20)
-elseif (HAS_ANY AND HAS_STRING_VIEW)
-    set(CMAKE_CXX_STANDARD 17)
-else ()
-    set(CMAKE_CXX_STANDARD 14)
-endif ()
-
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# GCC < 13 needs -fcoroutines even in C++20/23 mode; GCC >= 13 and Clang enable
+# coroutines automatically (and Clang rejects the flag).
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 13)
+    add_compile_options(-fcoroutines)
+endif()
+
+add_compile_options("-include" "${CMAKE_CURRENT_SOURCE_DIR}/utils/codecvt_helper.h" "-Wno-deprecated-declarations")
+
 add_executable(${PROJECT_NAME} main.cc
-        controllers/JobsController.h
-        controllers/SchedulerController.h)
+        services/HeartBeatService.h
+        services/HeartBeatService.cc
+        utils/codecvt_helper.h)
 
 # ##############################################################################
 # If you include the drogon source code locally in your project, use this method
-# to add drogon 
-# add_subdirectory(drogon) 
+# to add drogon
+# add_subdirectory(drogon)
 # target_link_libraries(${PROJECT_NAME} PRIVATE drogon)
 #
 # and comment out the following lines
 find_package(Drogon CONFIG REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE Drogon::Drogon)
+find_package(OpenSSL REQUIRED)
+
+# Shared platform library (libturbo)
+if(NOT TARGET turbo)
+    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../libs/turbo turbo_build)
+endif()
+
+# turbo::turbo already publicly links Drogon::Drogon and OpenSSL::Crypto;
+# don't relist them here or the linker will see libdrogon.a twice.
+target_link_libraries(${PROJECT_NAME} PRIVATE turbo::turbo OpenSSL::SSL)
 
 # ##############################################################################
 
@@ -40,12 +46,11 @@ if (CMAKE_CXX_STANDARD LESS 17)
 elseif (CMAKE_CXX_STANDARD LESS 20)
     message(STATUS "use c++17")
 else ()
-    message(STATUS "use c++20")
+    message(STATUS "use c++${CMAKE_CXX_STANDARD}")
 endif ()
 
 aux_source_directory(controllers CTL_SRC)
 aux_source_directory(filters FILTER_SRC)
-aux_source_directory(plugins PLUGIN_SRC)
 aux_source_directory(models MODEL_SRC)
 
 drogon_create_views(${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/views
@@ -66,10 +71,9 @@ target_sources(${PROJECT_NAME}
                ${SRC_DIR}
                ${CTL_SRC}
                ${FILTER_SRC}
-               ${PLUGIN_SRC}
                ${MODEL_SRC})
 # ##############################################################################
-# uncomment the following line for dynamically loading views 
+# uncomment the following line for dynamically loading views
 # set_property(TARGET ${PROJECT_NAME} PROPERTY ENABLE_EXPORTS ON)
 
 # ##############################################################################

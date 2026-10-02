@@ -6,6 +6,7 @@
  */
 
 #include "JournalEntries.h"
+#include "Accounts.h"
 #include <drogon/utils/Utilities.h>
 #include <string>
 
@@ -44,6 +45,9 @@ const std::string JournalEntries::Cols::_transaction_date = "\"transaction_date\
 const std::string JournalEntries::Cols::_created_on_utc = "\"created_on_utc\"";
 const std::string JournalEntries::Cols::_last_modified_on_utc = "\"last_modified_on_utc\"";
 const std::string JournalEntries::Cols::_submitted_on_date = "\"submitted_on_date\"";
+const std::string JournalEntries::Cols::_entry_seq = "\"entry_seq\"";
+const std::string JournalEntries::Cols::_entry_hash = "\"entry_hash\"";
+const std::string JournalEntries::Cols::_prev_hash = "\"prev_hash\"";
 const std::string JournalEntries::primaryKeyName = "id";
 const bool JournalEntries::hasPrimaryKey = true;
 const std::string JournalEntries::tableName = "\"journal_entries\"";
@@ -79,7 +83,10 @@ const std::vector<typename JournalEntries::MetaData> JournalEntries::metaData_={
 {"transaction_date","::trantor::Date","date",0,0,0,0},
 {"created_on_utc","::trantor::Date","timestamp without time zone",0,0,0,0},
 {"last_modified_on_utc","::trantor::Date","timestamp without time zone",0,0,0,0},
-{"submitted_on_date","::trantor::Date","date",0,0,0,1}
+{"submitted_on_date","::trantor::Date","date",0,0,0,1},
+{"entry_seq","int64_t","bigint",8,1,0,1},
+{"entry_hash","std::string","character varying",64,0,0,0},
+{"prev_hash","std::string","character varying",64,0,0,0}
 };
 const std::string &JournalEntries::getColumnName(size_t index) noexcept(false)
 {
@@ -301,11 +308,23 @@ JournalEntries::JournalEntries(const Row &r, const ssize_t indexOffset) noexcept
             time_t t = mktime(&stm);
             submittedOnDate_=std::make_shared<::trantor::Date>(t*1000000);
         }
+        if(!r["entry_seq"].isNull())
+        {
+            entrySeq_=std::make_shared<int64_t>(r["entry_seq"].as<int64_t>());
+        }
+        if(!r["entry_hash"].isNull())
+        {
+            entryHash_=std::make_shared<std::string>(r["entry_hash"].as<std::string>());
+        }
+        if(!r["prev_hash"].isNull())
+        {
+            prevHash_=std::make_shared<std::string>(r["prev_hash"].as<std::string>());
+        }
     }
     else
     {
         size_t offset = (size_t)indexOffset;
-        if(offset + 31 > r.size())
+        if(offset + 34 > r.size())
         {
             LOG_FATAL << "Invalid SQL result for this model";
             return;
@@ -553,13 +572,28 @@ JournalEntries::JournalEntries(const Row &r, const ssize_t indexOffset) noexcept
             time_t t = mktime(&stm);
             submittedOnDate_=std::make_shared<::trantor::Date>(t*1000000);
         }
+        index = offset + 31;
+        if(!r[index].isNull())
+        {
+            entrySeq_=std::make_shared<int64_t>(r[index].as<int64_t>());
+        }
+        index = offset + 32;
+        if(!r[index].isNull())
+        {
+            entryHash_=std::make_shared<std::string>(r[index].as<std::string>());
+        }
+        index = offset + 33;
+        if(!r[index].isNull())
+        {
+            prevHash_=std::make_shared<std::string>(r[index].as<std::string>());
+        }
     }
 
 }
 
 JournalEntries::JournalEntries(const Json::Value &pJson, const std::vector<std::string> &pMasqueradingVector) noexcept(false)
 {
-    if(pMasqueradingVector.size() != 31)
+    if(pMasqueradingVector.size() != 34)
     {
         LOG_ERROR << "Bad masquerading vector";
         return;
@@ -897,6 +931,30 @@ JournalEntries::JournalEntries(const Json::Value &pJson, const std::vector<std::
             strptime(daysStr.c_str(),"%Y-%m-%d",&stm);
             time_t t = mktime(&stm);
             submittedOnDate_=std::make_shared<::trantor::Date>(t*1000000);
+        }
+    }
+    if(!pMasqueradingVector[31].empty() && pJson.isMember(pMasqueradingVector[31]))
+    {
+        dirtyFlag_[31] = true;
+        if(!pJson[pMasqueradingVector[31]].isNull())
+        {
+            entrySeq_=std::make_shared<int64_t>((int64_t)pJson[pMasqueradingVector[31]].asInt64());
+        }
+    }
+    if(!pMasqueradingVector[32].empty() && pJson.isMember(pMasqueradingVector[32]))
+    {
+        dirtyFlag_[32] = true;
+        if(!pJson[pMasqueradingVector[32]].isNull())
+        {
+            entryHash_=std::make_shared<std::string>(pJson[pMasqueradingVector[32]].asString());
+        }
+    }
+    if(!pMasqueradingVector[33].empty() && pJson.isMember(pMasqueradingVector[33]))
+    {
+        dirtyFlag_[33] = true;
+        if(!pJson[pMasqueradingVector[33]].isNull())
+        {
+            prevHash_=std::make_shared<std::string>(pJson[pMasqueradingVector[33]].asString());
         }
     }
 }
@@ -1238,12 +1296,36 @@ JournalEntries::JournalEntries(const Json::Value &pJson) noexcept(false)
             submittedOnDate_=std::make_shared<::trantor::Date>(t*1000000);
         }
     }
+    if(pJson.isMember("entry_seq"))
+    {
+        dirtyFlag_[31]=true;
+        if(!pJson["entry_seq"].isNull())
+        {
+            entrySeq_=std::make_shared<int64_t>((int64_t)pJson["entry_seq"].asInt64());
+        }
+    }
+    if(pJson.isMember("entry_hash"))
+    {
+        dirtyFlag_[32]=true;
+        if(!pJson["entry_hash"].isNull())
+        {
+            entryHash_=std::make_shared<std::string>(pJson["entry_hash"].asString());
+        }
+    }
+    if(pJson.isMember("prev_hash"))
+    {
+        dirtyFlag_[33]=true;
+        if(!pJson["prev_hash"].isNull())
+        {
+            prevHash_=std::make_shared<std::string>(pJson["prev_hash"].asString());
+        }
+    }
 }
 
 void JournalEntries::updateByMasqueradedJson(const Json::Value &pJson,
                                             const std::vector<std::string> &pMasqueradingVector) noexcept(false)
 {
-    if(pMasqueradingVector.size() != 31)
+    if(pMasqueradingVector.size() != 34)
     {
         LOG_ERROR << "Bad masquerading vector";
         return;
@@ -1582,6 +1664,29 @@ void JournalEntries::updateByMasqueradedJson(const Json::Value &pJson,
             submittedOnDate_=std::make_shared<::trantor::Date>(t*1000000);
         }
     }
+    if(!pMasqueradingVector[31].empty() && pJson.isMember(pMasqueradingVector[31]))
+    {
+        if(!pJson[pMasqueradingVector[31]].isNull())
+        {
+            entrySeq_=std::make_shared<int64_t>((int64_t)pJson[pMasqueradingVector[31]].asInt64());
+        }
+    }
+    if(!pMasqueradingVector[32].empty() && pJson.isMember(pMasqueradingVector[32]))
+    {
+        dirtyFlag_[32] = true;
+        if(!pJson[pMasqueradingVector[32]].isNull())
+        {
+            entryHash_=std::make_shared<std::string>(pJson[pMasqueradingVector[32]].asString());
+        }
+    }
+    if(!pMasqueradingVector[33].empty() && pJson.isMember(pMasqueradingVector[33]))
+    {
+        dirtyFlag_[33] = true;
+        if(!pJson[pMasqueradingVector[33]].isNull())
+        {
+            prevHash_=std::make_shared<std::string>(pJson[pMasqueradingVector[33]].asString());
+        }
+    }
 }
 
 void JournalEntries::updateByJson(const Json::Value &pJson) noexcept(false)
@@ -1918,6 +2023,29 @@ void JournalEntries::updateByJson(const Json::Value &pJson) noexcept(false)
             strptime(daysStr.c_str(),"%Y-%m-%d",&stm);
             time_t t = mktime(&stm);
             submittedOnDate_=std::make_shared<::trantor::Date>(t*1000000);
+        }
+    }
+    if(pJson.isMember("entry_seq"))
+    {
+        if(!pJson["entry_seq"].isNull())
+        {
+            entrySeq_=std::make_shared<int64_t>((int64_t)pJson["entry_seq"].asInt64());
+        }
+    }
+    if(pJson.isMember("entry_hash"))
+    {
+        dirtyFlag_[32] = true;
+        if(!pJson["entry_hash"].isNull())
+        {
+            entryHash_=std::make_shared<std::string>(pJson["entry_hash"].asString());
+        }
+    }
+    if(pJson.isMember("prev_hash"))
+    {
+        dirtyFlag_[33] = true;
+        if(!pJson["prev_hash"].isNull())
+        {
+            prevHash_=std::make_shared<std::string>(pJson["prev_hash"].asString());
         }
     }
 }
@@ -2634,6 +2762,77 @@ void JournalEntries::setSubmittedOnDate(const ::trantor::Date &pSubmittedOnDate)
     dirtyFlag_[30] = true;
 }
 
+const int64_t &JournalEntries::getValueOfEntrySeq() const noexcept
+{
+    static const int64_t defaultValue = int64_t();
+    if(entrySeq_)
+        return *entrySeq_;
+    return defaultValue;
+}
+const std::shared_ptr<int64_t> &JournalEntries::getEntrySeq() const noexcept
+{
+    return entrySeq_;
+}
+void JournalEntries::setEntrySeq(const int64_t &pEntrySeq) noexcept
+{
+    entrySeq_ = std::make_shared<int64_t>(pEntrySeq);
+    dirtyFlag_[31] = true;
+}
+
+const std::string &JournalEntries::getValueOfEntryHash() const noexcept
+{
+    static const std::string defaultValue = std::string();
+    if(entryHash_)
+        return *entryHash_;
+    return defaultValue;
+}
+const std::shared_ptr<std::string> &JournalEntries::getEntryHash() const noexcept
+{
+    return entryHash_;
+}
+void JournalEntries::setEntryHash(const std::string &pEntryHash) noexcept
+{
+    entryHash_ = std::make_shared<std::string>(pEntryHash);
+    dirtyFlag_[32] = true;
+}
+void JournalEntries::setEntryHash(std::string &&pEntryHash) noexcept
+{
+    entryHash_ = std::make_shared<std::string>(std::move(pEntryHash));
+    dirtyFlag_[32] = true;
+}
+void JournalEntries::setEntryHashToNull() noexcept
+{
+    entryHash_.reset();
+    dirtyFlag_[32] = true;
+}
+
+const std::string &JournalEntries::getValueOfPrevHash() const noexcept
+{
+    static const std::string defaultValue = std::string();
+    if(prevHash_)
+        return *prevHash_;
+    return defaultValue;
+}
+const std::shared_ptr<std::string> &JournalEntries::getPrevHash() const noexcept
+{
+    return prevHash_;
+}
+void JournalEntries::setPrevHash(const std::string &pPrevHash) noexcept
+{
+    prevHash_ = std::make_shared<std::string>(pPrevHash);
+    dirtyFlag_[33] = true;
+}
+void JournalEntries::setPrevHash(std::string &&pPrevHash) noexcept
+{
+    prevHash_ = std::make_shared<std::string>(std::move(pPrevHash));
+    dirtyFlag_[33] = true;
+}
+void JournalEntries::setPrevHashToNull() noexcept
+{
+    prevHash_.reset();
+    dirtyFlag_[33] = true;
+}
+
 void JournalEntries::updateId(const uint64_t id)
 {
 }
@@ -2671,7 +2870,9 @@ const std::vector<std::string> &JournalEntries::insertColumns() noexcept
         "transaction_date",
         "created_on_utc",
         "last_modified_on_utc",
-        "submitted_on_date"
+        "submitted_on_date",
+        "entry_hash",
+        "prev_hash"
     };
     return inCols;
 }
@@ -3019,6 +3220,28 @@ void JournalEntries::outputArgs(drogon::orm::internal::SqlBinder &binder) const
             binder << nullptr;
         }
     }
+    if(dirtyFlag_[32])
+    {
+        if(getEntryHash())
+        {
+            binder << getValueOfEntryHash();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[33])
+    {
+        if(getPrevHash())
+        {
+            binder << getValueOfPrevHash();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
 }
 
 const std::vector<std::string> JournalEntries::updateColumns() const
@@ -3147,6 +3370,14 @@ const std::vector<std::string> JournalEntries::updateColumns() const
     if(dirtyFlag_[30])
     {
         ret.push_back(getColumnName(30));
+    }
+    if(dirtyFlag_[32])
+    {
+        ret.push_back(getColumnName(32));
+    }
+    if(dirtyFlag_[33])
+    {
+        ret.push_back(getColumnName(33));
     }
     return ret;
 }
@@ -3494,6 +3725,28 @@ void JournalEntries::updateArgs(drogon::orm::internal::SqlBinder &binder) const
             binder << nullptr;
         }
     }
+    if(dirtyFlag_[32])
+    {
+        if(getEntryHash())
+        {
+            binder << getValueOfEntryHash();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[33])
+    {
+        if(getPrevHash())
+        {
+            binder << getValueOfPrevHash();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
 }
 Json::Value JournalEntries::toJson() const
 {
@@ -3746,6 +3999,30 @@ Json::Value JournalEntries::toJson() const
     {
         ret["submitted_on_date"]=Json::Value();
     }
+    if(getEntrySeq())
+    {
+        ret["entry_seq"]=(Json::Int64)getValueOfEntrySeq();
+    }
+    else
+    {
+        ret["entry_seq"]=Json::Value();
+    }
+    if(getEntryHash())
+    {
+        ret["entry_hash"]=getValueOfEntryHash();
+    }
+    else
+    {
+        ret["entry_hash"]=Json::Value();
+    }
+    if(getPrevHash())
+    {
+        ret["prev_hash"]=getValueOfPrevHash();
+    }
+    else
+    {
+        ret["prev_hash"]=Json::Value();
+    }
     return ret;
 }
 
@@ -3758,7 +4035,7 @@ Json::Value JournalEntries::toMasqueradedJson(
     const std::vector<std::string> &pMasqueradingVector) const
 {
     Json::Value ret;
-    if(pMasqueradingVector.size() == 31)
+    if(pMasqueradingVector.size() == 34)
     {
         if(!pMasqueradingVector[0].empty())
         {
@@ -4101,6 +4378,39 @@ Json::Value JournalEntries::toMasqueradedJson(
                 ret[pMasqueradingVector[30]]=Json::Value();
             }
         }
+        if(!pMasqueradingVector[31].empty())
+        {
+            if(getEntrySeq())
+            {
+                ret[pMasqueradingVector[31]]=(Json::Int64)getValueOfEntrySeq();
+            }
+            else
+            {
+                ret[pMasqueradingVector[31]]=Json::Value();
+            }
+        }
+        if(!pMasqueradingVector[32].empty())
+        {
+            if(getEntryHash())
+            {
+                ret[pMasqueradingVector[32]]=getValueOfEntryHash();
+            }
+            else
+            {
+                ret[pMasqueradingVector[32]]=Json::Value();
+            }
+        }
+        if(!pMasqueradingVector[33].empty())
+        {
+            if(getPrevHash())
+            {
+                ret[pMasqueradingVector[33]]=getValueOfPrevHash();
+            }
+            else
+            {
+                ret[pMasqueradingVector[33]]=Json::Value();
+            }
+        }
         return ret;
     }
     LOG_ERROR << "Masquerade failed";
@@ -4352,6 +4662,30 @@ Json::Value JournalEntries::toMasqueradedJson(
     {
         ret["submitted_on_date"]=Json::Value();
     }
+    if(getEntrySeq())
+    {
+        ret["entry_seq"]=(Json::Int64)getValueOfEntrySeq();
+    }
+    else
+    {
+        ret["entry_seq"]=Json::Value();
+    }
+    if(getEntryHash())
+    {
+        ret["entry_hash"]=getValueOfEntryHash();
+    }
+    else
+    {
+        ret["entry_hash"]=Json::Value();
+    }
+    if(getPrevHash())
+    {
+        ret["prev_hash"]=getValueOfPrevHash();
+    }
+    else
+    {
+        ret["prev_hash"]=Json::Value();
+    }
     return ret;
 }
 
@@ -4552,13 +4886,28 @@ bool JournalEntries::validateJsonForCreation(const Json::Value &pJson, std::stri
         err="The submitted_on_date column cannot be null";
         return false;
     }
+    if(pJson.isMember("entry_seq"))
+    {
+        if(!validJsonOfField(31, "entry_seq", pJson["entry_seq"], err, true))
+            return false;
+    }
+    if(pJson.isMember("entry_hash"))
+    {
+        if(!validJsonOfField(32, "entry_hash", pJson["entry_hash"], err, true))
+            return false;
+    }
+    if(pJson.isMember("prev_hash"))
+    {
+        if(!validJsonOfField(33, "prev_hash", pJson["prev_hash"], err, true))
+            return false;
+    }
     return true;
 }
 bool JournalEntries::validateMasqueradedJsonForCreation(const Json::Value &pJson,
                                                         const std::vector<std::string> &pMasqueradingVector,
                                                         std::string &err)
 {
-    if(pMasqueradingVector.size() != 31)
+    if(pMasqueradingVector.size() != 34)
     {
         err = "Bad masquerading vector";
         return false;
@@ -4852,6 +5201,30 @@ bool JournalEntries::validateMasqueradedJsonForCreation(const Json::Value &pJson
             return false;
         }
       }
+      if(!pMasqueradingVector[31].empty())
+      {
+          if(pJson.isMember(pMasqueradingVector[31]))
+          {
+              if(!validJsonOfField(31, pMasqueradingVector[31], pJson[pMasqueradingVector[31]], err, true))
+                  return false;
+          }
+      }
+      if(!pMasqueradingVector[32].empty())
+      {
+          if(pJson.isMember(pMasqueradingVector[32]))
+          {
+              if(!validJsonOfField(32, pMasqueradingVector[32], pJson[pMasqueradingVector[32]], err, true))
+                  return false;
+          }
+      }
+      if(!pMasqueradingVector[33].empty())
+      {
+          if(pJson.isMember(pMasqueradingVector[33]))
+          {
+              if(!validJsonOfField(33, pMasqueradingVector[33], pJson[pMasqueradingVector[33]], err, true))
+                  return false;
+          }
+      }
     }
     catch(const Json::LogicError &e)
     {
@@ -5022,13 +5395,28 @@ bool JournalEntries::validateJsonForUpdate(const Json::Value &pJson, std::string
         if(!validJsonOfField(30, "submitted_on_date", pJson["submitted_on_date"], err, false))
             return false;
     }
+    if(pJson.isMember("entry_seq"))
+    {
+        if(!validJsonOfField(31, "entry_seq", pJson["entry_seq"], err, false))
+            return false;
+    }
+    if(pJson.isMember("entry_hash"))
+    {
+        if(!validJsonOfField(32, "entry_hash", pJson["entry_hash"], err, false))
+            return false;
+    }
+    if(pJson.isMember("prev_hash"))
+    {
+        if(!validJsonOfField(33, "prev_hash", pJson["prev_hash"], err, false))
+            return false;
+    }
     return true;
 }
 bool JournalEntries::validateMasqueradedJsonForUpdate(const Json::Value &pJson,
                                                       const std::vector<std::string> &pMasqueradingVector,
                                                       std::string &err)
 {
-    if(pMasqueradingVector.size() != 31)
+    if(pMasqueradingVector.size() != 34)
     {
         err = "Bad masquerading vector";
         return false;
@@ -5192,6 +5580,21 @@ bool JournalEntries::validateMasqueradedJsonForUpdate(const Json::Value &pJson,
       if(!pMasqueradingVector[30].empty() && pJson.isMember(pMasqueradingVector[30]))
       {
           if(!validJsonOfField(30, pMasqueradingVector[30], pJson[pMasqueradingVector[30]], err, false))
+              return false;
+      }
+      if(!pMasqueradingVector[31].empty() && pJson.isMember(pMasqueradingVector[31]))
+      {
+          if(!validJsonOfField(31, pMasqueradingVector[31], pJson[pMasqueradingVector[31]], err, false))
+              return false;
+      }
+      if(!pMasqueradingVector[32].empty() && pJson.isMember(pMasqueradingVector[32]))
+      {
+          if(!validJsonOfField(32, pMasqueradingVector[32], pJson[pMasqueradingVector[32]], err, false))
+              return false;
+      }
+      if(!pMasqueradingVector[33].empty() && pJson.isMember(pMasqueradingVector[33]))
+      {
+          if(!validJsonOfField(33, pMasqueradingVector[33], pJson[pMasqueradingVector[33]], err, false))
               return false;
       }
     }
@@ -5597,9 +6000,155 @@ bool JournalEntries::validJsonOfField(size_t index,
                 return false;
             }
             break;
+        case 31:
+            if(pJson.isNull())
+            {
+                err="The " + fieldName + " column cannot be null";
+                return false;
+            }
+            if(isForCreation)
+            {
+                err="The automatic primary key cannot be set";
+                return false;
+            }
+            else
+            {
+                err="The automatic primary key cannot be update";
+                return false;
+            }
+            if(!pJson.isInt64())
+            {
+                err="Type error in the "+fieldName+" field";
+                return false;
+            }
+            break;
+        case 32:
+            if(pJson.isNull())
+            {
+                return true;
+            }
+            if(!pJson.isString())
+            {
+                err="Type error in the "+fieldName+" field";
+                return false;
+            }
+            if(pJson.isString() && std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>{}
+                .from_bytes(pJson.asCString()).size() > 64)
+            {
+                err="String length exceeds limit for the " +
+                    fieldName +
+                    " field (the maximum value is 64)";
+                return false;
+            }
+            break;
+        case 33:
+            if(pJson.isNull())
+            {
+                return true;
+            }
+            if(!pJson.isString())
+            {
+                err="Type error in the "+fieldName+" field";
+                return false;
+            }
+            if(pJson.isString() && std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>{}
+                .from_bytes(pJson.asCString()).size() > 64)
+            {
+                err="String length exceeds limit for the " +
+                    fieldName +
+                    " field (the maximum value is 64)";
+                return false;
+            }
+            break;
         default:
             err="Internal error in the server";
             return false;
     }
     return true;
+}
+Accounts JournalEntries::getAccounts(const DbClientPtr &clientPtr) const {
+    static const std::string sql = "select * from accounts where id = $1";
+    Result r(nullptr);
+    {
+        auto binder = *clientPtr << sql;
+        binder << *accountId_ << Mode::Blocking >>
+            [&r](const Result &result) { r = result; };
+        binder.exec();
+    }
+    if (r.size() == 0)
+    {
+        throw UnexpectedRows("0 rows found");
+    }
+    else if (r.size() > 1)
+    {
+        throw UnexpectedRows("Found more than one row");
+    }
+    return Accounts(r[0]);
+}
+
+void JournalEntries::getAccounts(const DbClientPtr &clientPtr,
+                                 const std::function<void(Accounts)> &rcb,
+                                 const ExceptionCallback &ecb) const
+{
+    static const std::string sql = "select * from accounts where id = $1";
+    *clientPtr << sql
+               << *accountId_
+               >> [rcb = std::move(rcb), ecb](const Result &r){
+                    if (r.size() == 0)
+                    {
+                        ecb(UnexpectedRows("0 rows found"));
+                    }
+                    else if (r.size() > 1)
+                    {
+                        ecb(UnexpectedRows("Found more than one row"));
+                    }
+                    else
+                    {
+                        rcb(Accounts(r[0]));
+                    }
+               }
+               >> ecb;
+}
+JournalEntries JournalEntries::getJournalEntries(const DbClientPtr &clientPtr) const {
+    static const std::string sql = "select * from journal_entries where id = $1";
+    Result r(nullptr);
+    {
+        auto binder = *clientPtr << sql;
+        binder << *reversalId_ << Mode::Blocking >>
+            [&r](const Result &result) { r = result; };
+        binder.exec();
+    }
+    if (r.size() == 0)
+    {
+        throw UnexpectedRows("0 rows found");
+    }
+    else if (r.size() > 1)
+    {
+        throw UnexpectedRows("Found more than one row");
+    }
+    return JournalEntries(r[0]);
+}
+
+void JournalEntries::getJournalEntries(const DbClientPtr &clientPtr,
+                                       const std::function<void(JournalEntries)> &rcb,
+                                       const ExceptionCallback &ecb) const
+{
+    static const std::string sql = "select * from journal_entries where id = $1";
+    *clientPtr << sql
+               << *reversalId_
+               >> [rcb = std::move(rcb), ecb](const Result &r){
+                    if (r.size() == 0)
+                    {
+                        ecb(UnexpectedRows("0 rows found"));
+                    }
+                    else if (r.size() > 1)
+                    {
+                        ecb(UnexpectedRows("Found more than one row"));
+                    }
+                    else
+                    {
+                        rcb(JournalEntries(r[0]));
+                    }
+               }
+               >> ecb;
 }
