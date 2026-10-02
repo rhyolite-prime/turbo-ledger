@@ -68,6 +68,160 @@ services:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
 
+  organization:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.service
+      args: { SERVICE: Organization }
+    environment:
+      TL_DB_HOST: postgres
+      TL_REDIS_HOST: redis
+    ports:
+      - "7503:7503"
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  systemconfig:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.service
+      args: { SERVICE: SystemConfig }
+    environment:
+      TL_DB_HOST: postgres
+      TL_REDIS_HOST: redis
+    ports:
+      - "7509:7509"
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  provisioner:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.service
+      args: { SERVICE: Provisioner }
+    environment:
+      TL_DB_HOST: postgres
+      TL_REDIS_HOST: redis
+    ports:
+      - "7512:7512"
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  customer:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.service
+      args: { SERVICE: Customer }
+    environment:
+      TL_DB_HOST: postgres
+      TL_REDIS_HOST: redis
+    ports:
+      - "7504:7504"
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  depositaccountmanagement:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.service
+      args: { SERVICE: DepositAccountManagement }
+    environment:
+      TL_DB_HOST: postgres
+      TL_REDIS_HOST: redis
+    ports:
+      - "7507:7507"
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  portfolio:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.service
+      args: { SERVICE: Portfolio }
+    environment:
+      TL_DB_HOST: postgres
+      TL_REDIS_HOST: redis
+    ports:
+      - "7502:7502"
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  group:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.service
+      args: { SERVICE: Group }
+    environment:
+      TL_DB_HOST: postgres
+      TL_REDIS_HOST: redis
+    ports:
+      - "7506:7506"
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  teller:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.service
+      args: { SERVICE: Teller }
+    environment:
+      TL_DB_HOST: postgres
+      TL_REDIS_HOST: redis
+    ports:
+      - "7508:7508"
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  heartbeat:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.service
+      args: { SERVICE: HeartBeat }
+    environment:
+      TL_DB_HOST: postgres
+      TL_REDIS_HOST: redis
+    ports:
+      - "7510:7510"
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  template:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.service
+      args: { SERVICE: Template }
+    environment:
+      TL_DB_HOST: postgres
+      TL_REDIS_HOST: redis
+    ports:
+      - "7514:7514"
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  notification:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.service
+      args: { SERVICE: Notification }
+    environment:
+      TL_DB_HOST: postgres
+      TL_REDIS_HOST: redis
+    ports:
+      - "7515:7515"
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
   gateway:
     build:
       context: .
@@ -78,6 +232,17 @@ services:
     depends_on:
       - identity
       - accounting
+      - organization
+      - systemconfig
+      - provisioner
+      - customer
+      - depositaccountmanagement
+      - portfolio
+      - group
+      - teller
+      - heartbeat
+      - template
+      - notification
 
 volumes:
   pgdata:

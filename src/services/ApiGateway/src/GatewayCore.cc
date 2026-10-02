@@ -4,6 +4,8 @@
 #include <jwt-cpp/jwt.h>
 #include <algorithm>
 #include <chrono>
+#include <regex>
+#include <sstream>
 
 #include "turbo/ApiResponse.h"
 #include "turbo/ContextCodec.h"
@@ -14,6 +16,14 @@ using turbo::ApiResponse;
 using turbo::RequestContext;
 
 namespace gateway {
+
+namespace {
+/// Pseudo-service name for the Batch API route: it isn't a real upstream
+/// (there's no "batch" entry in gateway.services), it's handled entirely
+/// inside GatewayCore::handleBatch by re-dispatching sub-requests through
+/// the normal routing table.
+constexpr const char *kBatchServiceName = "batch";
+}  // namespace
 
 GatewayCore &core() {
     static GatewayCore instance;
@@ -38,7 +48,12 @@ void GatewayCore::initFromAppConfig() {
         route.prefix = r.get("prefix", "").asString();
         route.service = r.get("service", "").asString();
         route.isPublic = r.get("public", false).asBool();
-        if (!route.prefix.empty() && services_.count(route.service)) routes_.push_back(route);
+        // The Batch API route is handled locally (see handleBatch), so its
+        // pseudo-service name is exempt from the "must have a real upstream
+        // base URL" requirement every other route needs.
+        if (!route.prefix.empty() &&
+            (route.service == kBatchServiceName || services_.count(route.service)))
+            routes_.push_back(route);
     }
     // longest prefix first
     std::sort(routes_.begin(), routes_.end(),
@@ -201,6 +216,24 @@ drogon::Task<drogon::HttpResponsePtr> GatewayCore::handleAsync(drogon::HttpReque
                     ctx.userId = decoded.get_payload_claim("userId").as_string();
                 if (decoded.has_payload_claim("username"))
                     ctx.username = decoded.get_payload_claim("username").as_string();
+                // Phase 2: the token carries the caller's resolved permission set
+                // (embedded by Identity at signin) so every downstream service can
+                // enforce RBAC from the signed TL-Context alone — see plan §2.3/§2.4.
+                if (decoded.has_payload_claim("su") &&
+                    decoded.get_payload_claim("su").as_string() == "1") {
+                    ctx.permissions.push_back("ALL_FUNCTIONS");
+                } else if (decoded.has_payload_claim("perm")) {
+                    const auto permClaim = decoded.get_payload_claim("perm").as_string();
+                    size_t start = 0;
+                    while (start <= permClaim.size()) {
+                        auto comma = permClaim.find(',', start);
+                        auto code = permClaim.substr(
+                            start, comma == std::string::npos ? std::string::npos : comma - start);
+                        if (!code.empty()) ctx.permissions.push_back(code);
+                        if (comma == std::string::npos) break;
+                        start = comma + 1;
+                    }
+                }
                 // Cross-tenant replay protection: a token minted for one tenant
                 // must not be usable under another tenant's header.
                 if (decoded.has_payload_claim("tenantId")) {
@@ -265,6 +298,26 @@ drogon::Task<drogon::HttpResponsePtr> GatewayCore::handleAsync(drogon::HttpReque
         }
     }
 
+    // ---- batch dispatch ----------------------------------------------------
+    if (route->service == kBatchServiceName) {
+        drogon::HttpResponsePtr resp;
+        try {
+            resp = co_await handleBatch(req, ctx, requestId);
+        } catch (const std::exception &e) {
+            if (!idemStoreKey.empty()) idempotency_.abandon(idemStoreKey);
+            LOG_ERROR << "Batch pipeline error: " << e.what();
+            resp = ApiResponse::httpError(drogon::k500InternalServerError, "Batch pipeline error");
+        }
+        if (!idemStoreKey.empty()) {
+            idempotency_.complete(idemStoreKey,
+                                  StoredResponse{static_cast<int>(resp->statusCode()),
+                                                 std::string(resp->getHeader("Content-Type")),
+                                                 std::string(resp->getBody())});
+        }
+        decorate(req, resp, requestId);
+        co_return resp;
+    }
+
     // ---- proxy -----------------------------------------------------------------
     auto upstreamReq = drogon::HttpRequest::newHttpRequest();
     upstreamReq->setMethod(req->method());
@@ -317,6 +370,181 @@ drogon::Task<drogon::HttpResponsePtr> GatewayCore::handleAsync(drogon::HttpReque
     if (!upstreamCt.empty()) resp->addHeader("Content-Type", upstreamCt);
     decorate(req, resp, requestId);
     co_return resp;
+}
+
+namespace {
+
+/// Replaces every "$.{requestId}.{dotted.field.path}" occurrence in `text`
+/// with the corresponding scalar value from a prior sub-response's parsed
+/// JSON body. Unresolvable placeholders (unknown requestId, missing path,
+/// or a non-scalar target) are left verbatim so a caller can see exactly
+/// what didn't resolve rather than silently corrupting the payload.
+std::string substituteBatchRefs(const std::string &text,
+                                const std::unordered_map<int, Json::Value> &priorBodies) {
+    static const std::regex pattern(R"(\$\.(\d+)\.([A-Za-z0-9_.]+))");
+    std::string result;
+    result.reserve(text.size());
+    std::size_t lastPos = 0;
+    for (auto it = std::sregex_iterator(text.begin(), text.end(), pattern);
+        it != std::sregex_iterator(); ++it) {
+        const auto &match = *it;
+        result.append(text, lastPos, static_cast<std::size_t>(match.position()) - lastPos);
+
+        std::string replacement = match.str();  // default: leave unresolved
+        auto bodyIt = priorBodies.find(std::stoi(match[1].str()));
+        if (bodyIt != priorBodies.end()) {
+            const Json::Value *cur = &bodyIt->second;
+            std::istringstream path(match[2].str());
+            std::string segment;
+            bool resolved = true;
+            while (resolved && std::getline(path, segment, '.')) {
+                if (!cur->isObject() || !cur->isMember(segment)) {
+                    resolved = false;
+                } else {
+                    cur = &(*cur)[segment];
+                }
+            }
+            if (resolved && !cur->isObject() && !cur->isArray() && !cur->isNull()) {
+                if (cur->isString()) {
+                    replacement = cur->asString();
+                } else {
+                    Json::StreamWriterBuilder w;
+                    w["indentation"] = "";
+                    replacement = Json::writeString(w, *cur);
+                }
+            }
+        }
+        result.append(replacement);
+        lastPos = static_cast<std::size_t>(match.position() + match.length());
+    }
+    result.append(text, lastPos, std::string::npos);
+    return result;
+}
+
+/// Recursively applies substituteBatchRefs() to every string leaf of a JSON
+/// value (used for sub-request `body` payloads).
+void substituteJsonRefs(Json::Value &node, const std::unordered_map<int, Json::Value> &priorBodies) {
+    if (node.isString()) {
+        node = substituteBatchRefs(node.asString(), priorBodies);
+    } else if (node.isObject()) {
+        for (const auto &key : node.getMemberNames()) substituteJsonRefs(node[key], priorBodies);
+    } else if (node.isArray()) {
+        for (auto &child : node) substituteJsonRefs(child, priorBodies);
+    }
+}
+
+const std::unordered_map<std::string, drogon::HttpMethod> &batchMethodTable() {
+    static const std::unordered_map<std::string, drogon::HttpMethod> table = {
+        {"GET", drogon::Get},   {"POST", drogon::Post},     {"PUT", drogon::Put},
+        {"DELETE", drogon::Delete}, {"PATCH", drogon::Patch}, {"OPTIONS", drogon::Options}};
+    return table;
+}
+
+}  // namespace
+
+drogon::Task<drogon::HttpResponsePtr> GatewayCore::handleBatch(drogon::HttpRequestPtr req,
+                                                                turbo::RequestContext ctx,
+                                                                std::string requestId) {
+    auto bodyPtr = req->getJsonObject();
+    if (!bodyPtr || !bodyPtr->isArray()) {
+        co_return ApiResponse::httpBadRequest(
+            "Batch body must be a JSON array of sub-requests: "
+            "[{\"requestId\":1,\"relativeUrl\":\"...\",\"method\":\"GET|POST|PUT|PATCH|DELETE\","
+            "\"body\":{...}}]");
+    }
+
+    const std::string authHeader = req->getHeader("Authorization");
+    const bool hasApiKey =
+        !req->getHeader("ClientId").empty() && !req->getHeader("ClientSecret").empty();
+
+    std::unordered_map<int, Json::Value> priorBodies;
+    Json::Value out(Json::arrayValue);
+
+    for (const auto &sub : *bodyPtr) {
+        Json::Value entry;
+        if (!sub.isObject()) {
+            entry["statusCode"] = static_cast<int>(drogon::k400BadRequest);
+            entry["body"] = ApiResponse::fail("Each batch entry must be a JSON object",
+                                              "error.msg.gateway.batch.malformed.entry")
+                                .toJson();
+            out.append(entry);
+            continue;
+        }
+
+        const int subId = sub.get("requestId", 0).asInt();
+        entry["requestId"] = subId;
+
+        std::string relativeUrl = substituteBatchRefs(sub.get("relativeUrl", "").asString(), priorBodies);
+        if (!relativeUrl.empty() && relativeUrl.front() == '/') relativeUrl.erase(0, 1);
+        const std::string fullPath = "/api/v1/" + relativeUrl;
+
+        std::string method = sub.get("method", "GET").asString();
+        std::transform(method.begin(), method.end(), method.begin(), ::toupper);
+
+        const Route *subRoute = matchRoute(fullPath);
+        if (subRoute == nullptr || subRoute->service == kBatchServiceName) {
+            entry["statusCode"] = static_cast<int>(drogon::k404NotFound);
+            entry["body"] = ApiResponse::fail("No route for relativeUrl: " + relativeUrl,
+                                              "error.msg.gateway.route.not.found")
+                                .toJson();
+            out.append(entry);
+            continue;  // best-effort: no cross-service atomicity, keep going
+        }
+
+        Json::Value subBody = sub.get("body", Json::Value(Json::nullValue));
+        if (!subBody.isNull()) substituteJsonRefs(subBody, priorBodies);
+
+        auto upstreamReq = drogon::HttpRequest::newHttpRequest();
+        const auto &methods = batchMethodTable();
+        auto methodIt = methods.find(method);
+        upstreamReq->setMethod(methodIt != methods.end() ? methodIt->second : drogon::Get);
+        upstreamReq->setPath(fullPath);
+        upstreamReq->setPathEncode(false);
+        if (!subBody.isNull()) {
+            Json::StreamWriterBuilder w;
+            w["indentation"] = "";
+            upstreamReq->setBody(Json::writeString(w, subBody));
+            upstreamReq->setContentTypeString("application/json");
+        }
+        if (!authHeader.empty()) upstreamReq->addHeader("Authorization", authHeader);
+        if (hasApiKey) {
+            upstreamReq->addHeader("ClientId", req->getHeader("ClientId"));
+            upstreamReq->addHeader("ClientSecret", req->getHeader("ClientSecret"));
+        }
+        const std::string subRequestId = requestId + "." + std::to_string(subId);
+        upstreamReq->addHeader(RequestContext::kTenantHeaderName, ctx.tenantId);
+        upstreamReq->addHeader(RequestContext::kRequestIdHeaderName, subRequestId);
+        RequestContext subCtx = ctx;
+        subCtx.requestId = subRequestId;
+        upstreamReq->addHeader(RequestContext::kHeaderName,
+                               turbo::ContextCodec::encode(subCtx, contextSecret_));
+
+        try {
+            auto upstreamResp =
+                co_await clientFor(subRoute->service)->sendRequestCoro(upstreamReq,
+                                                                       upstreamTimeoutSeconds_);
+            entry["statusCode"] = static_cast<int>(upstreamResp->statusCode());
+            const std::string respBody(upstreamResp->getBody());
+            Json::Value parsed;
+            Json::CharReaderBuilder rb;
+            std::string parseErrs;
+            std::istringstream iss(respBody);
+            if (!respBody.empty() && Json::parseFromStream(rb, iss, &parsed, &parseErrs)) {
+                entry["body"] = parsed;
+                priorBodies[subId] = parsed;
+            } else if (!respBody.empty()) {
+                entry["body"] = respBody;
+            }
+        } catch (const std::exception &) {
+            entry["statusCode"] = static_cast<int>(drogon::k502BadGateway);
+            entry["body"] = ApiResponse::fail("Upstream service unavailable: " + subRoute->service,
+                                              "error.msg.gateway.upstream.unavailable")
+                                .toJson();
+        }
+        out.append(entry);
+    }
+
+    co_return drogon::HttpResponse::newHttpJsonResponse(out);
 }
 
 drogon::Task<drogon::HttpResponsePtr> GatewayCore::healthFanOut() {
