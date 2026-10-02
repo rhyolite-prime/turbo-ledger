@@ -38,7 +38,6 @@ namespace drogon_model
 {
 namespace TlAccounting
 {
-class Accounts;
 
 class AccountingRules
 {
@@ -214,14 +213,6 @@ class AccountingRules
     std::string toString() const;
     Json::Value toMasqueradedJson(const std::vector<std::string> &pMasqueradingVector) const;
     /// Relationship interfaces
-    Accounts getAccounts(const drogon::orm::DbClientPtr &clientPtr) const;
-    void getAccounts(const drogon::orm::DbClientPtr &clientPtr,
-                     const std::function<void(Accounts)> &rcb,
-                     const drogon::orm::ExceptionCallback &ecb) const;
-    Accounts getAccounts(const drogon::orm::DbClientPtr &clientPtr) const;
-    void getAccounts(const drogon::orm::DbClientPtr &clientPtr,
-                     const std::function<void(Accounts)> &rcb,
-                     const drogon::orm::ExceptionCallback &ecb) const;
   private:
     friend drogon::orm::Mapper<AccountingRules>;
     friend drogon::orm::BaseBuilder<AccountingRules, true, true>;
