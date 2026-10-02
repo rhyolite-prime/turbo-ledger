@@ -16,6 +16,7 @@
 
 #include <bcrypt.h>
 #include <drogon/drogon.h>
+#include <drogon/orm/Row.h>
 
 #include "services/audit_logs/AuditScope.h"
 #include "services/redis/RedisCacheManager.h"
@@ -29,7 +30,7 @@ std::string cacheKeyFor(const std::string &tenantId, const std::string &clientId
     return "apikey:" + tenantId + ":" + clientId;
 }
 
-std::string asStringOr(const Json::Value &row, const char *col, const std::string &fallback = "") {
+std::string asStringOr(const drogon::orm::Row &row, const char *col, const std::string &fallback = "") {
     return row[col].isNull() ? fallback : row[col].as<std::string>();
 }
 }  // namespace
