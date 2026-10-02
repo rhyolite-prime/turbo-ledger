@@ -11,10 +11,10 @@
 #include "turbo/Pagination.h"
 #include "turbo/TenantDb.h"
 
-#include "models/InteropIdentifier.h"
-#include "models/InteropQuote.h"
-#include "models/InteropRequest.h"
-#include "models/InteropTransfer.h"
+#include "models/InteropIdentifiers.h"
+#include "models/InteropQuotes.h"
+#include "models/InteropRequests.h"
+#include "models/InteropTransfers.h"
 
 using drogon::orm::CompareOperator;
 using drogon::orm::Criteria;
@@ -62,7 +62,7 @@ std::vector<std::string> P(std::string permission) { return {std::move(permissio
 // disclosed flat 0.5% — floor 0, no cap — stands in for it.)
 double computeFee(double amount) { return std::round(amount * 0.005 * 100.0) / 100.0; }
 
-Json::Value identifierJson(const m::InteropIdentifier &r) {
+Json::Value identifierJson(const m::InteropIdentifiers &r) {
     Json::Value j;
     j["id"] = r.getValueOfId();
     j["idType"] = r.getValueOfIdType();
@@ -73,7 +73,7 @@ Json::Value identifierJson(const m::InteropIdentifier &r) {
     return j;
 }
 
-Json::Value quoteJson(const m::InteropQuote &r) {
+Json::Value quoteJson(const m::InteropQuotes &r) {
     Json::Value j;
     j["id"] = r.getValueOfId();
     j["transactionCode"] = r.getValueOfTransactionCode();
@@ -86,7 +86,7 @@ Json::Value quoteJson(const m::InteropQuote &r) {
     return j;
 }
 
-Json::Value requestJson(const m::InteropRequest &r) {
+Json::Value requestJson(const m::InteropRequests &r) {
     Json::Value j;
     j["id"] = r.getValueOfId();
     j["transactionCode"] = r.getValueOfTransactionCode();
@@ -98,7 +98,7 @@ Json::Value requestJson(const m::InteropRequest &r) {
     return j;
 }
 
-Json::Value transferJson(const m::InteropTransfer &r) {
+Json::Value transferJson(const m::InteropTransfers &r) {
     Json::Value j;
     j["id"] = r.getValueOfId();
     j["transactionCode"] = r.getValueOfTransactionCode();
@@ -180,9 +180,9 @@ drogon::Task<std::pair<std::string, std::string>> InteroperationService::resolve
         std::string id = accountId.substr(colon + 1);
         if (type == "SAVINGS" || type == "LOAN" || type == "SHARE") co_return {type, id};
         // Not a type prefix — try it as a registered party identifier instead.
-        Mapper<m::InteropIdentifier> mapper(txn);
-        auto rows = co_await mapper.findBy(Criteria(m::InteropIdentifier::Cols::_id_type, type) &&
-                                           Criteria(m::InteropIdentifier::Cols::_id_value, id));
+        Mapper<m::InteropIdentifiers> mapper(txn);
+        auto rows = co_await mapper.findBy(Criteria(m::InteropIdentifiers::Cols::_id_type, type) &&
+                                           Criteria(m::InteropIdentifiers::Cols::_id_value, id));
         if (!rows.empty())
             co_return {rows.front().getValueOfAccountType(), rows.front().getValueOfAccountId()};
         throw ApiError(drogon::k404NotFound, "No account or registered party found for " + accountId,
@@ -207,13 +207,13 @@ drogon::Task<Json::Value> InteroperationService::registerParty(const turbo::Requ
                        "error.msg.interoperation.party.required.fields.missing");
 
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    Mapper<m::InteropIdentifier> mapper(txn);
-    auto crit = Criteria(m::InteropIdentifier::Cols::_id_type, idType) &&
-               Criteria(m::InteropIdentifier::Cols::_id_value, idValue);
+    Mapper<m::InteropIdentifiers> mapper(txn);
+    auto crit = Criteria(m::InteropIdentifiers::Cols::_id_type, idType) &&
+               Criteria(m::InteropIdentifiers::Cols::_id_value, idValue);
     auto rows = subIdOrType.empty()
                    ? co_await mapper.findBy(crit)
                    : co_await mapper.findBy(crit &&
-                                            Criteria(m::InteropIdentifier::Cols::_sub_id_or_type,
+                                            Criteria(m::InteropIdentifiers::Cols::_sub_id_or_type,
                                                      subIdOrType));
     if (!rows.empty()) {
         auto row = rows.front();
@@ -222,7 +222,7 @@ drogon::Task<Json::Value> InteroperationService::registerParty(const turbo::Requ
         co_await mapper.update(row);
         co_return identifierJson(row);
     }
-    m::InteropIdentifier row;
+    m::InteropIdentifiers row;
     row.setIdType(idType);
     row.setIdValue(idValue);
     if (!subIdOrType.empty()) row.setSubIdOrType(subIdOrType);
@@ -237,13 +237,13 @@ drogon::Task<Json::Value> InteroperationService::getParty(const turbo::RequestCo
                                                           const std::string &idValue,
                                                           const std::string &subIdOrType) {
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    Mapper<m::InteropIdentifier> mapper(txn);
-    auto crit = Criteria(m::InteropIdentifier::Cols::_id_type, idType) &&
-               Criteria(m::InteropIdentifier::Cols::_id_value, idValue);
+    Mapper<m::InteropIdentifiers> mapper(txn);
+    auto crit = Criteria(m::InteropIdentifiers::Cols::_id_type, idType) &&
+               Criteria(m::InteropIdentifiers::Cols::_id_value, idValue);
     auto rows = subIdOrType.empty()
                    ? co_await mapper.findBy(crit)
                    : co_await mapper.findBy(crit &&
-                                            Criteria(m::InteropIdentifier::Cols::_sub_id_or_type,
+                                            Criteria(m::InteropIdentifiers::Cols::_sub_id_or_type,
                                                      subIdOrType));
     if (rows.empty())
         throw ApiError(drogon::k404NotFound, "No party registered for this identifier",
@@ -256,12 +256,12 @@ drogon::Task<void> InteroperationService::removeParty(const turbo::RequestContex
                                                        const std::string &idValue,
                                                        const std::string &subIdOrType) {
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    Mapper<m::InteropIdentifier> mapper(txn);
-    auto crit = Criteria(m::InteropIdentifier::Cols::_id_type, idType) &&
-               Criteria(m::InteropIdentifier::Cols::_id_value, idValue);
+    Mapper<m::InteropIdentifiers> mapper(txn);
+    auto crit = Criteria(m::InteropIdentifiers::Cols::_id_type, idType) &&
+               Criteria(m::InteropIdentifiers::Cols::_id_value, idValue);
     co_await mapper.deleteBy(subIdOrType.empty()
                                  ? crit
-                                 : crit && Criteria(m::InteropIdentifier::Cols::_sub_id_or_type,
+                                 : crit && Criteria(m::InteropIdentifiers::Cols::_sub_id_or_type,
                                                     subIdOrType));
 }
 
@@ -282,7 +282,7 @@ drogon::Task<Json::Value> InteroperationService::createQuote(const turbo::Reques
     // account is not a quote worth issuing.
     co_await resolveAccount(txn, accountId);
 
-    m::InteropQuote row;
+    m::InteropQuotes row;
     row.setTransactionCode(asStringOr(body, "transactionCode", turbo::ids::newUuid()));
     row.setQuoteCode(turbo::ids::newUuid());
     row.setAccountId(accountId);
@@ -290,7 +290,7 @@ drogon::Task<Json::Value> InteroperationService::createQuote(const turbo::Reques
     row.setFeeAmount(std::to_string(computeFee(amount)));
     row.setCurrency(asStringOr(body, "currency", "USD"));
     row.setStatus("ACTIVE");
-    auto inserted = co_await Mapper<m::InteropQuote>(txn).insert(row);
+    auto inserted = co_await Mapper<m::InteropQuotes>(txn).insert(row);
     co_return quoteJson(inserted);
 }
 
@@ -298,9 +298,9 @@ drogon::Task<Json::Value> InteroperationService::getQuote(const turbo::RequestCo
                                                           const std::string &transactionCode,
                                                           const std::string &quoteCode) {
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    Mapper<m::InteropQuote> mapper(txn);
-    auto rows = co_await mapper.findBy(Criteria(m::InteropQuote::Cols::_transaction_code, transactionCode) &&
-                                       Criteria(m::InteropQuote::Cols::_quote_code, quoteCode));
+    Mapper<m::InteropQuotes> mapper(txn);
+    auto rows = co_await mapper.findBy(Criteria(m::InteropQuotes::Cols::_transaction_code, transactionCode) &&
+                                       Criteria(m::InteropQuotes::Cols::_quote_code, quoteCode));
     if (rows.empty())
         throw ApiError(drogon::k404NotFound, "Quote not found", "error.msg.interoperation.quote.not.found");
     co_return quoteJson(rows.front());
@@ -321,14 +321,14 @@ drogon::Task<Json::Value> InteroperationService::createRequestToPay(const turbo:
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
     co_await resolveAccount(txn, accountId);
 
-    m::InteropRequest row;
+    m::InteropRequests row;
     row.setTransactionCode(asStringOr(body, "transactionCode", turbo::ids::newUuid()));
     row.setRequestCode(turbo::ids::newUuid());
     row.setAccountId(accountId);
     row.setAmount(std::to_string(amount));
     row.setCurrency(asStringOr(body, "currency", "USD"));
     row.setStatus("PENDING");
-    auto inserted = co_await Mapper<m::InteropRequest>(txn).insert(row);
+    auto inserted = co_await Mapper<m::InteropRequests>(txn).insert(row);
     co_return requestJson(inserted);
 }
 
@@ -336,10 +336,10 @@ drogon::Task<Json::Value> InteroperationService::getRequestToPay(const turbo::Re
                                                                   const std::string &transactionCode,
                                                                   const std::string &requestCode) {
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    Mapper<m::InteropRequest> mapper(txn);
+    Mapper<m::InteropRequests> mapper(txn);
     auto rows =
-        co_await mapper.findBy(Criteria(m::InteropRequest::Cols::_transaction_code, transactionCode) &&
-                               Criteria(m::InteropRequest::Cols::_request_code, requestCode));
+        co_await mapper.findBy(Criteria(m::InteropRequests::Cols::_transaction_code, transactionCode) &&
+                               Criteria(m::InteropRequests::Cols::_request_code, requestCode));
     if (rows.empty())
         throw ApiError(drogon::k404NotFound, "Request not found",
                        "error.msg.interoperation.request.not.found");
@@ -361,7 +361,7 @@ drogon::Task<Json::Value> InteroperationService::prepareTransfer(const turbo::Re
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
     co_await resolveAccount(txn, accountId);
 
-    m::InteropTransfer row;
+    m::InteropTransfers row;
     row.setTransactionCode(asStringOr(body, "transactionCode", turbo::ids::newUuid()));
     row.setTransferCode(turbo::ids::newUuid());
     row.setAccountId(accountId);
@@ -369,7 +369,7 @@ drogon::Task<Json::Value> InteroperationService::prepareTransfer(const turbo::Re
     row.setCurrency(asStringOr(body, "currency", "USD"));
     row.setTransferAction("PREPARE");
     row.setStatus("PENDING");
-    auto inserted = co_await Mapper<m::InteropTransfer>(txn).insert(row);
+    auto inserted = co_await Mapper<m::InteropTransfers>(txn).insert(row);
     co_return transferJson(inserted);
 }
 
@@ -383,10 +383,10 @@ drogon::Task<Json::Value> InteroperationService::actionTransfer(const turbo::Req
                        "error.msg.interoperation.transfer.required.fields.missing");
 
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    Mapper<m::InteropTransfer> mapper(txn);
+    Mapper<m::InteropTransfers> mapper(txn);
     auto rows =
-        co_await mapper.findBy(Criteria(m::InteropTransfer::Cols::_transaction_code, transactionCode) &&
-                               Criteria(m::InteropTransfer::Cols::_transfer_code, transferCode));
+        co_await mapper.findBy(Criteria(m::InteropTransfers::Cols::_transaction_code, transactionCode) &&
+                               Criteria(m::InteropTransfers::Cols::_transfer_code, transferCode));
     if (rows.empty())
         throw ApiError(drogon::k404NotFound, "Transfer not found",
                        "error.msg.interoperation.transfer.not.found");
@@ -408,10 +408,10 @@ drogon::Task<Json::Value> InteroperationService::getTransfer(const turbo::Reques
                                                              const std::string &transactionCode,
                                                              const std::string &transferCode) {
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    Mapper<m::InteropTransfer> mapper(txn);
+    Mapper<m::InteropTransfers> mapper(txn);
     auto rows =
-        co_await mapper.findBy(Criteria(m::InteropTransfer::Cols::_transaction_code, transactionCode) &&
-                               Criteria(m::InteropTransfer::Cols::_transfer_code, transferCode));
+        co_await mapper.findBy(Criteria(m::InteropTransfers::Cols::_transaction_code, transactionCode) &&
+                               Criteria(m::InteropTransfers::Cols::_transfer_code, transferCode));
     if (rows.empty())
         throw ApiError(drogon::k404NotFound, "Transfer not found",
                        "error.msg.interoperation.transfer.not.found");
@@ -496,7 +496,7 @@ drogon::Task<Json::Value> InteroperationService::disburse(const turbo::RequestCo
                                                   "/api/v1/loans/get-detail/" + loanId);
     Json::Value loan = unwrap(detail, "loans");
 
-    m::InteropTransfer row;
+    m::InteropTransfers row;
     row.setTransactionCode(transactionCode);
     row.setTransferCode(turbo::ids::newUuid());
     row.setAccountId(accountId);
@@ -504,7 +504,7 @@ drogon::Task<Json::Value> InteroperationService::disburse(const turbo::RequestCo
     row.setCurrency(asStringOr(body, "currency", "USD"));
     row.setTransferAction("DISBURSE_PREPARE");
     row.setStatus("PENDING");
-    auto inserted = co_await Mapper<m::InteropTransfer>(txn).insert(row);
+    auto inserted = co_await Mapper<m::InteropTransfers>(txn).insert(row);
 
     Json::Value out = transferJson(inserted);
     out["loanStatus"] = loan.isMember("status") ? loan["status"] : Json::Value();
@@ -520,10 +520,10 @@ drogon::Task<Json::Value> InteroperationService::disburseTransfer(const turbo::R
                        "error.msg.interoperation.disburse.required.fields.missing");
 
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    Mapper<m::InteropTransfer> mapper(txn);
+    Mapper<m::InteropTransfers> mapper(txn);
     auto rows =
-        co_await mapper.findBy(Criteria(m::InteropTransfer::Cols::_transaction_code, transactionCode) &&
-                               Criteria(m::InteropTransfer::Cols::_transfer_code, transferCode));
+        co_await mapper.findBy(Criteria(m::InteropTransfers::Cols::_transaction_code, transactionCode) &&
+                               Criteria(m::InteropTransfers::Cols::_transfer_code, transferCode));
     if (rows.empty())
         throw ApiError(drogon::k404NotFound, "No prepared disbursement found for this transfer code",
                        "error.msg.interoperation.disburse.not.found");
@@ -579,7 +579,7 @@ drogon::Task<Json::Value> InteroperationService::loanRepayment(const turbo::Requ
         "/api/v1/loans/" + loanId + "/transactions/command/repayment", cmdBody);
     Json::Value loanTxn = unwrap(result, "loantransactions");
 
-    m::InteropTransfer row;
+    m::InteropTransfers row;
     row.setTransactionCode(transactionCode);
     row.setTransferCode(turbo::ids::newUuid());
     row.setAccountId(accountId);
@@ -587,7 +587,7 @@ drogon::Task<Json::Value> InteroperationService::loanRepayment(const turbo::Requ
     row.setCurrency(asStringOr(body, "currency", "USD"));
     row.setTransferAction("LOAN_REPAYMENT");
     row.setStatus("COMMITTED_LOCAL");
-    auto inserted = co_await Mapper<m::InteropTransfer>(txn).insert(row);
+    auto inserted = co_await Mapper<m::InteropTransfers>(txn).insert(row);
 
     Json::Value out = transferJson(inserted);
     out["loanTransaction"] = loanTxn;

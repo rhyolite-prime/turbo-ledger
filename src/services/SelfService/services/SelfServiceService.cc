@@ -10,12 +10,12 @@
 #include "turbo/Pagination.h"
 #include "turbo/TenantDb.h"
 
-#include "models/ClientImage.h"
-#include "models/DeviceRegistration.h"
-#include "models/Pocket.h"
-#include "models/SelfServiceRegistration.h"
-#include "models/SelfServiceUser.h"
-#include "models/TptBeneficiary.h"
+#include "models/ClientImages.h"
+#include "models/DeviceRegistrations.h"
+#include "models/Pockets.h"
+#include "models/SelfServiceRegistrations.h"
+#include "models/SelfServiceUsers.h"
+#include "models/TptBeneficiaries.h"
 
 using drogon::orm::CompareOperator;
 using drogon::orm::Criteria;
@@ -59,7 +59,7 @@ int64_t nowEpoch() {
         .count();
 }
 
-Json::Value selfServiceUserJson(const m::SelfServiceUser &u) {
+Json::Value selfServiceUserJson(const m::SelfServiceUsers &u) {
     Json::Value j;
     j["id"] = u.getValueOfId();
     j["identityUserId"] = u.getValueOfIdentityUserId();
@@ -71,7 +71,7 @@ Json::Value selfServiceUserJson(const m::SelfServiceUser &u) {
     return j;
 }
 
-Json::Value registrationJson(const m::SelfServiceRegistration &r) {
+Json::Value registrationJson(const m::SelfServiceRegistrations &r) {
     Json::Value j;
     j["id"] = r.getValueOfId();
     j["firstName"] = r.getValueOfFirstName();
@@ -83,7 +83,7 @@ Json::Value registrationJson(const m::SelfServiceRegistration &r) {
     return j;
 }
 
-Json::Value deviceRegistrationJson(const m::DeviceRegistration &d) {
+Json::Value deviceRegistrationJson(const m::DeviceRegistrations &d) {
     Json::Value j;
     j["id"] = d.getValueOfId();
     j["clientId"] = d.getValueOfClientId();
@@ -93,7 +93,7 @@ Json::Value deviceRegistrationJson(const m::DeviceRegistration &d) {
     return j;
 }
 
-Json::Value tptBeneficiaryJson(const m::TptBeneficiary &b) {
+Json::Value tptBeneficiaryJson(const m::TptBeneficiaries &b) {
     Json::Value j;
     j["id"] = b.getValueOfId();
     j["name"] = b.getValueOfName();
@@ -104,7 +104,7 @@ Json::Value tptBeneficiaryJson(const m::TptBeneficiary &b) {
     return j;
 }
 
-Json::Value pocketJson(const m::Pocket &p) {
+Json::Value pocketJson(const m::Pockets &p) {
     Json::Value j;
     j["id"] = p.getValueOfId();
     j["accountType"] = p.getValueOfAccountType();
@@ -125,10 +125,10 @@ Json::Value unwrap(const turbo::InternalClient::Result &r, const char *what) {
     return r.body.isMember("result") ? r.body["result"] : r.body;
 }
 
-drogon::Task<m::SelfServiceUser> loadLinkedUser(std::shared_ptr<drogon::orm::Transaction> txn,
+drogon::Task<m::SelfServiceUsers> loadLinkedUser(std::shared_ptr<drogon::orm::Transaction> txn,
                                                 const turbo::RequestContext &ctx) {
-    Mapper<m::SelfServiceUser> mapper(txn);
-    auto rows = co_await mapper.findBy(Criteria(m::SelfServiceUser::Cols::_identity_user_id, ctx.userId));
+    Mapper<m::SelfServiceUsers> mapper(txn);
+    auto rows = co_await mapper.findBy(Criteria(m::SelfServiceUsers::Cols::_identity_user_id, ctx.userId));
     if (rows.empty())
         throw ApiError(drogon::k403Forbidden,
                        "No self-service profile is linked to this account",
@@ -225,14 +225,14 @@ drogon::Task<Json::Value> SelfServiceService::submitRegistration(const turbo::Re
                        "error.msg.selfservice.registration.required.fields.missing");
 
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    m::SelfServiceRegistration row;
+    m::SelfServiceRegistrations row;
     row.setFirstName(firstName);
     row.setLastName(lastName);
     row.setMobileNo(mobileNo);
     if (body.isMember("accountNumber")) row.setAccountNumber(asStringOr(body, "accountNumber"));
     row.setAuthenticationMode(asStringOr(body, "authenticationMode", "APP"));
     row.setStatus("PENDING");
-    auto inserted = co_await Mapper<m::SelfServiceRegistration>(txn).insert(row);
+    auto inserted = co_await Mapper<m::SelfServiceRegistrations>(txn).insert(row);
     co_return registrationJson(inserted);
 }
 
@@ -256,15 +256,15 @@ drogon::Task<Json::Value> SelfServiceService::createRegistrationUser(const turbo
                        "error.msg.selfservice.registration.required.fields.missing");
 
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
-    Mapper<m::SelfServiceUser> mapper(txn);
+    Mapper<m::SelfServiceUsers> mapper(txn);
 
     auto existing =
-        co_await mapper.findBy(Criteria(m::SelfServiceUser::Cols::_identity_user_id, identityUserId));
+        co_await mapper.findBy(Criteria(m::SelfServiceUsers::Cols::_identity_user_id, identityUserId));
     if (!existing.empty())
         throw ApiError(drogon::k409Conflict, "This Identity user is already linked to a self-service profile",
                        "error.msg.selfservice.already.linked");
 
-    m::SelfServiceUser row;
+    m::SelfServiceUsers row;
     row.setIdentityUserId(identityUserId);
     row.setClientId(clientId);
     row.setUsername(username);
@@ -274,9 +274,9 @@ drogon::Task<Json::Value> SelfServiceService::createRegistrationUser(const turbo
     auto inserted = co_await mapper.insert(row);
 
     if (body.isMember("registrationId") && !asStringOr(body, "registrationId").empty()) {
-        Mapper<m::SelfServiceRegistration> regMapper(txn);
+        Mapper<m::SelfServiceRegistrations> regMapper(txn);
         auto regs = co_await regMapper.findBy(
-            Criteria(m::SelfServiceRegistration::Cols::_id, asStringOr(body, "registrationId")));
+            Criteria(m::SelfServiceRegistrations::Cols::_id, asStringOr(body, "registrationId")));
         if (!regs.empty()) {
             auto reg = regs.front();
             reg.setStatus("APPROVED");
@@ -317,7 +317,7 @@ drogon::Task<Json::Value> SelfServiceService::updateUser(const turbo::RequestCon
     if (body.isMember("mobileNo")) user.setMobileNo(asStringOr(body, "mobileNo"));
     if (body.isMember("email")) user.setEmail(asStringOr(body, "email"));
     if (body.isMember("username")) user.setUsername(asStringOr(body, "username"));
-    co_await Mapper<m::SelfServiceUser>(txn).update(user);
+    co_await Mapper<m::SelfServiceUsers>(txn).update(user);
     co_return selfServiceUserJson(user);
 }
 
@@ -423,8 +423,8 @@ drogon::Task<Json::Value> SelfServiceService::getClientImage(const turbo::Reques
     if (id != user.getValueOfClientId())
         throw ApiError(drogon::k403Forbidden, "This client does not belong to your self-service profile",
                        "error.msg.selfservice.ownership.denied");
-    Mapper<m::ClientImage> mapper(txn);
-    auto rows = co_await mapper.findBy(Criteria(m::ClientImage::Cols::_client_id, id));
+    Mapper<m::ClientImages> mapper(txn);
+    auto rows = co_await mapper.findBy(Criteria(m::ClientImages::Cols::_client_id, id));
     if (rows.empty())
         throw ApiError(drogon::k404NotFound, "No image set for this client",
                        "error.msg.selfservice.image.not.found");
@@ -449,10 +449,10 @@ drogon::Task<Json::Value> SelfServiceService::putClientImage(const turbo::Reques
         throw ApiError(drogon::k400BadRequest, "imageData (base64) is required",
                        "error.msg.selfservice.image.required.fields.missing");
 
-    Mapper<m::ClientImage> mapper(txn);
-    auto rows = co_await mapper.findBy(Criteria(m::ClientImage::Cols::_client_id, id));
+    Mapper<m::ClientImages> mapper(txn);
+    auto rows = co_await mapper.findBy(Criteria(m::ClientImages::Cols::_client_id, id));
     if (rows.empty()) {
-        m::ClientImage row;
+        m::ClientImages row;
         row.setClientId(id);
         row.setContentType(contentType);
         row.setImageData(imageData);
@@ -479,8 +479,8 @@ drogon::Task<void> SelfServiceService::deleteClientImage(const turbo::RequestCon
     if (id != user.getValueOfClientId())
         throw ApiError(drogon::k403Forbidden, "This client does not belong to your self-service profile",
                        "error.msg.selfservice.ownership.denied");
-    Mapper<m::ClientImage> mapper(txn);
-    co_await mapper.deleteBy(Criteria(m::ClientImage::Cols::_client_id, id));
+    Mapper<m::ClientImages> mapper(txn);
+    co_await mapper.deleteBy(Criteria(m::ClientImages::Cols::_client_id, id));
 }
 
 // =============================================================================
@@ -748,9 +748,9 @@ drogon::Task<Json::Value> SelfServiceService::tptTemplate(const turbo::RequestCo
 drogon::Task<Json::Value> SelfServiceService::listTptBeneficiaries(const turbo::RequestContext &ctx) {
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
     auto user = co_await loadLinkedUser(txn, ctx);
-    Mapper<m::TptBeneficiary> mapper(txn);
+    Mapper<m::TptBeneficiaries> mapper(txn);
     auto rows = co_await mapper.findBy(
-        Criteria(m::TptBeneficiary::Cols::_self_service_user_id, user.getValueOfId()));
+        Criteria(m::TptBeneficiaries::Cols::_self_service_user_id, user.getValueOfId()));
     Json::Value items(Json::arrayValue);
     for (const auto &r : rows) items.append(tptBeneficiaryJson(r));
     co_return items;
@@ -767,14 +767,14 @@ drogon::Task<Json::Value> SelfServiceService::createTptBeneficiary(const turbo::
         throw ApiError(drogon::k400BadRequest, "name, accountType and accountNumber are required",
                        "error.msg.selfservice.tpt.required.fields.missing");
 
-    m::TptBeneficiary row;
+    m::TptBeneficiaries row;
     row.setSelfServiceUserId(user.getValueOfId());
     row.setName(name);
     row.setAccountType(accountType);
     row.setAccountNumber(accountNumber);
     if (body.isMember("transferLimit")) row.setTransferLimit(asStringOr(body, "transferLimit"));
     row.setStatus("ACTIVE");
-    auto inserted = co_await Mapper<m::TptBeneficiary>(txn).insert(row);
+    auto inserted = co_await Mapper<m::TptBeneficiaries>(txn).insert(row);
     co_return tptBeneficiaryJson(inserted);
 }
 
@@ -783,9 +783,9 @@ drogon::Task<Json::Value> SelfServiceService::updateTptBeneficiary(const turbo::
                                                                    const Json::Value &body) {
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
     auto user = co_await loadLinkedUser(txn, ctx);
-    Mapper<m::TptBeneficiary> mapper(txn);
-    auto rows = co_await mapper.findBy(Criteria(m::TptBeneficiary::Cols::_id, id) &&
-                                       Criteria(m::TptBeneficiary::Cols::_self_service_user_id,
+    Mapper<m::TptBeneficiaries> mapper(txn);
+    auto rows = co_await mapper.findBy(Criteria(m::TptBeneficiaries::Cols::_id, id) &&
+                                       Criteria(m::TptBeneficiaries::Cols::_self_service_user_id,
                                                 user.getValueOfId()));
     if (rows.empty())
         throw ApiError(drogon::k404NotFound, "Beneficiary not found", "error.msg.selfservice.tpt.not.found");
@@ -801,9 +801,9 @@ drogon::Task<void> SelfServiceService::deleteTptBeneficiary(const turbo::Request
                                                             const std::string &id) {
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
     auto user = co_await loadLinkedUser(txn, ctx);
-    Mapper<m::TptBeneficiary> mapper(txn);
-    co_await mapper.deleteBy(Criteria(m::TptBeneficiary::Cols::_id, id) &&
-                             Criteria(m::TptBeneficiary::Cols::_self_service_user_id,
+    Mapper<m::TptBeneficiaries> mapper(txn);
+    co_await mapper.deleteBy(Criteria(m::TptBeneficiaries::Cols::_id, id) &&
+                             Criteria(m::TptBeneficiaries::Cols::_self_service_user_id,
                                       user.getValueOfId()));
 }
 
@@ -814,9 +814,9 @@ drogon::Task<void> SelfServiceService::deleteTptBeneficiary(const turbo::Request
 drogon::Task<Json::Value> SelfServiceService::listDeviceRegistrations(const turbo::RequestContext &ctx) {
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
     auto user = co_await loadLinkedUser(txn, ctx);
-    Mapper<m::DeviceRegistration> mapper(txn);
+    Mapper<m::DeviceRegistrations> mapper(txn);
     auto rows = co_await mapper.findBy(
-        Criteria(m::DeviceRegistration::Cols::_self_service_user_id, user.getValueOfId()));
+        Criteria(m::DeviceRegistrations::Cols::_self_service_user_id, user.getValueOfId()));
     Json::Value items(Json::arrayValue);
     for (const auto &r : rows) items.append(deviceRegistrationJson(r));
     co_return items;
@@ -830,13 +830,13 @@ drogon::Task<Json::Value> SelfServiceService::createDeviceRegistration(const tur
     if (deviceId.empty())
         throw ApiError(drogon::k400BadRequest, "deviceId is required",
                        "error.msg.selfservice.device.required.fields.missing");
-    m::DeviceRegistration row;
+    m::DeviceRegistrations row;
     row.setSelfServiceUserId(user.getValueOfId());
     row.setClientId(user.getValueOfClientId());
     row.setDeviceId(deviceId);
     if (body.isMember("deviceName")) row.setDeviceName(asStringOr(body, "deviceName"));
     row.setStatus("ACTIVE");
-    auto inserted = co_await Mapper<m::DeviceRegistration>(txn).insert(row);
+    auto inserted = co_await Mapper<m::DeviceRegistrations>(txn).insert(row);
     co_return deviceRegistrationJson(inserted);
 }
 
@@ -844,9 +844,9 @@ drogon::Task<Json::Value> SelfServiceService::getDeviceRegistration(const turbo:
                                                                     const std::string &id) {
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
     auto user = co_await loadLinkedUser(txn, ctx);
-    Mapper<m::DeviceRegistration> mapper(txn);
-    auto rows = co_await mapper.findBy(Criteria(m::DeviceRegistration::Cols::_id, id) &&
-                                       Criteria(m::DeviceRegistration::Cols::_self_service_user_id,
+    Mapper<m::DeviceRegistrations> mapper(txn);
+    auto rows = co_await mapper.findBy(Criteria(m::DeviceRegistrations::Cols::_id, id) &&
+                                       Criteria(m::DeviceRegistrations::Cols::_self_service_user_id,
                                                 user.getValueOfId()));
     if (rows.empty())
         throw ApiError(drogon::k404NotFound, "Device registration not found",
@@ -859,9 +859,9 @@ drogon::Task<Json::Value> SelfServiceService::updateDeviceRegistration(const tur
                                                                        const Json::Value &body) {
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
     auto user = co_await loadLinkedUser(txn, ctx);
-    Mapper<m::DeviceRegistration> mapper(txn);
-    auto rows = co_await mapper.findBy(Criteria(m::DeviceRegistration::Cols::_id, id) &&
-                                       Criteria(m::DeviceRegistration::Cols::_self_service_user_id,
+    Mapper<m::DeviceRegistrations> mapper(txn);
+    auto rows = co_await mapper.findBy(Criteria(m::DeviceRegistrations::Cols::_id, id) &&
+                                       Criteria(m::DeviceRegistrations::Cols::_self_service_user_id,
                                                 user.getValueOfId()));
     if (rows.empty())
         throw ApiError(drogon::k404NotFound, "Device registration not found",
@@ -877,9 +877,9 @@ drogon::Task<void> SelfServiceService::deleteDeviceRegistration(const turbo::Req
                                                                 const std::string &id) {
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
     auto user = co_await loadLinkedUser(txn, ctx);
-    Mapper<m::DeviceRegistration> mapper(txn);
-    co_await mapper.deleteBy(Criteria(m::DeviceRegistration::Cols::_id, id) &&
-                             Criteria(m::DeviceRegistration::Cols::_self_service_user_id,
+    Mapper<m::DeviceRegistrations> mapper(txn);
+    co_await mapper.deleteBy(Criteria(m::DeviceRegistrations::Cols::_id, id) &&
+                             Criteria(m::DeviceRegistrations::Cols::_self_service_user_id,
                                       user.getValueOfId()));
 }
 
@@ -890,9 +890,9 @@ drogon::Task<void> SelfServiceService::deleteDeviceRegistration(const turbo::Req
 drogon::Task<Json::Value> SelfServiceService::listPockets(const turbo::RequestContext &ctx) {
     auto txn = co_await turbo::db::beginTenantTxn(db(), ctx);
     auto user = co_await loadLinkedUser(txn, ctx);
-    Mapper<m::Pocket> mapper(txn);
+    Mapper<m::Pockets> mapper(txn);
     auto rows =
-        co_await mapper.findBy(Criteria(m::Pocket::Cols::_self_service_user_id, user.getValueOfId()));
+        co_await mapper.findBy(Criteria(m::Pockets::Cols::_self_service_user_id, user.getValueOfId()));
     Json::Value items(Json::arrayValue);
     for (const auto &r : rows) items.append(pocketJson(r));
     co_return items;
@@ -907,12 +907,12 @@ drogon::Task<Json::Value> SelfServiceService::createPocket(const turbo::RequestC
     if (accountType.empty() || accountId.empty())
         throw ApiError(drogon::k400BadRequest, "accountType and accountId are required",
                        "error.msg.selfservice.pocket.required.fields.missing");
-    m::Pocket row;
+    m::Pockets row;
     row.setSelfServiceUserId(user.getValueOfId());
     row.setAccountType(accountType);
     row.setAccountId(accountId);
     row.setIsDefault(body.get("isDefault", false).asBool());
-    auto inserted = co_await Mapper<m::Pocket>(txn).insert(row);
+    auto inserted = co_await Mapper<m::Pockets>(txn).insert(row);
     co_return pocketJson(inserted);
 }
 
