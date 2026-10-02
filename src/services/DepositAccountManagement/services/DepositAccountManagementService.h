@@ -81,8 +81,7 @@ namespace turbo_ledger_dam {
 /// Error carrying an HTTP status + envelope globalisation code.
 class ApiError : public std::runtime_error {
   public:
-    ApiError(drogon::HttpStatusCode status, std::string message,
-             std::string globalisationCode = "")
+    ApiError(drogon::HttpStatusCode status, std::string message, std::string globalisationCode = "")
         : std::runtime_error(std::move(message)),
           status_(status),
           code_(std::move(globalisationCode)) {}
