@@ -5,14 +5,14 @@ namespace turbo_ledger_identity::services
 {
     AuditScope::AuditScope(
         const std::string& actorId,
-        const std::string& businessId,
+        const std::string& tenantId,
         const std::string& entityType,
         const std::string& entityId,
         const std::string& action,
         const std::string& ipAddress,
         const std::string& userAgent
     ) : actorId_(actorId),
-        businessId_(businessId),
+        tenantId_(tenantId),
         entityType_(entityType),
         entityId_(entityId),
         action_(action),
@@ -26,8 +26,8 @@ namespace turbo_ledger_identity::services
         if (isCommitted_)
         {
             AuditLogService::logActivity(
+                tenantId_,
                 actorId_,
-                businessId_,
                 entityType_,
                 entityId_,
                 action_,
