@@ -1,0 +1,132 @@
+name: Build Microservice Artifacts
+
+# Builds every Turbo Ledger microservice independently (the same way you'd
+# build a single Drogon app — see the "Build Data Support API" workflow this
+# was modeled on) and uploads each resulting binary as its own artifact.
+#
+# This is split into two jobs:
+#   1. build-drogon  - builds Drogon once and caches the install, so the 18
+#                      parallel per-service builds below don't each rebuild
+#                      it from source.
+#   2. build         - a matrix job, one leg per microservice under
+#                      src/services/<name>, each configured/built exactly
+#                      like the sample (cmake -> make -> upload-artifact).
+#
+# Services intentionally NOT in the matrix: `Reporting` and `Staff` are still
+# drogon_ctl scaffolding stubs (not wired into the root superbuild's
+# TL_SERVICES list either) — add them here once they have real CMakeLists
+# targets worth building.
+
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  DROGON_VERSION: v1.9.8
+
+jobs:
+  build-drogon:
+    name: Build & cache Drogon
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            cmake g++ ninja-build git ca-certificates \
+            libjsoncpp-dev uuid-dev openssl libssl-dev zlib1g-dev \
+            libpq-dev libhiredis-dev
+
+      - name: Cache Drogon install
+        id: cache-drogon
+        uses: actions/cache@v4
+        with:
+          path: ~/drogon-install
+          key: drogon-${{ env.DROGON_VERSION }}-${{ runner.os }}-ubuntu24
+
+      - name: Build Drogon
+        if: steps.cache-drogon.outputs.cache-hit != 'true'
+        run: |
+          git clone --depth 1 --branch "${DROGON_VERSION}" --recurse-submodules --shallow-submodules \
+            https://github.com/drogonframework/drogon.git /tmp/drogon
+          cmake -S /tmp/drogon -B /tmp/drogon/build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_EXAMPLES=OFF -DBUILD_CTL=OFF -DBUILD_TESTING=OFF -DBUILD_POSTGRESQL=ON \
+            -DCMAKE_INSTALL_PREFIX="$HOME/drogon-install"
+          cmake --build /tmp/drogon/build -j"$(nproc)"
+          cmake --install /tmp/drogon/build
+
+  build:
+    name: Build ${{ matrix.service }}
+    runs-on: ubuntu-24.04
+    needs: build-drogon
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - Accounting
+          - ApiGateway
+          - Customer
+          - DepositAccountManagement
+          - Group
+          - HeartBeat
+          - Identity
+          - Interoperation
+          - Notification
+          - Organization
+          - Portfolio
+          - Provisioner
+          - SelfService
+          - SystemConfig
+          - Teller
+          - Template
+
+    steps:
+      # Step 1: Check out the repository code (recursive for the vendored
+      # external_deps submodules — Bcrypt/jwt-cpp).
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      # Step 2: Install dependencies for Drogon, PostgreSQL, and Redis clients
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            cmake g++ ninja-build git ca-certificates \
+            libjsoncpp-dev uuid-dev openssl libssl-dev zlib1g-dev \
+            libpq-dev libhiredis-dev
+
+      # Step 3: Restore the Drogon install built by the build-drogon job
+      - name: Restore cached Drogon
+        uses: actions/cache@v4
+        with:
+          path: ~/drogon-install
+          key: drogon-${{ env.DROGON_VERSION }}-${{ runner.os }}-ubuntu24
+
+      # Step 4: Configure this microservice out-of-tree (mirrors `cmake ..`
+      # against each service's own CMakeLists.txt, same as the single-app sample)
+      - name: Configure ${{ matrix.service }}
+        run: |
+          cmake -S "src/services/${{ matrix.service }}" -B build \
+            -G Ninja -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_PREFIX_PATH="$HOME/drogon-install"
+
+      # Step 5: Build the microservice
+      - name: Build ${{ matrix.service }}
+        run: cmake --build build -j"$(nproc)"
+
+      # Step 6: List files in the build directory
+      - name: List build directory files
+        run: ls -l build
+
+      # Step 7: Upload the binary as an artifact
+      - name: Upload ${{ matrix.service }} binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.service }}
+          path: build/${{ matrix.service }}
+          if-no-files-found: error
