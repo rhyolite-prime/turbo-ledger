@@ -14,7 +14,7 @@ class HooksController : public drogon::HttpController<HooksController> {
     static constexpr const char *FILTER = "turbo::TrustedContextFilter";
 
     METHOD_LIST_BEGIN
-        ADD_METHOD_TO(HooksController::getAll,     std::string(PREFIX) + "get-all", Get, Options, FILTER);
+        ADD_METHOD_TO(HooksController::getAll,  std::string(PREFIX) + "get-all", Get, Options, FILTER);
         ADD_METHOD_TO(HooksController::getTemplate, std::string(PREFIX) + "template", Get, Options, FILTER);
         ADD_METHOD_TO(HooksController::create,     std::string(PREFIX) + "create", Post, Options, FILTER);
         ADD_METHOD_TO(HooksController::getDetails, std::string(PREFIX) + "get-details/{1}", Get, Options, FILTER);
