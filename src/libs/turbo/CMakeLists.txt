@@ -23,6 +23,7 @@ add_library(turbo STATIC
         src/Outbox.cc
         src/Ids.cc
         src/Health.cc
+        src/InternalClient.cc
         src/filters/TrustedContextFilter.cc
 )
 add_library(turbo::turbo ALIAS turbo)

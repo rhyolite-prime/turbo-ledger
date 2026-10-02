@@ -26,7 +26,9 @@ endif()
 include(${CMAKE_CURRENT_SOURCE_DIR}/../../../cmake/TurboExternalDeps.cmake)
 turbo_require_bcrypt(${PROJECT_NAME})
 
-target_link_libraries(${PROJECT_NAME} PRIVATE Drogon::Drogon turbo::turbo)
+# turbo::turbo already publicly links Drogon::Drogon; don't relist it here
+# or the linker will see libdrogon.a twice.
+target_link_libraries(${PROJECT_NAME} PRIVATE turbo::turbo)
 
 if (CMAKE_CXX_STANDARD LESS 17)
     message(FATAL_ERROR "c++17 or higher is required")

@@ -1437,14 +1437,14 @@ bool OfficeTransaction::validJsonOfField(size_t index,
                 err="Type error in the "+fieldName+" field";
                 return false;
             }
-            if(pJson.isString() && std::strlen(pJson.asCString()) > 5)
+            if(pJson.isString() && std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>{}
+                .from_bytes(pJson.asCString()).size() > 5)
             {
                 err="String length exceeds limit for the " +
                     fieldName +
                     " field (the maximum value is 5)";
                 return false;
             }
-
             break;
         case 4:
             if(pJson.isNull())
@@ -1492,14 +1492,14 @@ bool OfficeTransaction::validJsonOfField(size_t index,
                 err="Type error in the "+fieldName+" field";
                 return false;
             }
-            if(pJson.isString() && std::strlen(pJson.asCString()) > 100)
+            if(pJson.isString() && std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>{}
+                .from_bytes(pJson.asCString()).size() > 100)
             {
                 err="String length exceeds limit for the " +
                     fieldName +
                     " field (the maximum value is 100)";
                 return false;
             }
-
             break;
         default:
             err="Internal error in the server";

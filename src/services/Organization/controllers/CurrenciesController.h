@@ -1,15 +1,22 @@
+//
+// Phase 2 — currencies (2 endpoints).
+//
 #pragma once
 
-#include <drogon/HttpSimpleController.h>
+#include <drogon/HttpController.h>
 
 using namespace drogon;
 
-class CurrenciesController : public drogon::HttpSimpleController<CurrenciesController>
-{
+class CurrenciesController : public drogon::HttpController<CurrenciesController> {
   public:
-    void asyncHandleHttpRequest(const HttpRequestPtr& req, std::function<void (const HttpResponsePtr &)> &&callback) override;
-    PATH_LIST_BEGIN
-    // list path definitions here;
-    // PATH_ADD("/path", "filter1", "filter2", HttpMethod1, HttpMethod2...);
-    PATH_LIST_END
+    static constexpr const char *PREFIX = "/api/v1/currencies/";
+    static constexpr const char *FILTER = "turbo::TrustedContextFilter";
+
+    METHOD_LIST_BEGIN
+        ADD_METHOD_TO(CurrenciesController::get,    std::string(PREFIX) + "get-all", Get, Options, FILTER);
+        ADD_METHOD_TO(CurrenciesController::update, std::string(PREFIX) + "update", Put, Options, FILTER);
+    METHOD_LIST_END
+
+    Task<HttpResponsePtr> get(HttpRequestPtr req);
+    Task<HttpResponsePtr> update(HttpRequestPtr req);
 };
