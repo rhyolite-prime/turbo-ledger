@@ -25,7 +25,10 @@ function(_turbo_ensure_bcrypt)
     if(TARGET bcrypt)
         return()
     endif()
-    if(EXISTS "${TURBO_EXTERNAL_DEPS_DIR}/Bcrypt/CMakeLists.txt")
+    # Sanity-check the vendored checkout really is Bcrypt.cpp (a stale or
+    # misconfigured submodule would otherwise break the build in odd ways).
+    if(EXISTS "${TURBO_EXTERNAL_DEPS_DIR}/Bcrypt/CMakeLists.txt"
+       AND EXISTS "${TURBO_EXTERNAL_DEPS_DIR}/Bcrypt/include/bcrypt.h")
         add_subdirectory("${TURBO_EXTERNAL_DEPS_DIR}/Bcrypt"
                          "${CMAKE_BINARY_DIR}/external_deps/Bcrypt")
     else()
@@ -42,12 +45,24 @@ function(_turbo_ensure_jwt_cpp)
     if(TARGET jwt-cpp)
         return()
     endif()
-    if(EXISTS "${TURBO_EXTERNAL_DEPS_DIR}/jwt-cpp/CMakeLists.txt")
+    # Sanity-check the vendored checkout really is jwt-cpp: at one point the
+    # submodule URL mistakenly pointed at Bcrypt.cpp, which both collided with
+    # the 'bcrypt' target and left jwt-cpp/jwt.h missing. Validate the header
+    # before trusting the directory; otherwise fall back to FetchContent.
+    if(EXISTS "${TURBO_EXTERNAL_DEPS_DIR}/jwt-cpp/CMakeLists.txt"
+       AND EXISTS "${TURBO_EXTERNAL_DEPS_DIR}/jwt-cpp/include/jwt-cpp/jwt.h")
         set(JWT_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
         add_subdirectory("${TURBO_EXTERNAL_DEPS_DIR}/jwt-cpp"
                          "${CMAKE_BINARY_DIR}/external_deps/jwt-cpp")
     else()
-        message(STATUS "external_deps/jwt-cpp not checked out - fetching jwt-cpp")
+        if(EXISTS "${TURBO_EXTERNAL_DEPS_DIR}/jwt-cpp/CMakeLists.txt")
+            message(WARNING
+                "external_deps/jwt-cpp exists but does not look like jwt-cpp "
+                "(missing include/jwt-cpp/jwt.h) - check the submodule URL in "
+                ".gitmodules. Falling back to FetchContent.")
+        else()
+            message(STATUS "external_deps/jwt-cpp not checked out - fetching jwt-cpp")
+        endif()
         set(JWT_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
         FetchContent_Declare(turbo_jwt_cpp
             GIT_REPOSITORY https://github.com/Thalhammer/jwt-cpp
