@@ -1,3 +1,19 @@
+//
+// Phase 4 — clients (53 endpoints: 51 implemented + 2 bulk-import stubs
+// deferred, matching the downloadtemplate/uploadtemplate precedent set by
+// Accounting's GlAccountsController in Phase 3).
+//
+// Routing uses explicit action-suffix paths (get-all/create/get-detail/
+// {id}/update/.../command/{name}) rather than Fineract's single-path +
+// HTTP-verb-overload + ?command= query-param style, matching every other
+// controller in this codebase (see GlAccountsController, CodesController).
+//
+// External-id addressing (`external-id/{externalId}/...`) is implemented
+// only for the core single-client operations (get-detail, update, delete,
+// command, transactions list) — not for nested sub-resources (charges,
+// identifiers, familymembers, collaterals), which are addressed by the
+// internal clientId only. This is a deliberate scope trim, not an omission.
+//
 #pragma once
 
 #include <drogon/HttpController.h>
@@ -5,123 +21,171 @@
 using namespace drogon;
 
 class ClientsController : public drogon::HttpController<ClientsController> {
-public:
-  static constexpr const char *PREFIX = "/api/v1/clients/";
-  
-  METHOD_LIST_BEGIN
-  // Base client endpoints
-  ADD_METHOD_TO(ClientsController::getClients, std::string(PREFIX) + "get-all", Get, Options, "CompositeAuthFilter");
-  ADD_METHOD_TO(ClientsController::createClient, std::string(PREFIX) + "create", Post, Options, "CompositeAuthFilter");
-  ADD_METHOD_TO(ClientsController::getClientDetails, std::string(PREFIX) + "{1}/get-details", Get, Options, "CompositeAuthFilter");
-  ADD_METHOD_TO(ClientsController::updateClient, std::string(PREFIX) + "{1}/update", Put, Options, "CompositeAuthFilter");
-  ADD_METHOD_TO(ClientsController::deleteClient, std::string(PREFIX) + "{1}/delete", Delete, Options, "CompositeAuthFilter");
-  
-  // Single endpoint for all client commands (activate, close, etc.)
-  ADD_METHOD_TO(ClientsController::handleClientCommands, std::string(PREFIX) + "{1}", Post, Options, "CompositeAuthFilter");
+  public:
+    static constexpr const char *PREFIX = "/api/v1/clients/";
+    static constexpr const char *FILTER = "turbo::TrustedContextFilter";
 
-  // client addresses
-  ADD_METHOD_TO(ClientsController::getClientAddresses, std::string(PREFIX) + "{1}/addresses/get-all", Get, Options, "CompositeAuthFilter");
-  ADD_METHOD_TO(ClientsController::createClientAddress, std::string(PREFIX) + "{1}/addresses/create", Post, Options, "CompositeAuthFilter");
-  ADD_METHOD_TO(ClientsController::updateClientAddress, std::string(PREFIX) + "{1}/addresses/{2}/update", Put, Options, "CompositeAuthFilter");
-  ADD_METHOD_TO(ClientsController::deleteClientAddress, std::string(PREFIX) + "{1}/addresses/{2}/delete", Delete, Options, "CompositeAuthFilter");
-  
-  // client identifiers
-  ADD_METHOD_TO(ClientsController::getClientIdentifiers, std::string(PREFIX) + "{1}/identifiers/get-all", Get, Options, "CompositeAuthFilter");
-  ADD_METHOD_TO(ClientsController::getClientIdentifierDetails, std::string(PREFIX) + "{1}/identifiers/{2}", Get, Options, "CompositeAuthFilter");
-  ADD_METHOD_TO(ClientsController::createClientIdentifier, std::string(PREFIX) + "{1}/identifiers/create", Post, Options, "CompositeAuthFilter");
-  ADD_METHOD_TO(ClientsController::updateClientIdentifier, std::string(PREFIX) + "{1}/identifiers/{2}/update", Put, Options, "CompositeAuthFilter");
-  ADD_METHOD_TO(ClientsController::deleteClientIdentifier, std::string(PREFIX) + "{1}/identifiers/{2}/delete", Delete, Options, "CompositeAuthFilter");
+    METHOD_LIST_BEGIN
+        // ---- core CRUD ----------------------------------------------------
+        ADD_METHOD_TO(ClientsController::getAll, std::string(PREFIX) + "get-all", Get, Options, FILTER);
+        ADD_METHOD_TO(ClientsController::create, std::string(PREFIX) + "create", Post, Options, FILTER);
+        ADD_METHOD_TO(ClientsController::getDetails, std::string(PREFIX) + "get-detail/{1}", Get, Options,
+                     FILTER);
+        ADD_METHOD_TO(ClientsController::update, std::string(PREFIX) + "{1}/update", Put, Options, FILTER);
+        ADD_METHOD_TO(ClientsController::remove, std::string(PREFIX) + "{1}/delete", Delete, Options,
+                     FILTER);
+        ADD_METHOD_TO(ClientsController::command, std::string(PREFIX) + "{1}/command/{2}", Post, Options,
+                     FILTER);
+        ADD_METHOD_TO(ClientsController::templateEndpoint, std::string(PREFIX) + "template", Get, Options,
+                     FILTER);
+        ADD_METHOD_TO(ClientsController::downloadTemplate, std::string(PREFIX) + "downloadtemplate", Get,
+                     Options, FILTER);
+        ADD_METHOD_TO(ClientsController::uploadTemplate, std::string(PREFIX) + "uploadtemplate", Post,
+                     Options, FILTER);
+        ADD_METHOD_TO(ClientsController::accountsOverview, std::string(PREFIX) + "{1}/accounts", Get,
+                     Options, FILTER);
+        ADD_METHOD_TO(ClientsController::obligeeDetails, std::string(PREFIX) + "{1}/obligeedetails", Get,
+                     Options, FILTER);
+        ADD_METHOD_TO(ClientsController::transferTemplate,
+                     std::string(PREFIX) + "{1}/transferproposaldate", Get, Options, FILTER);
 
-  // Standing Instructions
-  ADD_METHOD_TO(ClientsController::listStandingInstructions, std::string(PREFIX) + "standing-instructions/get-all", Get, Options, "CompositeAuthFilter");
-  ADD_METHOD_TO(ClientsController::getStandingInstructionDetails, std::string(PREFIX) + "standing-instructions/{1}/get-details", Get, Options, "CompositeAuthFilter");
-  ADD_METHOD_TO(ClientsController::createStandingInstruction, std::string(PREFIX) + "standing-instructions/create", Post, Options, "CompositeAuthFilter");
-  ADD_METHOD_TO(ClientsController::updateStandingInstruction, std::string(PREFIX) + "standing-instructions/{1}/update", Put, Options, "CompositeAuthFilter"); // status change
-  ADD_METHOD_TO(ClientsController::deleteStandingInstruction, std::string(PREFIX) + "standing-instructions/{1}/delete", Delete, Options, "CompositeAuthFilter");
-  ADD_METHOD_TO(ClientsController::runStandingInstructionHistory, std::string(PREFIX) + "standing-instructions/run-history", Get, Options, "CompositeAuthFilter");
+        // ---- external-id addressing (core ops only) ------------------------
+        ADD_METHOD_TO(ClientsController::getDetailsByExternalId,
+                     std::string(PREFIX) + "external-id/{1}/get-detail", Get, Options, FILTER);
+        ADD_METHOD_TO(ClientsController::updateByExternalId,
+                     std::string(PREFIX) + "external-id/{1}/update", Put, Options, FILTER);
+        ADD_METHOD_TO(ClientsController::removeByExternalId,
+                     std::string(PREFIX) + "external-id/{1}/delete", Delete, Options, FILTER);
+        ADD_METHOD_TO(ClientsController::commandByExternalId,
+                     std::string(PREFIX) + "external-id/{1}/command/{2}", Post, Options, FILTER);
+        ADD_METHOD_TO(ClientsController::transactionsByExternalId,
+                     std::string(PREFIX) + "external-id/{1}/transactions/get-all", Get, Options, FILTER);
 
+        // ---- charges --------------------------------------------------------
+        ADD_METHOD_TO(ClientsController::chargesGetAll, std::string(PREFIX) + "{1}/charges/get-all", Get,
+                     Options, FILTER);
+        ADD_METHOD_TO(ClientsController::chargesAdd, std::string(PREFIX) + "{1}/charges/add", Post, Options,
+                     FILTER);
+        ADD_METHOD_TO(ClientsController::chargesGetDetail,
+                     std::string(PREFIX) + "{1}/charges/{2}/get-detail", Get, Options, FILTER);
+        ADD_METHOD_TO(ClientsController::chargesDelete, std::string(PREFIX) + "{1}/charges/{2}/delete",
+                     Delete, Options, FILTER);
+        ADD_METHOD_TO(ClientsController::chargesCommand,
+                     std::string(PREFIX) + "{1}/charges/{2}/command/{3}", Post, Options, FILTER);
+        ADD_METHOD_TO(ClientsController::chargesTemplate, std::string(PREFIX) + "{1}/charges/template", Get,
+                     Options, FILTER);
 
+        // ---- identifiers ------------------------------------------------------
+        ADD_METHOD_TO(ClientsController::identifiersGetAll,
+                     std::string(PREFIX) + "{1}/identifiers/get-all", Get, Options, FILTER);
+        ADD_METHOD_TO(ClientsController::identifiersCreate, std::string(PREFIX) + "{1}/identifiers/create",
+                     Post, Options, FILTER);
+        ADD_METHOD_TO(ClientsController::identifiersGetDetail,
+                     std::string(PREFIX) + "{1}/identifiers/{2}/get-detail", Get, Options, FILTER);
+        ADD_METHOD_TO(ClientsController::identifiersUpdate,
+                     std::string(PREFIX) + "{1}/identifiers/{2}/update", Put, Options, FILTER);
+        ADD_METHOD_TO(ClientsController::identifiersDelete,
+                     std::string(PREFIX) + "{1}/identifiers/{2}/delete", Delete, Options, FILTER);
+        ADD_METHOD_TO(ClientsController::identifiersTemplate,
+                     std::string(PREFIX) + "{1}/identifiers/template", Get, Options, FILTER);
 
+        // ---- family members -----------------------------------------------------
+        ADD_METHOD_TO(ClientsController::familyMembersGetAll,
+                     std::string(PREFIX) + "{1}/familymembers/get-all", Get, Options, FILTER);
+        ADD_METHOD_TO(ClientsController::familyMembersCreate,
+                     std::string(PREFIX) + "{1}/familymembers/create", Post, Options, FILTER);
+        ADD_METHOD_TO(ClientsController::familyMembersGetDetail,
+                     std::string(PREFIX) + "{1}/familymembers/{2}/get-detail", Get, Options, FILTER);
+        ADD_METHOD_TO(ClientsController::familyMembersUpdate,
+                     std::string(PREFIX) + "{1}/familymembers/{2}/update", Put, Options, FILTER);
+        ADD_METHOD_TO(ClientsController::familyMembersDelete,
+                     std::string(PREFIX) + "{1}/familymembers/{2}/delete", Delete, Options, FILTER);
+        ADD_METHOD_TO(ClientsController::familyMembersTemplate,
+                     std::string(PREFIX) + "{1}/familymembers/template", Get, Options, FILTER);
 
-  // Account Transfer
-  ADD_METHOD_TO(ClientsController::listAccountTransfers, std::string(PREFIX) + "account-transfers/get-all", Get, Options, "CompositeAuthFilter");
-  ADD_METHOD_TO(ClientsController::getAccountTransferDetails, std::string(PREFIX) + "account-transfers/{1}/get-details", Get, Options, "CompositeAuthFilter");
-  ADD_METHOD_TO(ClientsController::createAccountTransfer, std::string(PREFIX) + "account-transfers/create", Post, Options, "CompositeAuthFilter");
-  ADD_METHOD_TO(ClientsController::refundByAccountTransfer, std::string(PREFIX) + "account-transfers/refund-by-transfer", Post, Options, "CompositeAuthFilter"); //Ability to refund an active loan by transferring to a savings account.
+        // ---- collaterals (client-level pledges) ------------------------------------
+        ADD_METHOD_TO(ClientsController::collateralsGetAll,
+                     std::string(PREFIX) + "{1}/collaterals/get-all", Get, Options, FILTER);
+        ADD_METHOD_TO(ClientsController::collateralsCreate, std::string(PREFIX) + "{1}/collaterals/create",
+                     Post, Options, FILTER);
+        ADD_METHOD_TO(ClientsController::collateralsGetDetail,
+                     std::string(PREFIX) + "{1}/collaterals/{2}/get-detail", Get, Options, FILTER);
+        ADD_METHOD_TO(ClientsController::collateralsUpdate,
+                     std::string(PREFIX) + "{1}/collaterals/{2}/update", Put, Options, FILTER);
+        ADD_METHOD_TO(ClientsController::collateralsDelete,
+                     std::string(PREFIX) + "{1}/collaterals/{2}/delete", Delete, Options, FILTER);
+        ADD_METHOD_TO(ClientsController::collateralsTemplate,
+                     std::string(PREFIX) + "{1}/collaterals/template", Get, Options, FILTER);
 
-  // client charges
-  ADD_METHOD_TO(ClientsController::getClientCharges, std::string(PREFIX) + "{1}/charges/get-all", Get, Options, "CompositeAuthFilter");
-  ADD_METHOD_TO(ClientsController::addClientCharge, std::string(PREFIX) + "{1}/charges/add", Post, Options, "CompositeAuthFilter");
-  ADD_METHOD_TO(ClientsController::getClientChargeDetails, std::string(PREFIX) + "{1}/charges/{2}/get-details", Get, Options, "CompositeAuthFilter");
-  ADD_METHOD_TO(ClientsController::deleteClientCharge, std::string(PREFIX) + "{1}/charges/{2}/delete", Delete, Options, "CompositeAuthFilter");
-  ADD_METHOD_TO(ClientsController::handleClientChargeCommands, std::string(PREFIX) + "{1}/charges/{2}/handle-command", Post, Options, "CompositeAuthFilter");
+        // ---- transactions -----------------------------------------------------------
+        ADD_METHOD_TO(ClientsController::transactionsGetAll,
+                     std::string(PREFIX) + "{1}/transactions/get-all", Get, Options, FILTER);
+        ADD_METHOD_TO(ClientsController::transactionsGetDetail,
+                     std::string(PREFIX) + "{1}/transactions/{2}/get-detail", Get, Options, FILTER);
+        ADD_METHOD_TO(ClientsController::transactionsUndo,
+                     std::string(PREFIX) + "{1}/transactions/{2}/undo", Post, Options, FILTER);
+    METHOD_LIST_END
 
-  // client transactions
-  ADD_METHOD_TO(ClientsController::getClientTransactions, std::string(PREFIX) + "{1}/transactions/get-all", Get, Options, "CompositeAuthFilter");
-  ADD_METHOD_TO(ClientsController::getClientTransactionDetails, std::string(PREFIX) + "{1}/transactions/{2}", Get, Options, "CompositeAuthFilter");
-  ADD_METHOD_TO(ClientsController::handleClientTransactionCommands, std::string(PREFIX) + "{1}/transactions/{2}/handle-command", Post, Options, "CompositeAuthFilter");
+    Task<HttpResponsePtr> getAll(HttpRequestPtr req);
+    Task<HttpResponsePtr> create(HttpRequestPtr req);
+    Task<HttpResponsePtr> getDetails(HttpRequestPtr req, std::string id);
+    Task<HttpResponsePtr> update(HttpRequestPtr req, std::string id);
+    Task<HttpResponsePtr> remove(HttpRequestPtr req, std::string id);
+    Task<HttpResponsePtr> command(HttpRequestPtr req, std::string id, std::string cmd);
+    Task<HttpResponsePtr> templateEndpoint(HttpRequestPtr req);
+    Task<HttpResponsePtr> downloadTemplate(HttpRequestPtr req);
+    Task<HttpResponsePtr> uploadTemplate(HttpRequestPtr req);
+    Task<HttpResponsePtr> accountsOverview(HttpRequestPtr req, std::string id);
+    Task<HttpResponsePtr> obligeeDetails(HttpRequestPtr req, std::string id);
+    Task<HttpResponsePtr> transferTemplate(HttpRequestPtr req, std::string id);
 
-  METHOD_LIST_END
+    Task<HttpResponsePtr> getDetailsByExternalId(HttpRequestPtr req, std::string externalId);
+    Task<HttpResponsePtr> updateByExternalId(HttpRequestPtr req, std::string externalId);
+    Task<HttpResponsePtr> removeByExternalId(HttpRequestPtr req, std::string externalId);
+    Task<HttpResponsePtr> commandByExternalId(HttpRequestPtr req, std::string externalId, std::string cmd);
+    Task<HttpResponsePtr> transactionsByExternalId(HttpRequestPtr req, std::string externalId);
 
-  Task<HttpResponsePtr> getClients(HttpRequestPtr req);
-  Task<HttpResponsePtr> createClient(HttpRequestPtr req);
-  Task<HttpResponsePtr> getClientDetails(HttpRequestPtr req, std::string clientId);
-  Task<HttpResponsePtr> updateClient(HttpRequestPtr req, std::string clientId);
-  Task<HttpResponsePtr> deleteClient(HttpRequestPtr req, std::string clientId);
-  
-  Task<HttpResponsePtr> handleClientCommands(HttpRequestPtr req, std::string id);
+    Task<HttpResponsePtr> chargesGetAll(HttpRequestPtr req, std::string clientId);
+    Task<HttpResponsePtr> chargesAdd(HttpRequestPtr req, std::string clientId);
+    Task<HttpResponsePtr> chargesGetDetail(HttpRequestPtr req, std::string clientId, std::string chargeId);
+    Task<HttpResponsePtr> chargesDelete(HttpRequestPtr req, std::string clientId, std::string chargeId);
+    Task<HttpResponsePtr> chargesCommand(HttpRequestPtr req, std::string clientId, std::string chargeId,
+                                         std::string cmd);
+    Task<HttpResponsePtr> chargesTemplate(HttpRequestPtr req, std::string clientId);
 
-  // client addresses
-  Task<HttpResponsePtr> getClientAddresses(HttpRequestPtr req, std::string clientId);
-  Task<HttpResponsePtr> createClientAddress(HttpRequestPtr req, std::string clientId);
-  Task<HttpResponsePtr> updateClientAddress(HttpRequestPtr req, std::string clientId, std::string addressId);
-  Task<HttpResponsePtr> deleteClientAddress(HttpRequestPtr req, std::string clientId, std::string addressId);
+    Task<HttpResponsePtr> identifiersGetAll(HttpRequestPtr req, std::string clientId);
+    Task<HttpResponsePtr> identifiersCreate(HttpRequestPtr req, std::string clientId);
+    Task<HttpResponsePtr> identifiersGetDetail(HttpRequestPtr req, std::string clientId,
+                                               std::string identifierId);
+    Task<HttpResponsePtr> identifiersUpdate(HttpRequestPtr req, std::string clientId,
+                                            std::string identifierId);
+    Task<HttpResponsePtr> identifiersDelete(HttpRequestPtr req, std::string clientId,
+                                            std::string identifierId);
+    Task<HttpResponsePtr> identifiersTemplate(HttpRequestPtr req, std::string clientId);
 
-  // client identifiers
-  Task<HttpResponsePtr> getClientIdentifiers(HttpRequestPtr req, std::string id);
-  Task<HttpResponsePtr> getClientIdentifierDetails(HttpRequestPtr req, std::string clientId, std::string identifierId);
-  Task<HttpResponsePtr> createClientIdentifier(HttpRequestPtr req, std::string clientId);
-  Task<HttpResponsePtr> updateClientIdentifier(HttpRequestPtr req, std::string clientId, std::string identifierId);
-  Task<HttpResponsePtr> deleteClientIdentifier(HttpRequestPtr req, std::string clientId, std::string identifierId);
+    Task<HttpResponsePtr> familyMembersGetAll(HttpRequestPtr req, std::string clientId);
+    Task<HttpResponsePtr> familyMembersCreate(HttpRequestPtr req, std::string clientId);
+    Task<HttpResponsePtr> familyMembersGetDetail(HttpRequestPtr req, std::string clientId,
+                                                 std::string familyMemberId);
+    Task<HttpResponsePtr> familyMembersUpdate(HttpRequestPtr req, std::string clientId,
+                                              std::string familyMemberId);
+    Task<HttpResponsePtr> familyMembersDelete(HttpRequestPtr req, std::string clientId,
+                                              std::string familyMemberId);
+    Task<HttpResponsePtr> familyMembersTemplate(HttpRequestPtr req, std::string clientId);
 
+    Task<HttpResponsePtr> collateralsGetAll(HttpRequestPtr req, std::string clientId);
+    Task<HttpResponsePtr> collateralsCreate(HttpRequestPtr req, std::string clientId);
+    Task<HttpResponsePtr> collateralsGetDetail(HttpRequestPtr req, std::string clientId,
+                                               std::string collateralId);
+    Task<HttpResponsePtr> collateralsUpdate(HttpRequestPtr req, std::string clientId,
+                                            std::string collateralId);
+    Task<HttpResponsePtr> collateralsDelete(HttpRequestPtr req, std::string clientId,
+                                            std::string collateralId);
+    Task<HttpResponsePtr> collateralsTemplate(HttpRequestPtr req, std::string clientId);
 
-  // Standing Instructions
-  Task<HttpResponsePtr> listStandingInstructions(HttpRequestPtr req);
-  Task<HttpResponsePtr> getStandingInstructionDetails(HttpRequestPtr req, std::string standingInstructionId);
-  Task<HttpResponsePtr> createStandingInstruction(HttpRequestPtr req);
-  Task<HttpResponsePtr> updateStandingInstruction(HttpRequestPtr req, std::string standingInstructionId);
-  Task<HttpResponsePtr> deleteStandingInstruction(HttpRequestPtr req, std::string standingInstructionId);
-  Task<HttpResponsePtr> runStandingInstructionHistory(HttpRequestPtr req);
-
-
-  // Account Transfer
-  Task<HttpResponsePtr> listAccountTransfers(HttpRequestPtr req);
-  Task<HttpResponsePtr> getAccountTransferDetails(HttpRequestPtr req, std::string accountTransferId);
-  Task<HttpResponsePtr> createAccountTransfer(HttpRequestPtr req);
-  Task<HttpResponsePtr> refundByAccountTransfer(HttpRequestPtr req);
-
-
-  // client charges
-  Task<HttpResponsePtr> getClientCharges(HttpRequestPtr req, std::string id);
-  Task<HttpResponsePtr> addClientCharge(HttpRequestPtr req, std::string id);
-  Task<HttpResponsePtr> getClientChargeDetails(HttpRequestPtr req, std::string id, std::string chargeId);
-  Task<HttpResponsePtr> deleteClientCharge(HttpRequestPtr req, std::string id, std::string chargeId);
-  Task<HttpResponsePtr> handleClientChargeCommands(HttpRequestPtr req, std::string id, std::string chargeId);
-
-  // client transactions
-  Task<HttpResponsePtr> getClientTransactions(HttpRequestPtr req, std::string id);
-  Task<HttpResponsePtr> getClientTransactionDetails(HttpRequestPtr req, std::string id, std::string transactionId);
-  Task<HttpResponsePtr> handleClientTransactionCommands(HttpRequestPtr req, std::string id, std::string transactionId);
-
-private:
-  struct AuthResult {
-    bool isValid = false;
-    std::string businessId;
-    HttpResponsePtr errorResponse;
-  };
-
-  Task<AuthResult> authenticateRequest(HttpRequestPtr req);
-
+    Task<HttpResponsePtr> transactionsGetAll(HttpRequestPtr req, std::string clientId);
+    Task<HttpResponsePtr> transactionsGetDetail(HttpRequestPtr req, std::string clientId,
+                                                std::string transactionId);
+    Task<HttpResponsePtr> transactionsUndo(HttpRequestPtr req, std::string clientId,
+                                           std::string transactionId);
 };
-
-

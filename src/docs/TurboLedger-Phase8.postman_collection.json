@@ -1,0 +1,2465 @@
+{
+  "info": {
+    "_postman_id": "7f1305cd-28b5-44ca-b355-ce8f6078f06e",
+    "name": "TurboLedger \u2014 Phase 8 (Ops Backbone)",
+    "description": "Phase 8 surface through the API Gateway: jobs + scheduler (HeartBeat service); notifications, sms, smscampaigns, email, reportmailingjobs (Notification service); templates (Template service). The Batch API (POST /api/v1/batches) is implemented inside the gateway itself (see GatewayCore::handleBatch) rather than as a controller and is not included as a generated request here \u2014 see IMPLEMENTATION_PLAN.md for its relative-reference ($.<requestId>.<field>) substitution syntax and call it directly.\n\nRun the '0 - Auth' request first (requires a tenant/admin already provisioned) to populate {{token}}. Collection variables: baseUrl, tenantId, token.\n\nRequest bodies were auto-derived from the actual field reads in HeartBeatService.cc / NotificationService.cc / TemplateService.cc; placeholder values are generic and should be adjusted to valid data for your environment.\n\nReporting (reports/runreports/adhocquery/search/surveys/likelihood/povertyLine) was never built in this codebase and is out of scope here.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:7499"
+    },
+    {
+      "key": "tenantId",
+      "value": "acme_bank"
+    },
+    {
+      "key": "token",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "0 \u00b7 Auth",
+      "item": [
+        {
+          "name": "Tenant admin sign in",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/signin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "signin"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usernameOrEmail\": \"admin\",\n  \"password\": \"Passw0rd!\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = pm.response.json();",
+                  "pm.test('signin ok', () => pm.expect(d.success).to.be.true);",
+                  "pm.collectionVariables.set('token', d.result.token);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Jobs",
+      "item": [
+        {
+          "name": "Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/jobs/get-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "jobs",
+                "get-all"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Names",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/jobs/names",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "jobs",
+                "names"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get By Short Name",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/jobs/short-name/:shortName",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "jobs",
+                "short-name",
+                ":shortName"
+              ],
+              "variable": [
+                {
+                  "key": "shortName",
+                  "value": "example-job"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Run By Short Name",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/jobs/short-name/:shortName",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "jobs",
+                "short-name",
+                ":shortName"
+              ],
+              "variable": [
+                {
+                  "key": "shortName",
+                  "value": "example-job"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update By Short Name",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/jobs/short-name/:shortName",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "jobs",
+                "short-name",
+                ":shortName"
+              ],
+              "variable": [
+                {
+                  "key": "shortName",
+                  "value": "example-job"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"displayName\": \"Example displayName\",\n  \"description\": \"Example description\",\n  \"cronExpression\": \"example\",\n  \"active\": true,\n  \"misfired\": true\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Run History By Short Name",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/jobs/short-name/:shortName/runhistory",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "jobs",
+                "short-name",
+                ":shortName",
+                "runhistory"
+              ],
+              "variable": [
+                {
+                  "key": "shortName",
+                  "value": "example-job"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Available Steps",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/jobs/:jobId/available-steps",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "jobs",
+                ":jobId",
+                "available-steps"
+              ],
+              "variable": [
+                {
+                  "key": "jobId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Run Inline",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/jobs/:jobId/inline",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "jobs",
+                ":jobId",
+                "inline"
+              ],
+              "variable": [
+                {
+                  "key": "jobId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Steps",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/jobs/:jobId/steps",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "jobs",
+                ":jobId",
+                "steps"
+              ],
+              "variable": [
+                {
+                  "key": "jobId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Steps",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/jobs/:jobId/steps",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "jobs",
+                ":jobId",
+                "steps"
+              ],
+              "variable": [
+                {
+                  "key": "jobId",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"steps\": \"example\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Run History By Id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/jobs/:jobId/runhistory",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "jobs",
+                ":jobId",
+                "runhistory"
+              ],
+              "variable": [
+                {
+                  "key": "jobId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get By Id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/jobs/:jobId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "jobs",
+                ":jobId"
+              ],
+              "variable": [
+                {
+                  "key": "jobId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Run By Id",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/jobs/:jobId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "jobs",
+                ":jobId"
+              ],
+              "variable": [
+                {
+                  "key": "jobId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update By Id",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/jobs/:jobId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "jobs",
+                ":jobId"
+              ],
+              "variable": [
+                {
+                  "key": "jobId",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"displayName\": \"Example displayName\",\n  \"description\": \"Example description\",\n  \"cronExpression\": \"example\",\n  \"active\": true,\n  \"misfired\": true\n}"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Scheduler",
+      "item": [
+        {
+          "name": "Get Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/scheduler/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "scheduler",
+                "status"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Status",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/scheduler/update",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "scheduler",
+                "update"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"command\": \"example\",\n  \"active\": true\n}"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        {
+          "name": "Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notifications"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Mark Read",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notifications"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"all\": true,\n  \"notificationIds\": \"example\"\n}"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Sms",
+      "item": [
+        {
+          "name": "Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/sms",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "sms"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/sms",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "sms"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mobileNo\": \"+10000000000\",\n  \"message\": \"example\",\n  \"clientId\": \"1\",\n  \"groupId\": \"1\",\n  \"staffId\": \"1\",\n  \"campaignId\": \"1\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Message By Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/sms/:smId/messageByStatus",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "sms",
+                ":smId",
+                "messageByStatus"
+              ],
+              "variable": [
+                {
+                  "key": "smId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get One",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/sms/:smId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "sms",
+                ":smId"
+              ],
+              "variable": [
+                {
+                  "key": "smId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/sms/:smId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "sms",
+                ":smId"
+              ],
+              "variable": [
+                {
+                  "key": "smId",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"example\",\n  \"mobileNo\": \"+10000000000\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Remove",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/sms/:smId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "sms",
+                ":smId"
+              ],
+              "variable": [
+                {
+                  "key": "smId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Sms Campaigns",
+      "item": [
+        {
+          "name": "Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/smscampaigns",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "smscampaigns"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/smscampaigns",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "smscampaigns"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"campaignName\": \"Example campaignName\",\n  \"message\": \"example\",\n  \"campaignType\": \"example\",\n  \"recurrence\": \"example\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Creation Template",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/smscampaigns/template",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "smscampaigns",
+                "template"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Preview",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/smscampaigns/preview",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "smscampaigns",
+                "preview"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"example\",\n  \"paramValue\": \"example\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get One",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/smscampaigns/:smscampaignId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "smscampaigns",
+                ":smscampaignId"
+              ],
+              "variable": [
+                {
+                  "key": "smscampaignId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/smscampaigns/:smscampaignId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "smscampaigns",
+                ":smscampaignId"
+              ],
+              "variable": [
+                {
+                  "key": "smscampaignId",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"campaignName\": \"Example campaignName\",\n  \"message\": \"example\",\n  \"campaignType\": \"example\",\n  \"recurrence\": \"example\",\n  \"paramValue\": \"example\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Remove",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/smscampaigns/:smscampaignId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "smscampaigns",
+                ":smscampaignId"
+              ],
+              "variable": [
+                {
+                  "key": "smscampaignId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Command",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/smscampaigns/:smscampaignId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "smscampaigns",
+                ":smscampaignId"
+              ],
+              "variable": [
+                {
+                  "key": "smscampaignId",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"command\": \"example\"\n}"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Email",
+      "item": [
+        {
+          "name": "Get Configuration",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/email/configuration",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "email",
+                "configuration"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Configuration",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/email/configuration",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "email",
+                "configuration"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"smtpHost\": \"example\",\n  \"smtpPort\": 1,\n  \"smtpUsername\": \"Example smtpUsername\",\n  \"smtpPassword\": \"Passw0rd!\",\n  \"fromEmail\": \"user@example.com\",\n  \"fromName\": \"Example fromName\",\n  \"useTls\": true\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Campaign Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/email/campaign",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "email",
+                "campaign"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Campaign Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/email/campaign",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "email",
+                "campaign"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"campaignName\": \"Example campaignName\",\n  \"subject\": \"example\",\n  \"message\": \"example\",\n  \"recurrence\": \"example\",\n  \"attachmentFileFormat\": \"example\",\n  \"stretchyReportName\": \"Example stretchyReportName\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Campaign Template",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/email/campaign/template",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "email",
+                "campaign",
+                "template"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Campaign Edit Template",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/email/campaign/template/:campaignId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "email",
+                "campaign",
+                "template",
+                ":campaignId"
+              ],
+              "variable": [
+                {
+                  "key": "campaignId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Campaign Preview",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/email/campaign/preview",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "email",
+                "campaign",
+                "preview"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"example\",\n  \"subject\": \"example\",\n  \"paramValue\": \"example\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Campaign Get One",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/email/campaign/:campaignId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "email",
+                "campaign",
+                ":campaignId"
+              ],
+              "variable": [
+                {
+                  "key": "campaignId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Campaign Update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/email/campaign/:campaignId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "email",
+                "campaign",
+                ":campaignId"
+              ],
+              "variable": [
+                {
+                  "key": "campaignId",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"campaignName\": \"Example campaignName\",\n  \"subject\": \"example\",\n  \"message\": \"example\",\n  \"recurrence\": \"example\",\n  \"attachmentFileFormat\": \"example\",\n  \"stretchyReportName\": \"Example stretchyReportName\",\n  \"paramValue\": \"example\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Campaign Remove",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/email/campaign/:campaignId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "email",
+                "campaign",
+                ":campaignId"
+              ],
+              "variable": [
+                {
+                  "key": "campaignId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Campaign Command",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/email/campaign/:campaignId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "email",
+                "campaign",
+                ":campaignId"
+              ],
+              "variable": [
+                {
+                  "key": "campaignId",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"command\": \"example\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Failed Email",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/email/failedEmail",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "email",
+                "failedEmail"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Pending Email",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/email/pendingEmail",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "email",
+                "pendingEmail"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Sent Email",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/email/sentEmail",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "email",
+                "sentEmail"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Message By Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/email/messageByStatus",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "email",
+                "messageByStatus"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "email"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "email"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"emailAddress\": \"user@example.com\",\n  \"emailSubject\": \"user@example.com\",\n  \"emailMessage\": \"user@example.com\",\n  \"clientId\": \"1\",\n  \"groupId\": \"1\",\n  \"staffId\": \"1\",\n  \"campaignId\": \"1\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get One",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/email/:emailId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "email",
+                ":emailId"
+              ],
+              "variable": [
+                {
+                  "key": "emailId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/email/:emailId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "email",
+                ":emailId"
+              ],
+              "variable": [
+                {
+                  "key": "emailId",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"emailSubject\": \"user@example.com\",\n  \"emailMessage\": \"user@example.com\",\n  \"emailAddress\": \"user@example.com\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Remove",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/email/:emailId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "email",
+                ":emailId"
+              ],
+              "variable": [
+                {
+                  "key": "emailId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Report Mailing Jobs",
+      "item": [
+        {
+          "name": "Creation Template",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/reportmailingjobs/template",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reportmailingjobs",
+                "template"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/reportmailingjobs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reportmailingjobs"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/reportmailingjobs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reportmailingjobs"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Example name\",\n  \"reportName\": \"Example reportName\",\n  \"emailRecipients\": \"user@example.com\",\n  \"emailSubject\": \"user@example.com\",\n  \"startDateTime\": \"2026-01-15\",\n  \"emailAttachmentFileFormat\": \"user@example.com\",\n  \"active\": true,\n  \"description\": \"Example description\",\n  \"recurrence\": \"example\",\n  \"emailMessage\": \"user@example.com\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get One",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/reportmailingjobs/:reportmailingjobId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reportmailingjobs",
+                ":reportmailingjobId"
+              ],
+              "variable": [
+                {
+                  "key": "reportmailingjobId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/reportmailingjobs/:reportmailingjobId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reportmailingjobs",
+                ":reportmailingjobId"
+              ],
+              "variable": [
+                {
+                  "key": "reportmailingjobId",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Example name\",\n  \"description\": \"Example description\",\n  \"reportName\": \"Example reportName\",\n  \"startDateTime\": \"2026-01-15\",\n  \"recurrence\": \"example\",\n  \"emailRecipients\": \"user@example.com\",\n  \"emailSubject\": \"user@example.com\",\n  \"emailMessage\": \"user@example.com\",\n  \"emailAttachmentFileFormat\": \"user@example.com\",\n  \"active\": true,\n  \"reportParams\": \"example\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Remove",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/reportmailingjobs/:reportmailingjobId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reportmailingjobs",
+                ":reportmailingjobId"
+              ],
+              "variable": [
+                {
+                  "key": "reportmailingjobId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Run History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/reportmailingjobrunhistory",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reportmailingjobrunhistory"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Templates",
+      "item": [
+        {
+          "name": "Creation Template",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/templates/template",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "templates",
+                "template"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Edit Template",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/templates/:templateId/template",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "templates",
+                ":templateId",
+                "template"
+              ],
+              "variable": [
+                {
+                  "key": "templateId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/templates",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "templates"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/templates",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "templates"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Example name\",\n  \"text\": \"example\",\n  \"entity\": \"example\",\n  \"templateType\": \"example\",\n  \"mappers\": \"example\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get One",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/templates/:templateId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "templates",
+                ":templateId"
+              ],
+              "variable": [
+                {
+                  "key": "templateId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Merge",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/templates/:templateId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "templates",
+                ":templateId"
+              ],
+              "variable": [
+                {
+                  "key": "templateId",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"values\": \"example\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/templates/:templateId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "templates",
+                ":templateId"
+              ],
+              "variable": [
+                {
+                  "key": "templateId",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Example name\",\n  \"text\": \"example\",\n  \"entity\": \"example\",\n  \"templateType\": \"example\",\n  \"mappers\": \"example\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Remove",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/templates/:templateId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "templates",
+                ":templateId"
+              ],
+              "variable": [
+                {
+                  "key": "templateId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

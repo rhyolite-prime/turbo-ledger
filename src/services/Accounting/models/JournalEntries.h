@@ -38,6 +38,8 @@ namespace drogon_model
 {
 namespace TlAccounting
 {
+class Accounts;
+class JournalEntries;
 
 class JournalEntries
 {
@@ -75,6 +77,9 @@ class JournalEntries
         static const std::string _created_on_utc;
         static const std::string _last_modified_on_utc;
         static const std::string _submitted_on_date;
+        static const std::string _entry_seq;
+        static const std::string _entry_hash;
+        static const std::string _prev_hash;
     };
 
     static const int primaryKeyNumber;
@@ -410,14 +415,50 @@ class JournalEntries
     ///Set the value of the column submitted_on_date
     void setSubmittedOnDate(const ::trantor::Date &pSubmittedOnDate) noexcept;
 
+    /**  For column entry_seq  */
+    ///Get the value of the column entry_seq, returns the default value if the column is null
+    const int64_t &getValueOfEntrySeq() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<int64_t> &getEntrySeq() const noexcept;
+    ///Set the value of the column entry_seq
+    void setEntrySeq(const int64_t &pEntrySeq) noexcept;
 
-    static size_t getColumnNumber() noexcept {  return 31;  }
+    /**  For column entry_hash  */
+    ///Get the value of the column entry_hash, returns the default value if the column is null
+    const std::string &getValueOfEntryHash() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<std::string> &getEntryHash() const noexcept;
+    ///Set the value of the column entry_hash
+    void setEntryHash(const std::string &pEntryHash) noexcept;
+    void setEntryHash(std::string &&pEntryHash) noexcept;
+    void setEntryHashToNull() noexcept;
+
+    /**  For column prev_hash  */
+    ///Get the value of the column prev_hash, returns the default value if the column is null
+    const std::string &getValueOfPrevHash() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<std::string> &getPrevHash() const noexcept;
+    ///Set the value of the column prev_hash
+    void setPrevHash(const std::string &pPrevHash) noexcept;
+    void setPrevHash(std::string &&pPrevHash) noexcept;
+    void setPrevHashToNull() noexcept;
+
+
+    static size_t getColumnNumber() noexcept {  return 34;  }
     static const std::string &getColumnName(size_t index) noexcept(false);
 
     Json::Value toJson() const;
     std::string toString() const;
     Json::Value toMasqueradedJson(const std::vector<std::string> &pMasqueradingVector) const;
     /// Relationship interfaces
+    Accounts getAccounts(const drogon::orm::DbClientPtr &clientPtr) const;
+    void getAccounts(const drogon::orm::DbClientPtr &clientPtr,
+                     const std::function<void(Accounts)> &rcb,
+                     const drogon::orm::ExceptionCallback &ecb) const;
+    JournalEntries getJournalEntries(const drogon::orm::DbClientPtr &clientPtr) const;
+    void getJournalEntries(const drogon::orm::DbClientPtr &clientPtr,
+                           const std::function<void(JournalEntries)> &rcb,
+                           const drogon::orm::ExceptionCallback &ecb) const;
   private:
     friend drogon::orm::Mapper<JournalEntries>;
     friend drogon::orm::BaseBuilder<JournalEntries, true, true>;
@@ -464,6 +505,9 @@ class JournalEntries
     std::shared_ptr<::trantor::Date> createdOnUtc_;
     std::shared_ptr<::trantor::Date> lastModifiedOnUtc_;
     std::shared_ptr<::trantor::Date> submittedOnDate_;
+    std::shared_ptr<int64_t> entrySeq_;
+    std::shared_ptr<std::string> entryHash_;
+    std::shared_ptr<std::string> prevHash_;
     struct MetaData
     {
         const std::string colName_;
@@ -475,7 +519,7 @@ class JournalEntries
         const bool notNull_;
     };
     static const std::vector<MetaData> metaData_;
-    bool dirtyFlag_[31]={ false };
+    bool dirtyFlag_[34]={ false };
   public:
     static const std::string &sqlForFindingByPrimaryKey()
     {
@@ -660,6 +704,19 @@ class JournalEntries
             sql += "submitted_on_date,";
             ++parametersCount;
         }
+            sql += "entry_seq,";
+            ++parametersCount;
+        if(dirtyFlag_[32])
+        {
+            sql += "entry_hash,";
+            ++parametersCount;
+        }
+        if(dirtyFlag_[33])
+        {
+            sql += "prev_hash,";
+            ++parametersCount;
+        }
+        needSelection=true;
         if(parametersCount > 0)
         {
             sql[sql.length()-1]=')';
@@ -870,6 +927,17 @@ class JournalEntries
             sql +="default,";
         }
         if(dirtyFlag_[30])
+        {
+            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
+            sql.append(placeholderStr, n);
+        }
+        sql +="default,";
+        if(dirtyFlag_[32])
+        {
+            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
+            sql.append(placeholderStr, n);
+        }
+        if(dirtyFlag_[33])
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);

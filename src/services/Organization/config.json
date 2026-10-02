@@ -6,7 +6,7 @@
             //address: Ip address,0.0.0.0 by default
             "address": "0.0.0.0",
             //port: Port number
-            "port": 7501,
+            "port": 7503,
             //https: If true, use https for security,false by default
             "https": false
         }
@@ -24,7 +24,7 @@
             //port: Server port, 5432 by default
             "port": 5432,
             //dbname: Database name
-            "dbname": "TlOrganizationDb",
+                "dbname": "TlOrganizationDb",
             //user: 'postgres' by default
             "user": "postgres",
             //passwd: '' by default
@@ -322,18 +322,14 @@
     ],
     //custom_config: custom configuration for users. This object can be get by the app().getCustomConfig() method.
     "custom_config": {
-        "JwtBearer": {
-            "JwtSecurityKey" : "TurboLedgerIdentity_ca01ca76-3866-4d44-9881-d9e365b81472",
-            "JwtIssuer" : "TurboLedgerIdentity",
-            "JwtAudience" : "TurboLedgerIdentity",
-            "JwtExpirationTime" : 3600
+        "turbo": {
+            "context_secret": "dev-only-context-secret-change-me"
         },
-        "PrivateKey": "ca01ca76-3866-4d44-9881-d9e365b81473",
         "ServiceIdentity": {
             "Name" : "organization",
             "Alias" : "horus",
             "Version" : "0.1",
-            "Description" : "offices, employees"
+            "Description" : "offices, staff, holidays, working days, currencies, funds, payment types, taxes"
         }
     }
 }

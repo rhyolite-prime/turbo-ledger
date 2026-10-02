@@ -1,3 +1,15 @@
+//
+// Phase 9 cleanup: this service used to own full user CRUD (getAll, create,
+// update, lock/unlock, activate/deactivate, delete), but every one of those
+// methods queried a raw, unscoped DbClient filtered by a `business_id`
+// column rather than switching into the caller's tenant schema — and none
+// of it was reachable anyway: UsersController has used
+// turbo_ledger_identity::rbac::RbacService (proper beginTenantTxn-based
+// tenant-schema access) for all of that since Phase 1. That dead,
+// non-tenant-aware code has been removed; only sign-in — which IS still
+// live (AuthController) and already tenant-schema-aware for the common
+// case via tryTenantSignin — remains here.
+//
 
 #pragma once
 
@@ -5,8 +17,6 @@
 #include <optional>
 #include "dto/BaseApiResponse.h"
 #include "dto/SigninDto.h"
-#include "dto/UserDto.h"
-#include "dto/UserIdentityDto.h"
 
 
 namespace turbo_ledger_identity::services
@@ -14,25 +24,6 @@ namespace turbo_ledger_identity::services
     class UserService
     {
     public:
-
-
-        drogon::Task<dto::BaseApiResponse> getAll(const dto::UserIdentityDto &identity, int pageNo, int pageSize, const std::string &query);
-        drogon::Task<dto::BaseApiResponse> getDetails(const dto::UserIdentityDto &identity, const std::string &id);
-
-        drogon::Task<dto::BaseApiResponse> create(const dto::UserIdentityDto &identity, const dto::UserDto &dto);
-
-        drogon::Task<dto::BaseApiResponse> update(const dto::UserIdentityDto &identity, const dto::UserDto &dto, const std::string &id);
-
-        drogon::Task<dto::BaseApiResponse> lockUserAccount(const dto::UserIdentityDto &identity, const std::string &userId);
-
-        drogon::Task<dto::BaseApiResponse> unlockUserAccount(const dto::UserIdentityDto &identity, const std::string &userId);
-
-        drogon::Task<dto::BaseApiResponse> activateUserAccount(const dto::UserIdentityDto &identity, const std::string &userId);
-
-        drogon::Task<dto::BaseApiResponse> deactivateUserAccount(const dto::UserIdentityDto &identity, const std::string &userId);
-
-        drogon::Task<dto::BaseApiResponse> deleteUser(const dto::UserIdentityDto &identity, const std::string &userId);
-
         drogon::Task<dto::BaseApiResponse> validateUserCredentials(const dto::SigninDto &dto);
 
         /// Phase 1: tenant-aware signin — tenant schema first, host fallback.
@@ -42,7 +33,6 @@ namespace turbo_ledger_identity::services
     private:
         drogon::Task<std::optional<dto::BaseApiResponse>> tryTenantSignin(
             const dto::SigninDto &dto, const std::string &tenantId);
-
 
     };
 }

@@ -1,41 +1,53 @@
+//
+// Phase 6 — loanproducts (11 endpoints: 7 core + 4 productmix). External-id
+// mirror for loan products is wired since the service already resolves it
+// cheaply (getLoanProductByExternalId/updateLoanProductByExternalId).
+//
 #pragma once
 
 #include <drogon/HttpController.h>
 
 using namespace drogon;
 
-class LoanProductsController : public drogon::HttpController<LoanProductsController>
-{
+class LoanProductsController : public drogon::HttpController<LoanProductsController> {
   public:
-    static constexpr const char *PREFIX = "/api/v1/loan-products/";
-    METHOD_LIST_BEGIN
-    ADD_METHOD_TO(LoanProductsController::getLoanProducts, std::string(PREFIX) + "get-all", Get);
-    ADD_METHOD_TO(LoanProductsController::getLoanProductMix, std::string(PREFIX) + "get-mix", Get);
-    ADD_METHOD_TO(LoanProductsController::getLoanProductMixTemplate, std::string(PREFIX) + "get-mix-template", Get);
-    ADD_METHOD_TO(LoanProductsController::getLoanProductDetails, std::string(PREFIX) + "get-details", Get);
-    ADD_METHOD_TO(LoanProductsController::getLoanProductTemplate, std::string(PREFIX) + "get-template", Get);
-    ADD_METHOD_TO(LoanProductsController::createLoanProduct, std::string(PREFIX) + "create", Post);
-    ADD_METHOD_TO(LoanProductsController::updateLoanProduct, std::string(PREFIX) + "{1}" , Put);
-    ADD_METHOD_TO(LoanProductsController::retrieveLoanProductMix, std::string(PREFIX) + "{1}/product-mix" , Get);
-    ADD_METHOD_TO(LoanProductsController::createLoanProductMix, std::string(PREFIX) + "{1}/product-mix" , Post);
-    ADD_METHOD_TO(LoanProductsController::updateLoanProductMix, std::string(PREFIX) + "{1}/product-mix" , Put);
-    ADD_METHOD_TO(LoanProductsController::deleteLoanProductMix, std::string(PREFIX) + "{1}/product-mix" , Delete);
+    static constexpr const char *PREFIX = "/api/v1/loanproducts/";
+    static constexpr const char *FILTER = "turbo::TrustedContextFilter";
 
+    METHOD_LIST_BEGIN
+        ADD_METHOD_TO(LoanProductsController::getAll, std::string(PREFIX) + "get-all", Get, Options, FILTER);
+        ADD_METHOD_TO(LoanProductsController::create, std::string(PREFIX) + "create", Post, Options, FILTER);
+        ADD_METHOD_TO(LoanProductsController::getDetails, std::string(PREFIX) + "get-detail/{1}", Get,
+                     Options, FILTER);
+        ADD_METHOD_TO(LoanProductsController::update, std::string(PREFIX) + "{1}/update", Put, Options,
+                     FILTER);
+        ADD_METHOD_TO(LoanProductsController::templateEndpoint, std::string(PREFIX) + "template", Get,
+                     Options, FILTER);
+        ADD_METHOD_TO(LoanProductsController::getDetailsByExternalId,
+                     std::string(PREFIX) + "external-id/{1}/get-detail", Get, Options, FILTER);
+        ADD_METHOD_TO(LoanProductsController::updateByExternalId,
+                     std::string(PREFIX) + "external-id/{1}/update", Put, Options, FILTER);
+
+        ADD_METHOD_TO(LoanProductsController::productMixGetAll,
+                     std::string(PREFIX) + "{1}/productmix/get-all", Get, Options, FILTER);
+        ADD_METHOD_TO(LoanProductsController::productMixCreate,
+                     std::string(PREFIX) + "{1}/productmix/create", Post, Options, FILTER);
+        ADD_METHOD_TO(LoanProductsController::productMixUpdate,
+                     std::string(PREFIX) + "{1}/productmix/update", Put, Options, FILTER);
+        ADD_METHOD_TO(LoanProductsController::productMixDelete,
+                     std::string(PREFIX) + "{1}/productmix/delete", Delete, Options, FILTER);
     METHOD_LIST_END
 
-    // handler methods
-  void getLoanProducts(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback);
-  void getLoanProductMix(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback);
-  void getLoanProductMixTemplate(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback);
-  void getLoanProductDetails(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback);
-  void getLoanProductTemplate(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback);
-  void createLoanProduct(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback);
+    Task<HttpResponsePtr> getAll(HttpRequestPtr req);
+    Task<HttpResponsePtr> create(HttpRequestPtr req);
+    Task<HttpResponsePtr> getDetails(HttpRequestPtr req, std::string id);
+    Task<HttpResponsePtr> update(HttpRequestPtr req, std::string id);
+    Task<HttpResponsePtr> templateEndpoint(HttpRequestPtr req);
+    Task<HttpResponsePtr> getDetailsByExternalId(HttpRequestPtr req, std::string externalId);
+    Task<HttpResponsePtr> updateByExternalId(HttpRequestPtr req, std::string externalId);
 
-  void updateLoanProduct(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback, std::string loanProductId);
-  void retrieveLoanProductMix(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback, std::string loanProductId);
-
-  void createLoanProductMix(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback, std::string loanProductId);
-  void updateLoanProductMix(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback, std::string loanProductId);
-  void deleteLoanProductMix(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback, std::string loanProductId);
-
+    Task<HttpResponsePtr> productMixGetAll(HttpRequestPtr req, std::string productId);
+    Task<HttpResponsePtr> productMixCreate(HttpRequestPtr req, std::string productId);
+    Task<HttpResponsePtr> productMixUpdate(HttpRequestPtr req, std::string productId);
+    Task<HttpResponsePtr> productMixDelete(HttpRequestPtr req, std::string productId);
 };

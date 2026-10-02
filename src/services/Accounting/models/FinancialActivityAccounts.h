@@ -38,6 +38,7 @@ namespace drogon_model
 {
 namespace TlAccounting
 {
+class Accounts;
 
 class FinancialActivityAccounts
 {
@@ -47,6 +48,8 @@ class FinancialActivityAccounts
         static const std::string _id;
         static const std::string _gl_account_id;
         static const std::string _financial_activity_type;
+        static const std::string _created_at;
+        static const std::string _updated_at;
     };
 
     static const int primaryKeyNumber;
@@ -124,14 +127,34 @@ class FinancialActivityAccounts
     ///Set the value of the column financial_activity_type
     void setFinancialActivityType(const int32_t &pFinancialActivityType) noexcept;
 
+    /**  For column created_at  */
+    ///Get the value of the column created_at, returns the default value if the column is null
+    const ::trantor::Date &getValueOfCreatedAt() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<::trantor::Date> &getCreatedAt() const noexcept;
+    ///Set the value of the column created_at
+    void setCreatedAt(const ::trantor::Date &pCreatedAt) noexcept;
 
-    static size_t getColumnNumber() noexcept {  return 3;  }
+    /**  For column updated_at  */
+    ///Get the value of the column updated_at, returns the default value if the column is null
+    const ::trantor::Date &getValueOfUpdatedAt() const noexcept;
+    ///Return a shared_ptr object pointing to the column const value, or an empty shared_ptr object if the column is null
+    const std::shared_ptr<::trantor::Date> &getUpdatedAt() const noexcept;
+    ///Set the value of the column updated_at
+    void setUpdatedAt(const ::trantor::Date &pUpdatedAt) noexcept;
+
+
+    static size_t getColumnNumber() noexcept {  return 5;  }
     static const std::string &getColumnName(size_t index) noexcept(false);
 
     Json::Value toJson() const;
     std::string toString() const;
     Json::Value toMasqueradedJson(const std::vector<std::string> &pMasqueradingVector) const;
     /// Relationship interfaces
+    Accounts getAccounts(const drogon::orm::DbClientPtr &clientPtr) const;
+    void getAccounts(const drogon::orm::DbClientPtr &clientPtr,
+                     const std::function<void(Accounts)> &rcb,
+                     const drogon::orm::ExceptionCallback &ecb) const;
   private:
     friend drogon::orm::Mapper<FinancialActivityAccounts>;
     friend drogon::orm::BaseBuilder<FinancialActivityAccounts, true, true>;
@@ -150,6 +173,8 @@ class FinancialActivityAccounts
     std::shared_ptr<std::string> id_;
     std::shared_ptr<std::string> glAccountId_;
     std::shared_ptr<int32_t> financialActivityType_;
+    std::shared_ptr<::trantor::Date> createdAt_;
+    std::shared_ptr<::trantor::Date> updatedAt_;
     struct MetaData
     {
         const std::string colName_;
@@ -161,7 +186,7 @@ class FinancialActivityAccounts
         const bool notNull_;
     };
     static const std::vector<MetaData> metaData_;
-    bool dirtyFlag_[3]={ false };
+    bool dirtyFlag_[5]={ false };
   public:
     static const std::string &sqlForFindingByPrimaryKey()
     {
@@ -195,6 +220,18 @@ class FinancialActivityAccounts
             sql += "financial_activity_type,";
             ++parametersCount;
         }
+        sql += "created_at,";
+        ++parametersCount;
+        if(!dirtyFlag_[3])
+        {
+            needSelection=true;
+        }
+        sql += "updated_at,";
+        ++parametersCount;
+        if(!dirtyFlag_[4])
+        {
+            needSelection=true;
+        }
         if(parametersCount > 0)
         {
             sql[sql.length()-1]=')';
@@ -224,6 +261,24 @@ class FinancialActivityAccounts
         {
             n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
             sql.append(placeholderStr, n);
+        }
+        if(dirtyFlag_[3])
+        {
+            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
+            sql.append(placeholderStr, n);
+        }
+        else
+        {
+            sql +="default,";
+        }
+        if(dirtyFlag_[4])
+        {
+            n = snprintf(placeholderStr,sizeof(placeholderStr),"$%d,",placeholder++);
+            sql.append(placeholderStr, n);
+        }
+        else
+        {
+            sql +="default,";
         }
         if(parametersCount > 0)
         {

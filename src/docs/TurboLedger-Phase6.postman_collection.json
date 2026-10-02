@@ -1,0 +1,6234 @@
+{
+  "info": {
+    "_postman_id": "2c71fdf3-3819-4690-9623-33db16e80bee",
+    "name": "TurboLedger \u2014 Phase 6 (Lending & Shares)",
+    "description": "Phase 6 surface through the API Gateway: loans + loanproducts, floatingrates, rates, rescheduleloans, loan-collateral-management, provisioningcategory/provisioningcriteria, delinquency buckets/ranges/actions, external-asset-owners, credit bureau configuration/integration, and shares (products/accounts/dividends) (Portfolio service).\n\nRun the '0 - Auth' request first (requires a tenant/admin already provisioned) to populate {{token}}. Collection variables: baseUrl, tenantId, token.\n\nRequest bodies were auto-derived from the actual field reads in PortfolioService.cc; placeholder values are generic and should be adjusted to valid data (e.g. real product/client/office ids) for your environment.\n\nNote: LoansController only wires the numeric-:loanId-addressed route family \u2014 the parallel external-id/:loanExternalId mirror that Fineract (and PortfolioService's idOrExternalId parameter) also supports is an intentional, documented scope trim to keep the route surface manageable, same as downloadtemplate/uploadtemplate CSV bulk-import and at-date/* point-in-time endpoints.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:7499"
+    },
+    {
+      "key": "tenantId",
+      "value": "acme_bank"
+    },
+    {
+      "key": "token",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "0 \u00b7 Auth",
+      "item": [
+        {
+          "name": "Tenant admin sign in",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/signin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "signin"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usernameOrEmail\": \"admin\",\n  \"password\": \"Passw0rd!\"\n}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = pm.response.json();",
+                  "pm.test('signin ok', () => pm.expect(d.success).to.be.true);",
+                  "pm.collectionVariables.set('token', d.result.token);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Loan Products",
+      "item": [
+        {
+          "name": "Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loanproducts/get-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loanproducts",
+                "get-all"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loanproducts/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loanproducts",
+                "create"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Example name\",\n  \"shortName\": \"Example shortName\",\n  \"description\": \"Example description\",\n  \"currencyCode\": \"USD\",\n  \"digitsAfterDecimal\": 1,\n  \"minPrincipal\": 100.0,\n  \"principal\": 100.0,\n  \"maxPrincipal\": 100.0,\n  \"minNumberOfRepayments\": 1,\n  \"numberOfRepayments\": 1,\n  \"maxNumberOfRepayments\": 1,\n  \"repaymentEvery\": 1,\n  \"repaymentFrequencyType\": 1,\n  \"interestRatePerPeriod\": 100.0,\n  \"interestRateFrequencyType\": 100,\n  \"annualNominalInterestRate\": 100.0,\n  \"interestType\": 1,\n  \"interestCalculationPeriodType\": 1,\n  \"amortizationType\": 1,\n  \"transactionProcessingStrategyCode\": \"EXAMPLE_CODE\",\n  \"graceOnPrincipalPayment\": 100,\n  \"graceOnInterestPayment\": 1,\n  \"graceOnInterestCharged\": 1,\n  \"graceOnArrearsAgeing\": 1,\n  \"overdueDaysForNPA\": 1,\n  \"daysInYearType\": 1,\n  \"daysInMonthType\": 1,\n  \"minDaysBetweenDisbursalAndFirstRepayment\": 1,\n  \"allowPartialPeriodInterestCalcualtion\": true,\n  \"isLinkedToFloatingInterestRate\": true,\n  \"floatingRatesId\": \"1\",\n  \"isEqualAmortization\": true,\n  \"allowAttributeOverrides\": true,\n  \"canUseForTopup\": true,\n  \"delinquencyBucketId\": \"1\",\n  \"accountingRule\": 1,\n  \"charges\": \"example\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loanproducts/get-detail/:loanproductId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loanproducts",
+                "get-detail",
+                ":loanproductId"
+              ],
+              "variable": [
+                {
+                  "key": "loanproductId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loanproducts/:loanproductId/update",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loanproducts",
+                ":loanproductId",
+                "update"
+              ],
+              "variable": [
+                {
+                  "key": "loanproductId",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Example name\",\n  \"description\": \"Example description\",\n  \"minPrincipal\": 100.0,\n  \"principal\": 100.0,\n  \"maxPrincipal\": 100.0,\n  \"numberOfRepayments\": 1,\n  \"repaymentEvery\": 1,\n  \"interestRatePerPeriod\": 100.0,\n  \"annualNominalInterestRate\": 100.0,\n  \"interestType\": 1,\n  \"amortizationType\": 1,\n  \"overdueDaysForNPA\": 1,\n  \"delinquencyBucketId\": \"1\",\n  \"active\": true\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Template Endpoint",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loanproducts/template",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loanproducts",
+                "template"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Details By External Id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loanproducts/external-id/:external-id/get-detail",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loanproducts",
+                "external-id",
+                ":external-id",
+                "get-detail"
+              ],
+              "variable": [
+                {
+                  "key": "external-id",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update By External Id",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loanproducts/external-id/:external-id/update",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loanproducts",
+                "external-id",
+                ":external-id",
+                "update"
+              ],
+              "variable": [
+                {
+                  "key": "external-id",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Example name\",\n  \"description\": \"Example description\",\n  \"minPrincipal\": 100.0,\n  \"principal\": 100.0,\n  \"maxPrincipal\": 100.0,\n  \"numberOfRepayments\": 1,\n  \"repaymentEvery\": 1,\n  \"interestRatePerPeriod\": 100.0,\n  \"annualNominalInterestRate\": 100.0,\n  \"interestType\": 1,\n  \"amortizationType\": 1,\n  \"overdueDaysForNPA\": 1,\n  \"delinquencyBucketId\": \"1\",\n  \"active\": true\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Product Mix Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loanproducts/:loanproductId/productmix/get-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loanproducts",
+                ":loanproductId",
+                "productmix",
+                "get-all"
+              ],
+              "variable": [
+                {
+                  "key": "loanproductId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Product Mix Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loanproducts/:loanproductId/productmix/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loanproducts",
+                ":loanproductId",
+                "productmix",
+                "create"
+              ],
+              "variable": [
+                {
+                  "key": "loanproductId",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"restrictedProducts\": \"example\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Product Mix Update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loanproducts/:loanproductId/productmix/update",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loanproducts",
+                ":loanproductId",
+                "productmix",
+                "update"
+              ],
+              "variable": [
+                {
+                  "key": "loanproductId",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"restrictedProducts\": \"example\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Product Mix Delete",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loanproducts/:loanproductId/productmix/delete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loanproducts",
+                ":loanproductId",
+                "productmix",
+                "delete"
+              ],
+              "variable": [
+                {
+                  "key": "loanproductId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Loans",
+      "item": [
+        {
+          "name": "Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/get-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                "get-all"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                "create"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"1\",\n  \"externalId\": \"1\",\n  \"clientId\": \"1\",\n  \"groupId\": \"1\",\n  \"loanOfficerId\": \"1\",\n  \"fundId\": \"1\",\n  \"loanPurpose\": \"example\",\n  \"loanType\": 1,\n  \"principal\": 100.0,\n  \"numberOfRepayments\": 1,\n  \"repaymentEvery\": 1,\n  \"repaymentFrequencyType\": 1,\n  \"interestRatePerPeriod\": 100.0,\n  \"interestRateFrequencyType\": 100,\n  \"annualNominalInterestRate\": 100.0,\n  \"interestType\": 1,\n  \"interestCalculationPeriodType\": 1,\n  \"amortizationType\": 1,\n  \"transactionProcessingStrategyCode\": \"EXAMPLE_CODE\",\n  \"daysInYearType\": 1,\n  \"daysInMonthType\": 1,\n  \"graceOnPrincipalPayment\": 100,\n  \"graceOnInterestPayment\": 1,\n  \"graceOnInterestCharged\": 1,\n  \"graceOnArrearsAgeing\": 1,\n  \"isEqualAmortization\": true,\n  \"isFloatingInterestRate\": true,\n  \"interestRateDifferential\": 100.0,\n  \"submittedOnDate\": \"2026-01-15\",\n  \"expectedDisbursementDate\": \"2026-01-15\",\n  \"glimParentLoanId\": \"1\",\n  \"charges\": \"example\",\n  \"collateral\": \"example\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Calculate Schedule",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/calculate-schedule",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                "calculate-schedule"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"principal\": 100.0,\n  \"interestRatePerPeriod\": 100.0,\n  \"numberOfRepayments\": 1,\n  \"repaymentEvery\": 1,\n  \"repaymentFrequencyType\": 1,\n  \"interestType\": 1,\n  \"daysInYearType\": 1,\n  \"daysInMonthType\": 1,\n  \"graceOnPrincipalPayment\": 100,\n  \"graceOnInterestPayment\": 1,\n  \"expectedDisbursementDate\": \"2026-01-15\",\n  \"currencyCode\": \"USD\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/get-detail/:loanId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                "get-detail",
+                ":loanId"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/update",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "update"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"principal\": 100.0,\n  \"numberOfRepayments\": 1,\n  \"interestRatePerPeriod\": 100.0,\n  \"loanOfficerId\": \"1\",\n  \"expectedDisbursementDate\": \"2026-01-15\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Remove",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/delete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "delete"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Command",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/command/:command",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "command",
+                ":command"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                },
+                {
+                  "key": "command",
+                  "value": "approve"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"approvedOnDate\": \"2026-01-15\",\n  \"approvedLoanAmount\": 100.0,\n  \"expectedDisbursementDate\": \"2026-01-15\",\n  \"rejectedOnDate\": \"2026-01-15\",\n  \"withdrawnOnDate\": \"2026-01-15\",\n  \"loanOfficerId\": \"1\",\n  \"transactionAmount\": 100.0,\n  \"actualDisbursementDate\": \"2026-01-15\",\n  \"closedOnDate\": \"2026-01-15\",\n  \"transactionDate\": \"2026-01-15\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Template Endpoint",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/template",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                "template"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Approved Amount History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/approved-amount-history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "approved-amount-history"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Approved Amount",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/approved-amount/update",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "approved-amount",
+                "update"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"approvedLoanAmount\": 100.0\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Available Disbursement Amount",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/available-disbursement-amount/update",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "available-disbursement-amount",
+                "update"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"availableDisbursementAmount\": 100.0\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Recalculate Schedule",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/schedule",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "schedule"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromDate\": \"2026-01-15\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Charges Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/charges/get-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "charges",
+                "get-all"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Charges Template",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/charges/template",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "charges",
+                "template"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Charges Get Detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/charges/:chargeId/get-detail",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "charges",
+                ":chargeId",
+                "get-detail"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                },
+                {
+                  "key": "chargeId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Charges Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/charges/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "charges",
+                "create"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"chargeId\": \"1\",\n  \"penalty\": true,\n  \"chargeTimeType\": 1,\n  \"chargeCalculationType\": 1,\n  \"dueDate\": \"2026-01-15\",\n  \"installmentNumber\": 1,\n  \"amount\": 100.0\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Charges Update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/charges/:chargeId/update",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "charges",
+                ":chargeId",
+                "update"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                },
+                {
+                  "key": "chargeId",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 100.0,\n  \"dueDate\": \"2026-01-15\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Charges Command",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/charges/:chargeId/command/:command",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "charges",
+                ":chargeId",
+                "command",
+                ":command"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                },
+                {
+                  "key": "chargeId",
+                  "value": "1"
+                },
+                {
+                  "key": "command",
+                  "value": "approve"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 100.0,\n  \"transactionDate\": \"2026-01-15\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Charges Delete",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/charges/:chargeId/delete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "charges",
+                ":chargeId",
+                "delete"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                },
+                {
+                  "key": "chargeId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Collaterals Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/collaterals/get-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "collaterals",
+                "get-all"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Collaterals Template",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/collaterals/template",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "collaterals",
+                "template"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Collaterals Get Detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/collaterals/:collateralId/get-detail",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "collaterals",
+                ":collateralId",
+                "get-detail"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                },
+                {
+                  "key": "collateralId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Collaterals Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/collaterals/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "collaterals",
+                "create"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"example\",\n  \"value\": 1.0,\n  \"description\": \"Example description\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Collaterals Update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/collaterals/:collateralId/update",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "collaterals",
+                ":collateralId",
+                "update"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                },
+                {
+                  "key": "collateralId",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": 1.0,\n  \"description\": \"Example description\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Collaterals Delete",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/collaterals/:collateralId/delete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "collaterals",
+                ":collateralId",
+                "delete"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                },
+                {
+                  "key": "collateralId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Guarantors Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/guarantors/get-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "guarantors",
+                "get-all"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Guarantors Template",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/guarantors/template",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "guarantors",
+                "template"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Guarantors Get Detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/guarantors/:guarantorId/get-detail",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "guarantors",
+                ":guarantorId",
+                "get-detail"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                },
+                {
+                  "key": "guarantorId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Guarantors Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/guarantors/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "guarantors",
+                "create"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"guarantorType\": 1,\n  \"clientId\": \"1\",\n  \"firstname\": \"Example firstname\",\n  \"lastname\": \"Example lastname\",\n  \"addressLine1\": \"example\",\n  \"city\": \"example\",\n  \"mobileNumber\": \"example\",\n  \"amount\": 100.0\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Guarantors Update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/guarantors/:guarantorId/update",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "guarantors",
+                ":guarantorId",
+                "update"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                },
+                {
+                  "key": "guarantorId",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstname\": \"Example firstname\",\n  \"lastname\": \"Example lastname\",\n  \"amount\": 100.0\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Guarantors Delete",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/guarantors/:guarantorId/delete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "guarantors",
+                ":guarantorId",
+                "delete"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                },
+                {
+                  "key": "guarantorId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Disbursement Get Detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/disbursements/:disbursementId/get-detail",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "disbursements",
+                ":disbursementId",
+                "get-detail"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                },
+                {
+                  "key": "disbursementId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Disbursement Update Date",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/disbursements/:disbursementId/update",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "disbursements",
+                ":disbursementId",
+                "update"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                },
+                {
+                  "key": "disbursementId",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expectedDisbursementDate\": \"2026-01-15\",\n  \"principal\": 100.0\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Disbursements Edit",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/disbursements/edit",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "disbursements",
+                "edit"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"disbursementDataId\": \"1\",\n  \"_delete\": \"example\",\n  \"disbursementData\": \"example\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Interest Pauses Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/interest-pauses/get-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "interest-pauses",
+                "get-all"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Interest Pauses Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/interest-pauses/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "interest-pauses",
+                "create"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"externalId\": \"1\",\n  \"startDate\": \"2026-01-15\",\n  \"endDate\": \"2026-01-15\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Interest Pauses Update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/interest-pauses/:interest-pauseId/update",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "interest-pauses",
+                ":interest-pauseId",
+                "update"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                },
+                {
+                  "key": "interest-pauseId",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"startDate\": \"2026-01-15\",\n  \"endDate\": \"2026-01-15\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Interest Pauses Delete",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/interest-pauses/:interest-pauseId/delete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "interest-pauses",
+                ":interest-pauseId",
+                "delete"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                },
+                {
+                  "key": "interest-pauseId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Postdated Checks Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/postdatedchecks/get-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "postdatedchecks",
+                "get-all"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Postdated Checks Get Detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/postdatedchecks/:postdatedcheckId/get-detail",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "postdatedchecks",
+                ":postdatedcheckId",
+                "get-detail"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                },
+                {
+                  "key": "postdatedcheckId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Postdated Checks Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/postdatedchecks/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "postdatedchecks",
+                "create"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"installmentId\": \"1\",\n  \"checkNumber\": \"example\",\n  \"bankName\": \"Example bankName\",\n  \"checkDate\": \"2026-01-15\",\n  \"amount\": 100.0,\n  \"status\": 1\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Postdated Checks Update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/postdatedchecks/:postdatedcheckId/update",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "postdatedchecks",
+                ":postdatedcheckId",
+                "update"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                },
+                {
+                  "key": "postdatedcheckId",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": 1,\n  \"amount\": 100.0\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Postdated Checks Delete",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/postdatedchecks/:postdatedcheckId/delete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "postdatedchecks",
+                ":postdatedcheckId",
+                "delete"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                },
+                {
+                  "key": "postdatedcheckId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Buydown Fees Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/buydown-fees/get-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "buydown-fees",
+                "get-all"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Buydown Fees Get Detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/buydown-fees/:buydown-feeId/get-detail",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "buydown-fees",
+                ":buydown-feeId",
+                "get-detail"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                },
+                {
+                  "key": "buydown-feeId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Capitalized Income Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/capitalized-income/get-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "capitalized-income",
+                "get-all"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Capitalized Income Get Detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/capitalized-income/:capitalized-incomeId/get-detail",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "capitalized-income",
+                ":capitalized-incomeId",
+                "get-detail"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                },
+                {
+                  "key": "capitalized-incomeId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delinquency Actions Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/delinquency-actions/get-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "delinquency-actions",
+                "get-all"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delinquency Actions Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/delinquency-actions/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "delinquency-actions",
+                "create"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": 1,\n  \"startDate\": \"2026-01-15\",\n  \"endDate\": \"2026-01-15\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delinquency Tags Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/delinquencytags/get-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "delinquencytags",
+                "get-all"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Transactions Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/transactions/get-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "transactions",
+                "get-all"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Transactions Template",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/transactions/template",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "transactions",
+                "template"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Transactions Get Detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/transactions/:transactionId/get-detail",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "transactions",
+                ":transactionId",
+                "get-detail"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                },
+                {
+                  "key": "transactionId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Transactions Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/transactions/command/:command",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "transactions",
+                "command",
+                ":command"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                },
+                {
+                  "key": "command",
+                  "value": "approve"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transactionDate\": \"2026-01-15\",\n  \"transactionAmount\": 100.0,\n  \"amount\": 100.0,\n  \"incomeType\": \"example\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Transactions Adjust",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/transactions/:transactionId/adjust",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "transactions",
+                ":transactionId",
+                "adjust"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                },
+                {
+                  "key": "transactionId",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transactionAmount\": 100.0,\n  \"transactionDate\": \"2026-01-15\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Transactions Undo Waive Charge",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/:loanId/transactions/:transactionId/undo-waive-charge",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                ":loanId",
+                "transactions",
+                ":transactionId",
+                "undo-waive-charge"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                },
+                {
+                  "key": "transactionId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Reassignment Template",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/reassignment/template",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                "reassignment",
+                "template"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Reassignment Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/reassignment/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                "reassignment",
+                "create"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromLoanOfficerId\": \"1\",\n  \"toLoanOfficerId\": \"1\",\n  \"loans\": \"example\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Glim Get Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/glim/:glimId/get-detail",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                "glim",
+                ":glimId",
+                "get-detail"
+              ],
+              "variable": [
+                {
+                  "key": "glimId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Glim Command",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/glim/:glimId/command/:command",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                "glim",
+                ":glimId",
+                "command",
+                ":command"
+              ],
+              "variable": [
+                {
+                  "key": "glimId",
+                  "value": "1"
+                },
+                {
+                  "key": "command",
+                  "value": "approve"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"approvedOnDate\": \"2026-01-15\",\n  \"approvedLoanAmount\": 100.0,\n  \"expectedDisbursementDate\": \"2026-01-15\",\n  \"rejectedOnDate\": \"2026-01-15\",\n  \"withdrawnOnDate\": \"2026-01-15\",\n  \"loanOfficerId\": \"1\",\n  \"transactionAmount\": 100.0,\n  \"actualDisbursementDate\": \"2026-01-15\",\n  \"closedOnDate\": \"2026-01-15\",\n  \"transactionDate\": \"2026-01-15\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cob Catch Up",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/cob-catch-up/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                "cob-catch-up",
+                "create"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cob Catch Up Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/cob-catch-up/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                "cob-catch-up",
+                "status"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Locked Loans",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/locked/get-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                "locked",
+                "get-all"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Oldest Cob Closed Loan",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loans/oldest-cob-closed",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loans",
+                "oldest-cob-closed"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Floating Rates",
+      "item": [
+        {
+          "name": "Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/floatingrates/get-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "floatingrates",
+                "get-all"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/floatingrates/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "floatingrates",
+                "create"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Example name\",\n  \"isBaseLendingRate\": true,\n  \"isActive\": true,\n  \"ratePeriods\": \"example\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/floatingrates/get-detail/:floatingrateId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "floatingrates",
+                "get-detail",
+                ":floatingrateId"
+              ],
+              "variable": [
+                {
+                  "key": "floatingrateId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/floatingrates/:floatingrateId/update",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "floatingrates",
+                ":floatingrateId",
+                "update"
+              ],
+              "variable": [
+                {
+                  "key": "floatingrateId",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Example name\",\n  \"isActive\": true,\n  \"ratePeriods\": \"example\"\n}"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Rates",
+      "item": [
+        {
+          "name": "Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/rates/get-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "rates",
+                "get-all"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/rates/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "rates",
+                "create"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Example name\",\n  \"percentage\": 1.0,\n  \"active\": true\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/rates/get-detail/:rateId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "rates",
+                "get-detail",
+                ":rateId"
+              ],
+              "variable": [
+                {
+                  "key": "rateId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/rates/:rateId/update",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "rates",
+                ":rateId",
+                "update"
+              ],
+              "variable": [
+                {
+                  "key": "rateId",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Example name\",\n  \"percentage\": 1.0,\n  \"active\": true\n}"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Reschedule Loans",
+      "item": [
+        {
+          "name": "Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/rescheduleloans/get-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "rescheduleloans",
+                "get-all"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/rescheduleloans/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "rescheduleloans",
+                "create"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"loanId\": \"1\",\n  \"rescheduleReasonCode\": \"EXAMPLE_CODE\",\n  \"rescheduleReasonId\": \"1\",\n  \"rescheduleReasonComment\": \"example\",\n  \"rescheduleFromDate\": \"2026-01-15\",\n  \"submittedOnDate\": \"2026-01-15\",\n  \"extraTerms\": 100,\n  \"graceOnPrincipal\": 100,\n  \"graceOnInterest\": 1,\n  \"newInterestRate\": \"example\",\n  \"adjustedDueDate\": \"2026-01-15\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/rescheduleloans/get-detail/:rescheduleloanId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "rescheduleloans",
+                "get-detail",
+                ":rescheduleloanId"
+              ],
+              "variable": [
+                {
+                  "key": "rescheduleloanId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Command",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/rescheduleloans/:rescheduleloanId/command/:command",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "rescheduleloans",
+                ":rescheduleloanId",
+                "command",
+                ":command"
+              ],
+              "variable": [
+                {
+                  "key": "rescheduleloanId",
+                  "value": "1"
+                },
+                {
+                  "key": "command",
+                  "value": "approve"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"approvedOnDate\": \"2026-01-15\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Template Endpoint",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/rescheduleloans/template",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "rescheduleloans",
+                "template"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Loan Collateral Management",
+      "item": [
+        {
+          "name": "Get Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loan-collateral-management/get-detail/:loan-collateral-managementId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loan-collateral-management",
+                "get-detail",
+                ":loan-collateral-managementId"
+              ],
+              "variable": [
+                {
+                  "key": "loan-collateral-managementId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Remove",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/loan-collateral-management/:loan-collateral-managementId/delete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "loan-collateral-management",
+                ":loan-collateral-managementId",
+                "delete"
+              ],
+              "variable": [
+                {
+                  "key": "loan-collateral-managementId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Provisioning Category",
+      "item": [
+        {
+          "name": "Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/provisioningcategory/get-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "provisioningcategory",
+                "get-all"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/provisioningcategory/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "provisioningcategory",
+                "create"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"categoryName\": \"Example categoryName\",\n  \"categoryDescription\": \"Example categoryDescription\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/provisioningcategory/:provisioningcategoryId/update",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "provisioningcategory",
+                ":provisioningcategoryId",
+                "update"
+              ],
+              "variable": [
+                {
+                  "key": "provisioningcategoryId",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"categoryName\": \"Example categoryName\",\n  \"categoryDescription\": \"Example categoryDescription\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Remove",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/provisioningcategory/:provisioningcategoryId/delete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "provisioningcategory",
+                ":provisioningcategoryId",
+                "delete"
+              ],
+              "variable": [
+                {
+                  "key": "provisioningcategoryId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Provisioning Criteria",
+      "item": [
+        {
+          "name": "Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/provisioningcriteria/get-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "provisioningcriteria",
+                "get-all"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/provisioningcriteria/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "provisioningcriteria",
+                "create"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"criteriaName\": \"Example criteriaName\",\n  \"definitions\": \"example\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/provisioningcriteria/get-detail/:provisioningcriteriaId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "provisioningcriteria",
+                "get-detail",
+                ":provisioningcriteriaId"
+              ],
+              "variable": [
+                {
+                  "key": "provisioningcriteriaId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/provisioningcriteria/:provisioningcriteriaId/update",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "provisioningcriteria",
+                ":provisioningcriteriaId",
+                "update"
+              ],
+              "variable": [
+                {
+                  "key": "provisioningcriteriaId",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"criteriaName\": \"Example criteriaName\",\n  \"definitions\": \"example\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Remove",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/provisioningcriteria/:provisioningcriteriaId/delete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "provisioningcriteria",
+                ":provisioningcriteriaId",
+                "delete"
+              ],
+              "variable": [
+                {
+                  "key": "provisioningcriteriaId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Template Endpoint",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/provisioningcriteria/template",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "provisioningcriteria",
+                "template"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Delinquency",
+      "item": [
+        {
+          "name": "Buckets Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/delinquency/buckets/get-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "delinquency",
+                "buckets",
+                "get-all"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Buckets Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/delinquency/buckets/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "delinquency",
+                "buckets",
+                "create"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Example name\",\n  \"ranges\": \"example\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Buckets Get Detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/delinquency/buckets/get-detail/:bucketId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "delinquency",
+                "buckets",
+                "get-detail",
+                ":bucketId"
+              ],
+              "variable": [
+                {
+                  "key": "bucketId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Buckets Update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/delinquency/buckets/:bucketId/update",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "delinquency",
+                "buckets",
+                ":bucketId",
+                "update"
+              ],
+              "variable": [
+                {
+                  "key": "bucketId",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Example name\",\n  \"ranges\": \"example\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Buckets Delete",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/delinquency/buckets/:bucketId/delete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "delinquency",
+                "buckets",
+                ":bucketId",
+                "delete"
+              ],
+              "variable": [
+                {
+                  "key": "bucketId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Ranges Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/delinquency/ranges/get-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "delinquency",
+                "ranges",
+                "get-all"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Ranges Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/delinquency/ranges/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "delinquency",
+                "ranges",
+                "create"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"classification\": \"example\",\n  \"minimumAgeDays\": 1,\n  \"maximumAgeDays\": 1\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Ranges Get Detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/delinquency/ranges/get-detail/:rangeId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "delinquency",
+                "ranges",
+                "get-detail",
+                ":rangeId"
+              ],
+              "variable": [
+                {
+                  "key": "rangeId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Ranges Update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/delinquency/ranges/:rangeId/update",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "delinquency",
+                "ranges",
+                ":rangeId",
+                "update"
+              ],
+              "variable": [
+                {
+                  "key": "rangeId",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"classification\": \"example\",\n  \"minimumAgeDays\": 1,\n  \"maximumAgeDays\": 1\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Ranges Delete",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/delinquency/ranges/:rangeId/delete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "delinquency",
+                "ranges",
+                ":rangeId",
+                "delete"
+              ],
+              "variable": [
+                {
+                  "key": "rangeId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "External Asset Owners",
+      "item": [
+        {
+          "name": "Transfers Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/external-asset-owners/transfers/get-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "external-asset-owners",
+                "transfers",
+                "get-all"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Transfers Search",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/external-asset-owners/transfers/search",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "external-asset-owners",
+                "transfers",
+                "search"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"loanId\": \"1\",\n  \"ownerId\": \"1\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Active Transfer",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/external-asset-owners/transfers/active-transfer",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "external-asset-owners",
+                "transfers",
+                "active-transfer"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Transfer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/external-asset-owners/transfers/loans/:loanId/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "external-asset-owners",
+                "transfers",
+                "loans",
+                ":loanId",
+                "create"
+              ],
+              "variable": [
+                {
+                  "key": "loanId",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"externalId\": \"1\",\n  \"ownerExternalId\": \"1\",\n  \"ownerId\": \"1\",\n  \"settlementDate\": \"2026-01-15\",\n  \"effectiveDate\": \"2026-01-15\",\n  \"purchasePriceRatio\": \"example\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Transfer Command",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/external-asset-owners/transfers/:transferId/command/:command",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "external-asset-owners",
+                "transfers",
+                ":transferId",
+                "command",
+                ":command"
+              ],
+              "variable": [
+                {
+                  "key": "transferId",
+                  "value": "1"
+                },
+                {
+                  "key": "command",
+                  "value": "approve"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"effectiveDate\": \"2026-01-15\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Transfer Journal Entries",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/external-asset-owners/transfers/:transferId/journal-entries",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "external-asset-owners",
+                "transfers",
+                ":transferId",
+                "journal-entries"
+              ],
+              "variable": [
+                {
+                  "key": "transferId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Owner Journal Entries",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/external-asset-owners/owners/:ownerId/journal-entries",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "external-asset-owners",
+                "owners",
+                ":ownerId",
+                "journal-entries"
+              ],
+              "variable": [
+                {
+                  "key": "ownerId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Loan Product Attrs Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/external-asset-owners/loan-product/:loan-productId/attributes/get-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "external-asset-owners",
+                "loan-product",
+                ":loan-productId",
+                "attributes",
+                "get-all"
+              ],
+              "variable": [
+                {
+                  "key": "loan-productId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Loan Product Attrs Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/external-asset-owners/loan-product/:loan-productId/attributes/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "external-asset-owners",
+                "loan-product",
+                ":loan-productId",
+                "attributes",
+                "create"
+              ],
+              "variable": [
+                {
+                  "key": "loan-productId",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"key\": \"example\",\n  \"value\": \"example\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Loan Product Attrs Update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/external-asset-owners/loan-product/:loan-productId/attributes/:attributeId/update",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "external-asset-owners",
+                "loan-product",
+                ":loan-productId",
+                "attributes",
+                ":attributeId",
+                "update"
+              ],
+              "variable": [
+                {
+                  "key": "loan-productId",
+                  "value": "1"
+                },
+                {
+                  "key": "attributeId",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": \"example\"\n}"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Credit Bureau Configuration",
+      "item": [
+        {
+          "name": "Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/CreditBureauConfiguration/get-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "CreditBureauConfiguration",
+                "get-all"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Org Credit Bureau Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/CreditBureauConfiguration/organisation-credit-bureau/get-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "CreditBureauConfiguration",
+                "organisation-credit-bureau",
+                "get-all"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Org Credit Bureau Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/CreditBureauConfiguration/organisation-credit-bureau/:organisation-credit-bureauId/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "CreditBureauConfiguration",
+                "organisation-credit-bureau",
+                ":organisation-credit-bureauId",
+                "create"
+              ],
+              "variable": [
+                {
+                  "key": "organisation-credit-bureauId",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"alias\": \"example\",\n  \"isActive\": true\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Org Credit Bureau Update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/CreditBureauConfiguration/organisation-credit-bureau/update",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "CreditBureauConfiguration",
+                "organisation-credit-bureau",
+                "update"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"example\",\n  \"alias\": \"example\",\n  \"isActive\": true\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Config Get Detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/CreditBureauConfiguration/config/get-detail/:configId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "CreditBureauConfiguration",
+                "config",
+                "get-detail",
+                ":configId"
+              ],
+              "variable": [
+                {
+                  "key": "configId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Configuration Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/CreditBureauConfiguration/configuration/:configurationId/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "CreditBureauConfiguration",
+                "configuration",
+                ":configurationId",
+                "create"
+              ],
+              "variable": [
+                {
+                  "key": "configurationId",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"key\": \"example\",\n  \"value\": \"example\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Configuration Update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/CreditBureauConfiguration/configuration/:configurationId/update",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "CreditBureauConfiguration",
+                "configuration",
+                ":configurationId",
+                "update"
+              ],
+              "variable": [
+                {
+                  "key": "configurationId",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": \"example\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Loan Product Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/CreditBureauConfiguration/loan-product/get-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "CreditBureauConfiguration",
+                "loan-product",
+                "get-all"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Loan Product Get Detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/CreditBureauConfiguration/loan-product/get-detail/:loan-productId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "CreditBureauConfiguration",
+                "loan-product",
+                "get-detail",
+                ":loan-productId"
+              ],
+              "variable": [
+                {
+                  "key": "loan-productId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Mappings Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/CreditBureauConfiguration/mappings/get-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "CreditBureauConfiguration",
+                "mappings",
+                "get-all"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Mappings Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/CreditBureauConfiguration/mappings/:mappingId/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "CreditBureauConfiguration",
+                "mappings",
+                ":mappingId",
+                "create"
+              ],
+              "variable": [
+                {
+                  "key": "mappingId",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"loanProductId\": \"1\",\n  \"isActive\": true\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Mappings Update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/CreditBureauConfiguration/mappings/update",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "CreditBureauConfiguration",
+                "mappings",
+                "update"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"example\",\n  \"isActive\": true\n}"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Credit Bureau Integration",
+      "item": [
+        {
+          "name": "Add Credit Report",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/creditBureauIntegration/addCreditReport",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "creditBureauIntegration",
+                "addCreditReport"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nationalId\": \"1\",\n  \"clientId\": \"1\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Fetch Credit Report",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/creditBureauIntegration/creditReport",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "creditBureauIntegration",
+                "creditReport"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nationalId\": \"1\",\n  \"clientId\": \"1\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Saved Credit Report",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/creditBureauIntegration/creditReport/:creditReportId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "creditBureauIntegration",
+                "creditReport",
+                ":creditReportId"
+              ],
+              "variable": [
+                {
+                  "key": "creditReportId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Save Credit Report",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/creditBureauIntegration/saveCreditReport",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "creditBureauIntegration",
+                "saveCreditReport"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"organisationCreditBureauId\": \"1\",\n  \"clientId\": \"1\",\n  \"loanId\": \"1\",\n  \"nationalId\": \"1\",\n  \"reportData\": \"example\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Credit Report",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/creditBureauIntegration/deleteCreditReport/:deleteCreditReportId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "creditBureauIntegration",
+                "deleteCreditReport",
+                ":deleteCreditReportId"
+              ],
+              "variable": [
+                {
+                  "key": "deleteCreditReportId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Share Products",
+      "item": [
+        {
+          "name": "Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/products/:productId/get-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "products",
+                ":productId",
+                "get-all"
+              ],
+              "variable": [
+                {
+                  "key": "productId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/products/:productId/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "products",
+                ":productId",
+                "create"
+              ],
+              "variable": [
+                {
+                  "key": "productId",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Example name\",\n  \"shortName\": \"Example shortName\",\n  \"description\": \"Example description\",\n  \"currencyCode\": \"USD\",\n  \"digitsAfterDecimal\": 1,\n  \"totalShares\": 1,\n  \"sharesIssued\": 1,\n  \"nominalPrice\": 1.0,\n  \"marketPrice\": 1.0,\n  \"shareCapitalType\": 1,\n  \"minimumShares\": 1,\n  \"nominalShares\": 1,\n  \"maximumShares\": 1,\n  \"allowDividendCalculationForInactiveClients\": true,\n  \"lockinPeriod\": 1,\n  \"lockinPeriodFrequencyType\": 1,\n  \"accountingRule\": 1,\n  \"startDate\": \"2026-01-15\",\n  \"closeDate\": \"2026-01-15\",\n  \"charges\": \"example\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/products/:productId/get-detail/:productId2",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "products",
+                ":productId",
+                "get-detail",
+                ":productId2"
+              ],
+              "variable": [
+                {
+                  "key": "productId",
+                  "value": "1"
+                },
+                {
+                  "key": "productId2",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/products/:productId/:productId2/update",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "products",
+                ":productId",
+                ":productId2",
+                "update"
+              ],
+              "variable": [
+                {
+                  "key": "productId",
+                  "value": "1"
+                },
+                {
+                  "key": "productId2",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Example name\",\n  \"description\": \"Example description\",\n  \"nominalPrice\": 1.0,\n  \"marketPrice\": 1.0,\n  \"totalShares\": 1\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Template Endpoint",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/products/:productId/template",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "products",
+                ":productId",
+                "template"
+              ],
+              "variable": [
+                {
+                  "key": "productId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Command",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/products/:productId/:productId2/command/:command",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "products",
+                ":productId",
+                ":productId2",
+                "command",
+                ":command"
+              ],
+              "variable": [
+                {
+                  "key": "productId",
+                  "value": "1"
+                },
+                {
+                  "key": "productId2",
+                  "value": "1"
+                },
+                {
+                  "key": "command",
+                  "value": "approve"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"closeDate\": \"2026-01-15\"\n}"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Share Accounts",
+      "item": [
+        {
+          "name": "Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/accounts/:accountId/get-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                ":accountId",
+                "get-all"
+              ],
+              "variable": [
+                {
+                  "key": "accountId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/accounts/:accountId/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                ":accountId",
+                "create"
+              ],
+              "variable": [
+                {
+                  "key": "accountId",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"1\",\n  \"externalId\": \"1\",\n  \"clientId\": \"1\",\n  \"groupId\": \"1\",\n  \"submittedDate\": \"2026-01-15\",\n  \"requestedShares\": 1,\n  \"lockinPeriod\": 1,\n  \"lockinPeriodFrequencyType\": 1,\n  \"charges\": \"example\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/accounts/:accountId/get-detail/:accountId2",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                ":accountId",
+                "get-detail",
+                ":accountId2"
+              ],
+              "variable": [
+                {
+                  "key": "accountId",
+                  "value": "1"
+                },
+                {
+                  "key": "accountId2",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/accounts/:accountId/:accountId2/update",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                ":accountId",
+                ":accountId2",
+                "update"
+              ],
+              "variable": [
+                {
+                  "key": "accountId",
+                  "value": "1"
+                },
+                {
+                  "key": "accountId2",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"requestedShares\": 1\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Template Endpoint",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/accounts/:accountId/template",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                ":accountId",
+                "template"
+              ],
+              "variable": [
+                {
+                  "key": "accountId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Command",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/accounts/:accountId/:accountId2/command/:command",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                ":accountId",
+                ":accountId2",
+                "command",
+                ":command"
+              ],
+              "variable": [
+                {
+                  "key": "accountId",
+                  "value": "1"
+                },
+                {
+                  "key": "accountId2",
+                  "value": "1"
+                },
+                {
+                  "key": "command",
+                  "value": "approve"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"approvedDate\": \"2026-01-15\",\n  \"approvedShares\": 1,\n  \"rejectedDate\": \"2026-01-15\",\n  \"activatedDate\": \"2026-01-15\",\n  \"closedDate\": \"2026-01-15\",\n  \"requestedDate\": \"2026-01-15\",\n  \"requestedShares\": 1,\n  \"requestId\": \"1\",\n  \"sharesToBeRedeemed\": 1\n}"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Share Product Dividends",
+      "item": [
+        {
+          "name": "Get All",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/shareproduct/:shareproductId/dividend/get-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "shareproduct",
+                ":shareproductId",
+                "dividend",
+                "get-all"
+              ],
+              "variable": [
+                {
+                  "key": "shareproductId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/shareproduct/:shareproductId/dividend/create",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "shareproduct",
+                ":shareproductId",
+                "dividend",
+                "create"
+              ],
+              "variable": [
+                {
+                  "key": "shareproductId",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dividendPeriodStartDate\": \"2026-01-15\",\n  \"dividendPeriodEndDate\": \"2026-01-15\",\n  \"amount\": 100.0,\n  \"dividendAmount\": 100.0\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/shareproduct/:shareproductId/dividend/get-detail/:dividendId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "shareproduct",
+                ":shareproductId",
+                "dividend",
+                "get-detail",
+                ":dividendId"
+              ],
+              "variable": [
+                {
+                  "key": "shareproductId",
+                  "value": "1"
+                },
+                {
+                  "key": "dividendId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/shareproduct/:shareproductId/dividend/:dividendId/update",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "shareproduct",
+                ":shareproductId",
+                "dividend",
+                ":dividendId",
+                "update"
+              ],
+              "variable": [
+                {
+                  "key": "shareproductId",
+                  "value": "1"
+                },
+                {
+                  "key": "dividendId",
+                  "value": "1"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 100.0,\n  \"status\": 1\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Remove",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "TL-Tenant-Id",
+                "value": "{{tenantId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/shareproduct/:shareproductId/dividend/:dividendId/delete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "shareproduct",
+                ":shareproductId",
+                "dividend",
+                ":dividendId",
+                "delete"
+              ],
+              "variable": [
+                {
+                  "key": "shareproductId",
+                  "value": "1"
+                },
+                {
+                  "key": "dividendId",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

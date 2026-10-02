@@ -6,6 +6,7 @@
  */
 
 #include "AccountingRules.h"
+#include "Accounts.h"
 #include <drogon/utils/Utilities.h>
 #include <string>
 
@@ -16,12 +17,14 @@ using namespace drogon_model::TlAccounting;
 const std::string AccountingRules::Cols::_id = "\"id\"";
 const std::string AccountingRules::Cols::_name = "\"name\"";
 const std::string AccountingRules::Cols::_office_id = "\"office_id\"";
-const std::string AccountingRules::Cols::_debit_account_id = "\"debit_account_id\"";
 const std::string AccountingRules::Cols::_allow_multiple_debits = "\"allow_multiple_debits\"";
-const std::string AccountingRules::Cols::_credit_account_id = "\"credit_account_id\"";
 const std::string AccountingRules::Cols::_allow_multiple_credits = "\"allow_multiple_credits\"";
 const std::string AccountingRules::Cols::_description = "\"description\"";
 const std::string AccountingRules::Cols::_system_defined = "\"system_defined\"";
+const std::string AccountingRules::Cols::_debit_account_id = "\"debit_account_id\"";
+const std::string AccountingRules::Cols::_credit_account_id = "\"credit_account_id\"";
+const std::string AccountingRules::Cols::_created_at = "\"created_at\"";
+const std::string AccountingRules::Cols::_updated_at = "\"updated_at\"";
 const std::string AccountingRules::primaryKeyName = "id";
 const bool AccountingRules::hasPrimaryKey = true;
 const std::string AccountingRules::tableName = "\"accounting_rules\"";
@@ -30,12 +33,14 @@ const std::vector<typename AccountingRules::MetaData> AccountingRules::metaData_
 {"id","std::string","uuid",0,0,1,1},
 {"name","std::string","character varying",100,0,0,0},
 {"office_id","std::string","uuid",0,0,0,0},
-{"debit_account_id","int32_t","integer",4,0,0,0},
 {"allow_multiple_debits","bool","boolean",1,0,0,1},
-{"credit_account_id","int32_t","integer",4,0,0,0},
 {"allow_multiple_credits","bool","boolean",1,0,0,1},
 {"description","std::string","character varying",500,0,0,0},
-{"system_defined","bool","boolean",1,0,0,1}
+{"system_defined","bool","boolean",1,0,0,1},
+{"debit_account_id","std::string","uuid",0,0,0,0},
+{"credit_account_id","std::string","uuid",0,0,0,0},
+{"created_at","::trantor::Date","timestamp with time zone",0,0,0,1},
+{"updated_at","::trantor::Date","timestamp with time zone",0,0,0,1}
 };
 const std::string &AccountingRules::getColumnName(size_t index) noexcept(false)
 {
@@ -58,17 +63,9 @@ AccountingRules::AccountingRules(const Row &r, const ssize_t indexOffset) noexce
         {
             officeId_=std::make_shared<std::string>(r["office_id"].as<std::string>());
         }
-        if(!r["debit_account_id"].isNull())
-        {
-            debitAccountId_=std::make_shared<int32_t>(r["debit_account_id"].as<int32_t>());
-        }
         if(!r["allow_multiple_debits"].isNull())
         {
             allowMultipleDebits_=std::make_shared<bool>(r["allow_multiple_debits"].as<bool>());
-        }
-        if(!r["credit_account_id"].isNull())
-        {
-            creditAccountId_=std::make_shared<int32_t>(r["credit_account_id"].as<int32_t>());
         }
         if(!r["allow_multiple_credits"].isNull())
         {
@@ -82,11 +79,63 @@ AccountingRules::AccountingRules(const Row &r, const ssize_t indexOffset) noexce
         {
             systemDefined_=std::make_shared<bool>(r["system_defined"].as<bool>());
         }
+        if(!r["debit_account_id"].isNull())
+        {
+            debitAccountId_=std::make_shared<std::string>(r["debit_account_id"].as<std::string>());
+        }
+        if(!r["credit_account_id"].isNull())
+        {
+            creditAccountId_=std::make_shared<std::string>(r["credit_account_id"].as<std::string>());
+        }
+        if(!r["created_at"].isNull())
+        {
+            auto timeStr = r["created_at"].as<std::string>();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
+            time_t t = mktime(&stm);
+            size_t decimalNum = 0;
+            if(p)
+            {
+                if(*p=='.')
+                {
+                    std::string decimals(p+1,&timeStr[timeStr.length()]);
+                    while(decimals.length()<6)
+                    {
+                        decimals += "0";
+                    }
+                    decimalNum = (size_t)atol(decimals.c_str());
+                }
+                createdAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+            }
+        }
+        if(!r["updated_at"].isNull())
+        {
+            auto timeStr = r["updated_at"].as<std::string>();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
+            time_t t = mktime(&stm);
+            size_t decimalNum = 0;
+            if(p)
+            {
+                if(*p=='.')
+                {
+                    std::string decimals(p+1,&timeStr[timeStr.length()]);
+                    while(decimals.length()<6)
+                    {
+                        decimals += "0";
+                    }
+                    decimalNum = (size_t)atol(decimals.c_str());
+                }
+                updatedAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+            }
+        }
     }
     else
     {
         size_t offset = (size_t)indexOffset;
-        if(offset + 9 > r.size())
+        if(offset + 11 > r.size())
         {
             LOG_FATAL << "Invalid SQL result for this model";
             return;
@@ -110,32 +159,78 @@ AccountingRules::AccountingRules(const Row &r, const ssize_t indexOffset) noexce
         index = offset + 3;
         if(!r[index].isNull())
         {
-            debitAccountId_=std::make_shared<int32_t>(r[index].as<int32_t>());
+            allowMultipleDebits_=std::make_shared<bool>(r[index].as<bool>());
         }
         index = offset + 4;
         if(!r[index].isNull())
         {
-            allowMultipleDebits_=std::make_shared<bool>(r[index].as<bool>());
+            allowMultipleCredits_=std::make_shared<bool>(r[index].as<bool>());
         }
         index = offset + 5;
         if(!r[index].isNull())
         {
-            creditAccountId_=std::make_shared<int32_t>(r[index].as<int32_t>());
+            description_=std::make_shared<std::string>(r[index].as<std::string>());
         }
         index = offset + 6;
         if(!r[index].isNull())
         {
-            allowMultipleCredits_=std::make_shared<bool>(r[index].as<bool>());
+            systemDefined_=std::make_shared<bool>(r[index].as<bool>());
         }
         index = offset + 7;
         if(!r[index].isNull())
         {
-            description_=std::make_shared<std::string>(r[index].as<std::string>());
+            debitAccountId_=std::make_shared<std::string>(r[index].as<std::string>());
         }
         index = offset + 8;
         if(!r[index].isNull())
         {
-            systemDefined_=std::make_shared<bool>(r[index].as<bool>());
+            creditAccountId_=std::make_shared<std::string>(r[index].as<std::string>());
+        }
+        index = offset + 9;
+        if(!r[index].isNull())
+        {
+            auto timeStr = r[index].as<std::string>();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
+            time_t t = mktime(&stm);
+            size_t decimalNum = 0;
+            if(p)
+            {
+                if(*p=='.')
+                {
+                    std::string decimals(p+1,&timeStr[timeStr.length()]);
+                    while(decimals.length()<6)
+                    {
+                        decimals += "0";
+                    }
+                    decimalNum = (size_t)atol(decimals.c_str());
+                }
+                createdAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+            }
+        }
+        index = offset + 10;
+        if(!r[index].isNull())
+        {
+            auto timeStr = r[index].as<std::string>();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
+            time_t t = mktime(&stm);
+            size_t decimalNum = 0;
+            if(p)
+            {
+                if(*p=='.')
+                {
+                    std::string decimals(p+1,&timeStr[timeStr.length()]);
+                    while(decimals.length()<6)
+                    {
+                        decimals += "0";
+                    }
+                    decimalNum = (size_t)atol(decimals.c_str());
+                }
+                updatedAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+            }
         }
     }
 
@@ -143,7 +238,7 @@ AccountingRules::AccountingRules(const Row &r, const ssize_t indexOffset) noexce
 
 AccountingRules::AccountingRules(const Json::Value &pJson, const std::vector<std::string> &pMasqueradingVector) noexcept(false)
 {
-    if(pMasqueradingVector.size() != 9)
+    if(pMasqueradingVector.size() != 11)
     {
         LOG_ERROR << "Bad masquerading vector";
         return;
@@ -177,7 +272,7 @@ AccountingRules::AccountingRules(const Json::Value &pJson, const std::vector<std
         dirtyFlag_[3] = true;
         if(!pJson[pMasqueradingVector[3]].isNull())
         {
-            debitAccountId_=std::make_shared<int32_t>((int32_t)pJson[pMasqueradingVector[3]].asInt64());
+            allowMultipleDebits_=std::make_shared<bool>(pJson[pMasqueradingVector[3]].asBool());
         }
     }
     if(!pMasqueradingVector[4].empty() && pJson.isMember(pMasqueradingVector[4]))
@@ -185,7 +280,7 @@ AccountingRules::AccountingRules(const Json::Value &pJson, const std::vector<std
         dirtyFlag_[4] = true;
         if(!pJson[pMasqueradingVector[4]].isNull())
         {
-            allowMultipleDebits_=std::make_shared<bool>(pJson[pMasqueradingVector[4]].asBool());
+            allowMultipleCredits_=std::make_shared<bool>(pJson[pMasqueradingVector[4]].asBool());
         }
     }
     if(!pMasqueradingVector[5].empty() && pJson.isMember(pMasqueradingVector[5]))
@@ -193,7 +288,7 @@ AccountingRules::AccountingRules(const Json::Value &pJson, const std::vector<std
         dirtyFlag_[5] = true;
         if(!pJson[pMasqueradingVector[5]].isNull())
         {
-            creditAccountId_=std::make_shared<int32_t>((int32_t)pJson[pMasqueradingVector[5]].asInt64());
+            description_=std::make_shared<std::string>(pJson[pMasqueradingVector[5]].asString());
         }
     }
     if(!pMasqueradingVector[6].empty() && pJson.isMember(pMasqueradingVector[6]))
@@ -201,7 +296,7 @@ AccountingRules::AccountingRules(const Json::Value &pJson, const std::vector<std
         dirtyFlag_[6] = true;
         if(!pJson[pMasqueradingVector[6]].isNull())
         {
-            allowMultipleCredits_=std::make_shared<bool>(pJson[pMasqueradingVector[6]].asBool());
+            systemDefined_=std::make_shared<bool>(pJson[pMasqueradingVector[6]].asBool());
         }
     }
     if(!pMasqueradingVector[7].empty() && pJson.isMember(pMasqueradingVector[7]))
@@ -209,7 +304,7 @@ AccountingRules::AccountingRules(const Json::Value &pJson, const std::vector<std
         dirtyFlag_[7] = true;
         if(!pJson[pMasqueradingVector[7]].isNull())
         {
-            description_=std::make_shared<std::string>(pJson[pMasqueradingVector[7]].asString());
+            debitAccountId_=std::make_shared<std::string>(pJson[pMasqueradingVector[7]].asString());
         }
     }
     if(!pMasqueradingVector[8].empty() && pJson.isMember(pMasqueradingVector[8]))
@@ -217,7 +312,59 @@ AccountingRules::AccountingRules(const Json::Value &pJson, const std::vector<std
         dirtyFlag_[8] = true;
         if(!pJson[pMasqueradingVector[8]].isNull())
         {
-            systemDefined_=std::make_shared<bool>(pJson[pMasqueradingVector[8]].asBool());
+            creditAccountId_=std::make_shared<std::string>(pJson[pMasqueradingVector[8]].asString());
+        }
+    }
+    if(!pMasqueradingVector[9].empty() && pJson.isMember(pMasqueradingVector[9]))
+    {
+        dirtyFlag_[9] = true;
+        if(!pJson[pMasqueradingVector[9]].isNull())
+        {
+            auto timeStr = pJson[pMasqueradingVector[9]].asString();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
+            time_t t = mktime(&stm);
+            size_t decimalNum = 0;
+            if(p)
+            {
+                if(*p=='.')
+                {
+                    std::string decimals(p+1,&timeStr[timeStr.length()]);
+                    while(decimals.length()<6)
+                    {
+                        decimals += "0";
+                    }
+                    decimalNum = (size_t)atol(decimals.c_str());
+                }
+                createdAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+            }
+        }
+    }
+    if(!pMasqueradingVector[10].empty() && pJson.isMember(pMasqueradingVector[10]))
+    {
+        dirtyFlag_[10] = true;
+        if(!pJson[pMasqueradingVector[10]].isNull())
+        {
+            auto timeStr = pJson[pMasqueradingVector[10]].asString();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
+            time_t t = mktime(&stm);
+            size_t decimalNum = 0;
+            if(p)
+            {
+                if(*p=='.')
+                {
+                    std::string decimals(p+1,&timeStr[timeStr.length()]);
+                    while(decimals.length()<6)
+                    {
+                        decimals += "0";
+                    }
+                    decimalNum = (size_t)atol(decimals.c_str());
+                }
+                updatedAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+            }
         }
     }
 }
@@ -248,33 +395,17 @@ AccountingRules::AccountingRules(const Json::Value &pJson) noexcept(false)
             officeId_=std::make_shared<std::string>(pJson["office_id"].asString());
         }
     }
-    if(pJson.isMember("debit_account_id"))
-    {
-        dirtyFlag_[3]=true;
-        if(!pJson["debit_account_id"].isNull())
-        {
-            debitAccountId_=std::make_shared<int32_t>((int32_t)pJson["debit_account_id"].asInt64());
-        }
-    }
     if(pJson.isMember("allow_multiple_debits"))
     {
-        dirtyFlag_[4]=true;
+        dirtyFlag_[3]=true;
         if(!pJson["allow_multiple_debits"].isNull())
         {
             allowMultipleDebits_=std::make_shared<bool>(pJson["allow_multiple_debits"].asBool());
         }
     }
-    if(pJson.isMember("credit_account_id"))
-    {
-        dirtyFlag_[5]=true;
-        if(!pJson["credit_account_id"].isNull())
-        {
-            creditAccountId_=std::make_shared<int32_t>((int32_t)pJson["credit_account_id"].asInt64());
-        }
-    }
     if(pJson.isMember("allow_multiple_credits"))
     {
-        dirtyFlag_[6]=true;
+        dirtyFlag_[4]=true;
         if(!pJson["allow_multiple_credits"].isNull())
         {
             allowMultipleCredits_=std::make_shared<bool>(pJson["allow_multiple_credits"].asBool());
@@ -282,7 +413,7 @@ AccountingRules::AccountingRules(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("description"))
     {
-        dirtyFlag_[7]=true;
+        dirtyFlag_[5]=true;
         if(!pJson["description"].isNull())
         {
             description_=std::make_shared<std::string>(pJson["description"].asString());
@@ -290,10 +421,78 @@ AccountingRules::AccountingRules(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("system_defined"))
     {
-        dirtyFlag_[8]=true;
+        dirtyFlag_[6]=true;
         if(!pJson["system_defined"].isNull())
         {
             systemDefined_=std::make_shared<bool>(pJson["system_defined"].asBool());
+        }
+    }
+    if(pJson.isMember("debit_account_id"))
+    {
+        dirtyFlag_[7]=true;
+        if(!pJson["debit_account_id"].isNull())
+        {
+            debitAccountId_=std::make_shared<std::string>(pJson["debit_account_id"].asString());
+        }
+    }
+    if(pJson.isMember("credit_account_id"))
+    {
+        dirtyFlag_[8]=true;
+        if(!pJson["credit_account_id"].isNull())
+        {
+            creditAccountId_=std::make_shared<std::string>(pJson["credit_account_id"].asString());
+        }
+    }
+    if(pJson.isMember("created_at"))
+    {
+        dirtyFlag_[9]=true;
+        if(!pJson["created_at"].isNull())
+        {
+            auto timeStr = pJson["created_at"].asString();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
+            time_t t = mktime(&stm);
+            size_t decimalNum = 0;
+            if(p)
+            {
+                if(*p=='.')
+                {
+                    std::string decimals(p+1,&timeStr[timeStr.length()]);
+                    while(decimals.length()<6)
+                    {
+                        decimals += "0";
+                    }
+                    decimalNum = (size_t)atol(decimals.c_str());
+                }
+                createdAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+            }
+        }
+    }
+    if(pJson.isMember("updated_at"))
+    {
+        dirtyFlag_[10]=true;
+        if(!pJson["updated_at"].isNull())
+        {
+            auto timeStr = pJson["updated_at"].asString();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
+            time_t t = mktime(&stm);
+            size_t decimalNum = 0;
+            if(p)
+            {
+                if(*p=='.')
+                {
+                    std::string decimals(p+1,&timeStr[timeStr.length()]);
+                    while(decimals.length()<6)
+                    {
+                        decimals += "0";
+                    }
+                    decimalNum = (size_t)atol(decimals.c_str());
+                }
+                updatedAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+            }
         }
     }
 }
@@ -301,7 +500,7 @@ AccountingRules::AccountingRules(const Json::Value &pJson) noexcept(false)
 void AccountingRules::updateByMasqueradedJson(const Json::Value &pJson,
                                             const std::vector<std::string> &pMasqueradingVector) noexcept(false)
 {
-    if(pMasqueradingVector.size() != 9)
+    if(pMasqueradingVector.size() != 11)
     {
         LOG_ERROR << "Bad masquerading vector";
         return;
@@ -334,7 +533,7 @@ void AccountingRules::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[3] = true;
         if(!pJson[pMasqueradingVector[3]].isNull())
         {
-            debitAccountId_=std::make_shared<int32_t>((int32_t)pJson[pMasqueradingVector[3]].asInt64());
+            allowMultipleDebits_=std::make_shared<bool>(pJson[pMasqueradingVector[3]].asBool());
         }
     }
     if(!pMasqueradingVector[4].empty() && pJson.isMember(pMasqueradingVector[4]))
@@ -342,7 +541,7 @@ void AccountingRules::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[4] = true;
         if(!pJson[pMasqueradingVector[4]].isNull())
         {
-            allowMultipleDebits_=std::make_shared<bool>(pJson[pMasqueradingVector[4]].asBool());
+            allowMultipleCredits_=std::make_shared<bool>(pJson[pMasqueradingVector[4]].asBool());
         }
     }
     if(!pMasqueradingVector[5].empty() && pJson.isMember(pMasqueradingVector[5]))
@@ -350,7 +549,7 @@ void AccountingRules::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[5] = true;
         if(!pJson[pMasqueradingVector[5]].isNull())
         {
-            creditAccountId_=std::make_shared<int32_t>((int32_t)pJson[pMasqueradingVector[5]].asInt64());
+            description_=std::make_shared<std::string>(pJson[pMasqueradingVector[5]].asString());
         }
     }
     if(!pMasqueradingVector[6].empty() && pJson.isMember(pMasqueradingVector[6]))
@@ -358,7 +557,7 @@ void AccountingRules::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[6] = true;
         if(!pJson[pMasqueradingVector[6]].isNull())
         {
-            allowMultipleCredits_=std::make_shared<bool>(pJson[pMasqueradingVector[6]].asBool());
+            systemDefined_=std::make_shared<bool>(pJson[pMasqueradingVector[6]].asBool());
         }
     }
     if(!pMasqueradingVector[7].empty() && pJson.isMember(pMasqueradingVector[7]))
@@ -366,7 +565,7 @@ void AccountingRules::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[7] = true;
         if(!pJson[pMasqueradingVector[7]].isNull())
         {
-            description_=std::make_shared<std::string>(pJson[pMasqueradingVector[7]].asString());
+            debitAccountId_=std::make_shared<std::string>(pJson[pMasqueradingVector[7]].asString());
         }
     }
     if(!pMasqueradingVector[8].empty() && pJson.isMember(pMasqueradingVector[8]))
@@ -374,7 +573,59 @@ void AccountingRules::updateByMasqueradedJson(const Json::Value &pJson,
         dirtyFlag_[8] = true;
         if(!pJson[pMasqueradingVector[8]].isNull())
         {
-            systemDefined_=std::make_shared<bool>(pJson[pMasqueradingVector[8]].asBool());
+            creditAccountId_=std::make_shared<std::string>(pJson[pMasqueradingVector[8]].asString());
+        }
+    }
+    if(!pMasqueradingVector[9].empty() && pJson.isMember(pMasqueradingVector[9]))
+    {
+        dirtyFlag_[9] = true;
+        if(!pJson[pMasqueradingVector[9]].isNull())
+        {
+            auto timeStr = pJson[pMasqueradingVector[9]].asString();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
+            time_t t = mktime(&stm);
+            size_t decimalNum = 0;
+            if(p)
+            {
+                if(*p=='.')
+                {
+                    std::string decimals(p+1,&timeStr[timeStr.length()]);
+                    while(decimals.length()<6)
+                    {
+                        decimals += "0";
+                    }
+                    decimalNum = (size_t)atol(decimals.c_str());
+                }
+                createdAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+            }
+        }
+    }
+    if(!pMasqueradingVector[10].empty() && pJson.isMember(pMasqueradingVector[10]))
+    {
+        dirtyFlag_[10] = true;
+        if(!pJson[pMasqueradingVector[10]].isNull())
+        {
+            auto timeStr = pJson[pMasqueradingVector[10]].asString();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
+            time_t t = mktime(&stm);
+            size_t decimalNum = 0;
+            if(p)
+            {
+                if(*p=='.')
+                {
+                    std::string decimals(p+1,&timeStr[timeStr.length()]);
+                    while(decimals.length()<6)
+                    {
+                        decimals += "0";
+                    }
+                    decimalNum = (size_t)atol(decimals.c_str());
+                }
+                updatedAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+            }
         }
     }
 }
@@ -404,33 +655,17 @@ void AccountingRules::updateByJson(const Json::Value &pJson) noexcept(false)
             officeId_=std::make_shared<std::string>(pJson["office_id"].asString());
         }
     }
-    if(pJson.isMember("debit_account_id"))
-    {
-        dirtyFlag_[3] = true;
-        if(!pJson["debit_account_id"].isNull())
-        {
-            debitAccountId_=std::make_shared<int32_t>((int32_t)pJson["debit_account_id"].asInt64());
-        }
-    }
     if(pJson.isMember("allow_multiple_debits"))
     {
-        dirtyFlag_[4] = true;
+        dirtyFlag_[3] = true;
         if(!pJson["allow_multiple_debits"].isNull())
         {
             allowMultipleDebits_=std::make_shared<bool>(pJson["allow_multiple_debits"].asBool());
         }
     }
-    if(pJson.isMember("credit_account_id"))
-    {
-        dirtyFlag_[5] = true;
-        if(!pJson["credit_account_id"].isNull())
-        {
-            creditAccountId_=std::make_shared<int32_t>((int32_t)pJson["credit_account_id"].asInt64());
-        }
-    }
     if(pJson.isMember("allow_multiple_credits"))
     {
-        dirtyFlag_[6] = true;
+        dirtyFlag_[4] = true;
         if(!pJson["allow_multiple_credits"].isNull())
         {
             allowMultipleCredits_=std::make_shared<bool>(pJson["allow_multiple_credits"].asBool());
@@ -438,7 +673,7 @@ void AccountingRules::updateByJson(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("description"))
     {
-        dirtyFlag_[7] = true;
+        dirtyFlag_[5] = true;
         if(!pJson["description"].isNull())
         {
             description_=std::make_shared<std::string>(pJson["description"].asString());
@@ -446,10 +681,78 @@ void AccountingRules::updateByJson(const Json::Value &pJson) noexcept(false)
     }
     if(pJson.isMember("system_defined"))
     {
-        dirtyFlag_[8] = true;
+        dirtyFlag_[6] = true;
         if(!pJson["system_defined"].isNull())
         {
             systemDefined_=std::make_shared<bool>(pJson["system_defined"].asBool());
+        }
+    }
+    if(pJson.isMember("debit_account_id"))
+    {
+        dirtyFlag_[7] = true;
+        if(!pJson["debit_account_id"].isNull())
+        {
+            debitAccountId_=std::make_shared<std::string>(pJson["debit_account_id"].asString());
+        }
+    }
+    if(pJson.isMember("credit_account_id"))
+    {
+        dirtyFlag_[8] = true;
+        if(!pJson["credit_account_id"].isNull())
+        {
+            creditAccountId_=std::make_shared<std::string>(pJson["credit_account_id"].asString());
+        }
+    }
+    if(pJson.isMember("created_at"))
+    {
+        dirtyFlag_[9] = true;
+        if(!pJson["created_at"].isNull())
+        {
+            auto timeStr = pJson["created_at"].asString();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
+            time_t t = mktime(&stm);
+            size_t decimalNum = 0;
+            if(p)
+            {
+                if(*p=='.')
+                {
+                    std::string decimals(p+1,&timeStr[timeStr.length()]);
+                    while(decimals.length()<6)
+                    {
+                        decimals += "0";
+                    }
+                    decimalNum = (size_t)atol(decimals.c_str());
+                }
+                createdAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+            }
+        }
+    }
+    if(pJson.isMember("updated_at"))
+    {
+        dirtyFlag_[10] = true;
+        if(!pJson["updated_at"].isNull())
+        {
+            auto timeStr = pJson["updated_at"].asString();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
+            time_t t = mktime(&stm);
+            size_t decimalNum = 0;
+            if(p)
+            {
+                if(*p=='.')
+                {
+                    std::string decimals(p+1,&timeStr[timeStr.length()]);
+                    while(decimals.length()<6)
+                    {
+                        decimals += "0";
+                    }
+                    decimalNum = (size_t)atol(decimals.c_str());
+                }
+                updatedAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+            }
         }
     }
 }
@@ -535,28 +838,6 @@ void AccountingRules::setOfficeIdToNull() noexcept
     dirtyFlag_[2] = true;
 }
 
-const int32_t &AccountingRules::getValueOfDebitAccountId() const noexcept
-{
-    static const int32_t defaultValue = int32_t();
-    if(debitAccountId_)
-        return *debitAccountId_;
-    return defaultValue;
-}
-const std::shared_ptr<int32_t> &AccountingRules::getDebitAccountId() const noexcept
-{
-    return debitAccountId_;
-}
-void AccountingRules::setDebitAccountId(const int32_t &pDebitAccountId) noexcept
-{
-    debitAccountId_ = std::make_shared<int32_t>(pDebitAccountId);
-    dirtyFlag_[3] = true;
-}
-void AccountingRules::setDebitAccountIdToNull() noexcept
-{
-    debitAccountId_.reset();
-    dirtyFlag_[3] = true;
-}
-
 const bool &AccountingRules::getValueOfAllowMultipleDebits() const noexcept
 {
     static const bool defaultValue = bool();
@@ -571,29 +852,7 @@ const std::shared_ptr<bool> &AccountingRules::getAllowMultipleDebits() const noe
 void AccountingRules::setAllowMultipleDebits(const bool &pAllowMultipleDebits) noexcept
 {
     allowMultipleDebits_ = std::make_shared<bool>(pAllowMultipleDebits);
-    dirtyFlag_[4] = true;
-}
-
-const int32_t &AccountingRules::getValueOfCreditAccountId() const noexcept
-{
-    static const int32_t defaultValue = int32_t();
-    if(creditAccountId_)
-        return *creditAccountId_;
-    return defaultValue;
-}
-const std::shared_ptr<int32_t> &AccountingRules::getCreditAccountId() const noexcept
-{
-    return creditAccountId_;
-}
-void AccountingRules::setCreditAccountId(const int32_t &pCreditAccountId) noexcept
-{
-    creditAccountId_ = std::make_shared<int32_t>(pCreditAccountId);
-    dirtyFlag_[5] = true;
-}
-void AccountingRules::setCreditAccountIdToNull() noexcept
-{
-    creditAccountId_.reset();
-    dirtyFlag_[5] = true;
+    dirtyFlag_[3] = true;
 }
 
 const bool &AccountingRules::getValueOfAllowMultipleCredits() const noexcept
@@ -610,7 +869,7 @@ const std::shared_ptr<bool> &AccountingRules::getAllowMultipleCredits() const no
 void AccountingRules::setAllowMultipleCredits(const bool &pAllowMultipleCredits) noexcept
 {
     allowMultipleCredits_ = std::make_shared<bool>(pAllowMultipleCredits);
-    dirtyFlag_[6] = true;
+    dirtyFlag_[4] = true;
 }
 
 const std::string &AccountingRules::getValueOfDescription() const noexcept
@@ -627,17 +886,17 @@ const std::shared_ptr<std::string> &AccountingRules::getDescription() const noex
 void AccountingRules::setDescription(const std::string &pDescription) noexcept
 {
     description_ = std::make_shared<std::string>(pDescription);
-    dirtyFlag_[7] = true;
+    dirtyFlag_[5] = true;
 }
 void AccountingRules::setDescription(std::string &&pDescription) noexcept
 {
     description_ = std::make_shared<std::string>(std::move(pDescription));
-    dirtyFlag_[7] = true;
+    dirtyFlag_[5] = true;
 }
 void AccountingRules::setDescriptionToNull() noexcept
 {
     description_.reset();
-    dirtyFlag_[7] = true;
+    dirtyFlag_[5] = true;
 }
 
 const bool &AccountingRules::getValueOfSystemDefined() const noexcept
@@ -654,7 +913,95 @@ const std::shared_ptr<bool> &AccountingRules::getSystemDefined() const noexcept
 void AccountingRules::setSystemDefined(const bool &pSystemDefined) noexcept
 {
     systemDefined_ = std::make_shared<bool>(pSystemDefined);
+    dirtyFlag_[6] = true;
+}
+
+const std::string &AccountingRules::getValueOfDebitAccountId() const noexcept
+{
+    static const std::string defaultValue = std::string();
+    if(debitAccountId_)
+        return *debitAccountId_;
+    return defaultValue;
+}
+const std::shared_ptr<std::string> &AccountingRules::getDebitAccountId() const noexcept
+{
+    return debitAccountId_;
+}
+void AccountingRules::setDebitAccountId(const std::string &pDebitAccountId) noexcept
+{
+    debitAccountId_ = std::make_shared<std::string>(pDebitAccountId);
+    dirtyFlag_[7] = true;
+}
+void AccountingRules::setDebitAccountId(std::string &&pDebitAccountId) noexcept
+{
+    debitAccountId_ = std::make_shared<std::string>(std::move(pDebitAccountId));
+    dirtyFlag_[7] = true;
+}
+void AccountingRules::setDebitAccountIdToNull() noexcept
+{
+    debitAccountId_.reset();
+    dirtyFlag_[7] = true;
+}
+
+const std::string &AccountingRules::getValueOfCreditAccountId() const noexcept
+{
+    static const std::string defaultValue = std::string();
+    if(creditAccountId_)
+        return *creditAccountId_;
+    return defaultValue;
+}
+const std::shared_ptr<std::string> &AccountingRules::getCreditAccountId() const noexcept
+{
+    return creditAccountId_;
+}
+void AccountingRules::setCreditAccountId(const std::string &pCreditAccountId) noexcept
+{
+    creditAccountId_ = std::make_shared<std::string>(pCreditAccountId);
     dirtyFlag_[8] = true;
+}
+void AccountingRules::setCreditAccountId(std::string &&pCreditAccountId) noexcept
+{
+    creditAccountId_ = std::make_shared<std::string>(std::move(pCreditAccountId));
+    dirtyFlag_[8] = true;
+}
+void AccountingRules::setCreditAccountIdToNull() noexcept
+{
+    creditAccountId_.reset();
+    dirtyFlag_[8] = true;
+}
+
+const ::trantor::Date &AccountingRules::getValueOfCreatedAt() const noexcept
+{
+    static const ::trantor::Date defaultValue = ::trantor::Date();
+    if(createdAt_)
+        return *createdAt_;
+    return defaultValue;
+}
+const std::shared_ptr<::trantor::Date> &AccountingRules::getCreatedAt() const noexcept
+{
+    return createdAt_;
+}
+void AccountingRules::setCreatedAt(const ::trantor::Date &pCreatedAt) noexcept
+{
+    createdAt_ = std::make_shared<::trantor::Date>(pCreatedAt);
+    dirtyFlag_[9] = true;
+}
+
+const ::trantor::Date &AccountingRules::getValueOfUpdatedAt() const noexcept
+{
+    static const ::trantor::Date defaultValue = ::trantor::Date();
+    if(updatedAt_)
+        return *updatedAt_;
+    return defaultValue;
+}
+const std::shared_ptr<::trantor::Date> &AccountingRules::getUpdatedAt() const noexcept
+{
+    return updatedAt_;
+}
+void AccountingRules::setUpdatedAt(const ::trantor::Date &pUpdatedAt) noexcept
+{
+    updatedAt_ = std::make_shared<::trantor::Date>(pUpdatedAt);
+    dirtyFlag_[10] = true;
 }
 
 void AccountingRules::updateId(const uint64_t id)
@@ -667,12 +1014,14 @@ const std::vector<std::string> &AccountingRules::insertColumns() noexcept
         "id",
         "name",
         "office_id",
-        "debit_account_id",
         "allow_multiple_debits",
-        "credit_account_id",
         "allow_multiple_credits",
         "description",
-        "system_defined"
+        "system_defined",
+        "debit_account_id",
+        "credit_account_id",
+        "created_at",
+        "updated_at"
     };
     return inCols;
 }
@@ -714,17 +1063,6 @@ void AccountingRules::outputArgs(drogon::orm::internal::SqlBinder &binder) const
     }
     if(dirtyFlag_[3])
     {
-        if(getDebitAccountId())
-        {
-            binder << getValueOfDebitAccountId();
-        }
-        else
-        {
-            binder << nullptr;
-        }
-    }
-    if(dirtyFlag_[4])
-    {
         if(getAllowMultipleDebits())
         {
             binder << getValueOfAllowMultipleDebits();
@@ -734,18 +1072,7 @@ void AccountingRules::outputArgs(drogon::orm::internal::SqlBinder &binder) const
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[5])
-    {
-        if(getCreditAccountId())
-        {
-            binder << getValueOfCreditAccountId();
-        }
-        else
-        {
-            binder << nullptr;
-        }
-    }
-    if(dirtyFlag_[6])
+    if(dirtyFlag_[4])
     {
         if(getAllowMultipleCredits())
         {
@@ -756,7 +1083,7 @@ void AccountingRules::outputArgs(drogon::orm::internal::SqlBinder &binder) const
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[7])
+    if(dirtyFlag_[5])
     {
         if(getDescription())
         {
@@ -767,11 +1094,55 @@ void AccountingRules::outputArgs(drogon::orm::internal::SqlBinder &binder) const
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[8])
+    if(dirtyFlag_[6])
     {
         if(getSystemDefined())
         {
             binder << getValueOfSystemDefined();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[7])
+    {
+        if(getDebitAccountId())
+        {
+            binder << getValueOfDebitAccountId();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[8])
+    {
+        if(getCreditAccountId())
+        {
+            binder << getValueOfCreditAccountId();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[9])
+    {
+        if(getCreatedAt())
+        {
+            binder << getValueOfCreatedAt();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[10])
+    {
+        if(getUpdatedAt())
+        {
+            binder << getValueOfUpdatedAt();
         }
         else
         {
@@ -819,6 +1190,14 @@ const std::vector<std::string> AccountingRules::updateColumns() const
     {
         ret.push_back(getColumnName(8));
     }
+    if(dirtyFlag_[9])
+    {
+        ret.push_back(getColumnName(9));
+    }
+    if(dirtyFlag_[10])
+    {
+        ret.push_back(getColumnName(10));
+    }
     return ret;
 }
 
@@ -859,17 +1238,6 @@ void AccountingRules::updateArgs(drogon::orm::internal::SqlBinder &binder) const
     }
     if(dirtyFlag_[3])
     {
-        if(getDebitAccountId())
-        {
-            binder << getValueOfDebitAccountId();
-        }
-        else
-        {
-            binder << nullptr;
-        }
-    }
-    if(dirtyFlag_[4])
-    {
         if(getAllowMultipleDebits())
         {
             binder << getValueOfAllowMultipleDebits();
@@ -879,18 +1247,7 @@ void AccountingRules::updateArgs(drogon::orm::internal::SqlBinder &binder) const
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[5])
-    {
-        if(getCreditAccountId())
-        {
-            binder << getValueOfCreditAccountId();
-        }
-        else
-        {
-            binder << nullptr;
-        }
-    }
-    if(dirtyFlag_[6])
+    if(dirtyFlag_[4])
     {
         if(getAllowMultipleCredits())
         {
@@ -901,7 +1258,7 @@ void AccountingRules::updateArgs(drogon::orm::internal::SqlBinder &binder) const
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[7])
+    if(dirtyFlag_[5])
     {
         if(getDescription())
         {
@@ -912,11 +1269,55 @@ void AccountingRules::updateArgs(drogon::orm::internal::SqlBinder &binder) const
             binder << nullptr;
         }
     }
-    if(dirtyFlag_[8])
+    if(dirtyFlag_[6])
     {
         if(getSystemDefined())
         {
             binder << getValueOfSystemDefined();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[7])
+    {
+        if(getDebitAccountId())
+        {
+            binder << getValueOfDebitAccountId();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[8])
+    {
+        if(getCreditAccountId())
+        {
+            binder << getValueOfCreditAccountId();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[9])
+    {
+        if(getCreatedAt())
+        {
+            binder << getValueOfCreatedAt();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[10])
+    {
+        if(getUpdatedAt())
+        {
+            binder << getValueOfUpdatedAt();
         }
         else
         {
@@ -951,14 +1352,6 @@ Json::Value AccountingRules::toJson() const
     {
         ret["office_id"]=Json::Value();
     }
-    if(getDebitAccountId())
-    {
-        ret["debit_account_id"]=getValueOfDebitAccountId();
-    }
-    else
-    {
-        ret["debit_account_id"]=Json::Value();
-    }
     if(getAllowMultipleDebits())
     {
         ret["allow_multiple_debits"]=getValueOfAllowMultipleDebits();
@@ -966,14 +1359,6 @@ Json::Value AccountingRules::toJson() const
     else
     {
         ret["allow_multiple_debits"]=Json::Value();
-    }
-    if(getCreditAccountId())
-    {
-        ret["credit_account_id"]=getValueOfCreditAccountId();
-    }
-    else
-    {
-        ret["credit_account_id"]=Json::Value();
     }
     if(getAllowMultipleCredits())
     {
@@ -999,6 +1384,38 @@ Json::Value AccountingRules::toJson() const
     {
         ret["system_defined"]=Json::Value();
     }
+    if(getDebitAccountId())
+    {
+        ret["debit_account_id"]=getValueOfDebitAccountId();
+    }
+    else
+    {
+        ret["debit_account_id"]=Json::Value();
+    }
+    if(getCreditAccountId())
+    {
+        ret["credit_account_id"]=getValueOfCreditAccountId();
+    }
+    else
+    {
+        ret["credit_account_id"]=Json::Value();
+    }
+    if(getCreatedAt())
+    {
+        ret["created_at"]=getCreatedAt()->toDbStringLocal();
+    }
+    else
+    {
+        ret["created_at"]=Json::Value();
+    }
+    if(getUpdatedAt())
+    {
+        ret["updated_at"]=getUpdatedAt()->toDbStringLocal();
+    }
+    else
+    {
+        ret["updated_at"]=Json::Value();
+    }
     return ret;
 }
 
@@ -1011,7 +1428,7 @@ Json::Value AccountingRules::toMasqueradedJson(
     const std::vector<std::string> &pMasqueradingVector) const
 {
     Json::Value ret;
-    if(pMasqueradingVector.size() == 9)
+    if(pMasqueradingVector.size() == 11)
     {
         if(!pMasqueradingVector[0].empty())
         {
@@ -1048,9 +1465,9 @@ Json::Value AccountingRules::toMasqueradedJson(
         }
         if(!pMasqueradingVector[3].empty())
         {
-            if(getDebitAccountId())
+            if(getAllowMultipleDebits())
             {
-                ret[pMasqueradingVector[3]]=getValueOfDebitAccountId();
+                ret[pMasqueradingVector[3]]=getValueOfAllowMultipleDebits();
             }
             else
             {
@@ -1059,9 +1476,9 @@ Json::Value AccountingRules::toMasqueradedJson(
         }
         if(!pMasqueradingVector[4].empty())
         {
-            if(getAllowMultipleDebits())
+            if(getAllowMultipleCredits())
             {
-                ret[pMasqueradingVector[4]]=getValueOfAllowMultipleDebits();
+                ret[pMasqueradingVector[4]]=getValueOfAllowMultipleCredits();
             }
             else
             {
@@ -1070,9 +1487,9 @@ Json::Value AccountingRules::toMasqueradedJson(
         }
         if(!pMasqueradingVector[5].empty())
         {
-            if(getCreditAccountId())
+            if(getDescription())
             {
-                ret[pMasqueradingVector[5]]=getValueOfCreditAccountId();
+                ret[pMasqueradingVector[5]]=getValueOfDescription();
             }
             else
             {
@@ -1081,9 +1498,9 @@ Json::Value AccountingRules::toMasqueradedJson(
         }
         if(!pMasqueradingVector[6].empty())
         {
-            if(getAllowMultipleCredits())
+            if(getSystemDefined())
             {
-                ret[pMasqueradingVector[6]]=getValueOfAllowMultipleCredits();
+                ret[pMasqueradingVector[6]]=getValueOfSystemDefined();
             }
             else
             {
@@ -1092,9 +1509,9 @@ Json::Value AccountingRules::toMasqueradedJson(
         }
         if(!pMasqueradingVector[7].empty())
         {
-            if(getDescription())
+            if(getDebitAccountId())
             {
-                ret[pMasqueradingVector[7]]=getValueOfDescription();
+                ret[pMasqueradingVector[7]]=getValueOfDebitAccountId();
             }
             else
             {
@@ -1103,13 +1520,35 @@ Json::Value AccountingRules::toMasqueradedJson(
         }
         if(!pMasqueradingVector[8].empty())
         {
-            if(getSystemDefined())
+            if(getCreditAccountId())
             {
-                ret[pMasqueradingVector[8]]=getValueOfSystemDefined();
+                ret[pMasqueradingVector[8]]=getValueOfCreditAccountId();
             }
             else
             {
                 ret[pMasqueradingVector[8]]=Json::Value();
+            }
+        }
+        if(!pMasqueradingVector[9].empty())
+        {
+            if(getCreatedAt())
+            {
+                ret[pMasqueradingVector[9]]=getCreatedAt()->toDbStringLocal();
+            }
+            else
+            {
+                ret[pMasqueradingVector[9]]=Json::Value();
+            }
+        }
+        if(!pMasqueradingVector[10].empty())
+        {
+            if(getUpdatedAt())
+            {
+                ret[pMasqueradingVector[10]]=getUpdatedAt()->toDbStringLocal();
+            }
+            else
+            {
+                ret[pMasqueradingVector[10]]=Json::Value();
             }
         }
         return ret;
@@ -1139,14 +1578,6 @@ Json::Value AccountingRules::toMasqueradedJson(
     {
         ret["office_id"]=Json::Value();
     }
-    if(getDebitAccountId())
-    {
-        ret["debit_account_id"]=getValueOfDebitAccountId();
-    }
-    else
-    {
-        ret["debit_account_id"]=Json::Value();
-    }
     if(getAllowMultipleDebits())
     {
         ret["allow_multiple_debits"]=getValueOfAllowMultipleDebits();
@@ -1154,14 +1585,6 @@ Json::Value AccountingRules::toMasqueradedJson(
     else
     {
         ret["allow_multiple_debits"]=Json::Value();
-    }
-    if(getCreditAccountId())
-    {
-        ret["credit_account_id"]=getValueOfCreditAccountId();
-    }
-    else
-    {
-        ret["credit_account_id"]=Json::Value();
     }
     if(getAllowMultipleCredits())
     {
@@ -1187,6 +1610,38 @@ Json::Value AccountingRules::toMasqueradedJson(
     {
         ret["system_defined"]=Json::Value();
     }
+    if(getDebitAccountId())
+    {
+        ret["debit_account_id"]=getValueOfDebitAccountId();
+    }
+    else
+    {
+        ret["debit_account_id"]=Json::Value();
+    }
+    if(getCreditAccountId())
+    {
+        ret["credit_account_id"]=getValueOfCreditAccountId();
+    }
+    else
+    {
+        ret["credit_account_id"]=Json::Value();
+    }
+    if(getCreatedAt())
+    {
+        ret["created_at"]=getCreatedAt()->toDbStringLocal();
+    }
+    else
+    {
+        ret["created_at"]=Json::Value();
+    }
+    if(getUpdatedAt())
+    {
+        ret["updated_at"]=getUpdatedAt()->toDbStringLocal();
+    }
+    else
+    {
+        ret["updated_at"]=Json::Value();
+    }
     return ret;
 }
 
@@ -1207,34 +1662,44 @@ bool AccountingRules::validateJsonForCreation(const Json::Value &pJson, std::str
         if(!validJsonOfField(2, "office_id", pJson["office_id"], err, true))
             return false;
     }
-    if(pJson.isMember("debit_account_id"))
-    {
-        if(!validJsonOfField(3, "debit_account_id", pJson["debit_account_id"], err, true))
-            return false;
-    }
     if(pJson.isMember("allow_multiple_debits"))
     {
-        if(!validJsonOfField(4, "allow_multiple_debits", pJson["allow_multiple_debits"], err, true))
-            return false;
-    }
-    if(pJson.isMember("credit_account_id"))
-    {
-        if(!validJsonOfField(5, "credit_account_id", pJson["credit_account_id"], err, true))
+        if(!validJsonOfField(3, "allow_multiple_debits", pJson["allow_multiple_debits"], err, true))
             return false;
     }
     if(pJson.isMember("allow_multiple_credits"))
     {
-        if(!validJsonOfField(6, "allow_multiple_credits", pJson["allow_multiple_credits"], err, true))
+        if(!validJsonOfField(4, "allow_multiple_credits", pJson["allow_multiple_credits"], err, true))
             return false;
     }
     if(pJson.isMember("description"))
     {
-        if(!validJsonOfField(7, "description", pJson["description"], err, true))
+        if(!validJsonOfField(5, "description", pJson["description"], err, true))
             return false;
     }
     if(pJson.isMember("system_defined"))
     {
-        if(!validJsonOfField(8, "system_defined", pJson["system_defined"], err, true))
+        if(!validJsonOfField(6, "system_defined", pJson["system_defined"], err, true))
+            return false;
+    }
+    if(pJson.isMember("debit_account_id"))
+    {
+        if(!validJsonOfField(7, "debit_account_id", pJson["debit_account_id"], err, true))
+            return false;
+    }
+    if(pJson.isMember("credit_account_id"))
+    {
+        if(!validJsonOfField(8, "credit_account_id", pJson["credit_account_id"], err, true))
+            return false;
+    }
+    if(pJson.isMember("created_at"))
+    {
+        if(!validJsonOfField(9, "created_at", pJson["created_at"], err, true))
+            return false;
+    }
+    if(pJson.isMember("updated_at"))
+    {
+        if(!validJsonOfField(10, "updated_at", pJson["updated_at"], err, true))
             return false;
     }
     return true;
@@ -1243,7 +1708,7 @@ bool AccountingRules::validateMasqueradedJsonForCreation(const Json::Value &pJso
                                                          const std::vector<std::string> &pMasqueradingVector,
                                                          std::string &err)
 {
-    if(pMasqueradingVector.size() != 9)
+    if(pMasqueradingVector.size() != 11)
     {
         err = "Bad masquerading vector";
         return false;
@@ -1321,6 +1786,22 @@ bool AccountingRules::validateMasqueradedJsonForCreation(const Json::Value &pJso
                   return false;
           }
       }
+      if(!pMasqueradingVector[9].empty())
+      {
+          if(pJson.isMember(pMasqueradingVector[9]))
+          {
+              if(!validJsonOfField(9, pMasqueradingVector[9], pJson[pMasqueradingVector[9]], err, true))
+                  return false;
+          }
+      }
+      if(!pMasqueradingVector[10].empty())
+      {
+          if(pJson.isMember(pMasqueradingVector[10]))
+          {
+              if(!validJsonOfField(10, pMasqueradingVector[10], pJson[pMasqueradingVector[10]], err, true))
+                  return false;
+          }
+      }
     }
     catch(const Json::LogicError &e)
     {
@@ -1351,34 +1832,44 @@ bool AccountingRules::validateJsonForUpdate(const Json::Value &pJson, std::strin
         if(!validJsonOfField(2, "office_id", pJson["office_id"], err, false))
             return false;
     }
-    if(pJson.isMember("debit_account_id"))
-    {
-        if(!validJsonOfField(3, "debit_account_id", pJson["debit_account_id"], err, false))
-            return false;
-    }
     if(pJson.isMember("allow_multiple_debits"))
     {
-        if(!validJsonOfField(4, "allow_multiple_debits", pJson["allow_multiple_debits"], err, false))
-            return false;
-    }
-    if(pJson.isMember("credit_account_id"))
-    {
-        if(!validJsonOfField(5, "credit_account_id", pJson["credit_account_id"], err, false))
+        if(!validJsonOfField(3, "allow_multiple_debits", pJson["allow_multiple_debits"], err, false))
             return false;
     }
     if(pJson.isMember("allow_multiple_credits"))
     {
-        if(!validJsonOfField(6, "allow_multiple_credits", pJson["allow_multiple_credits"], err, false))
+        if(!validJsonOfField(4, "allow_multiple_credits", pJson["allow_multiple_credits"], err, false))
             return false;
     }
     if(pJson.isMember("description"))
     {
-        if(!validJsonOfField(7, "description", pJson["description"], err, false))
+        if(!validJsonOfField(5, "description", pJson["description"], err, false))
             return false;
     }
     if(pJson.isMember("system_defined"))
     {
-        if(!validJsonOfField(8, "system_defined", pJson["system_defined"], err, false))
+        if(!validJsonOfField(6, "system_defined", pJson["system_defined"], err, false))
+            return false;
+    }
+    if(pJson.isMember("debit_account_id"))
+    {
+        if(!validJsonOfField(7, "debit_account_id", pJson["debit_account_id"], err, false))
+            return false;
+    }
+    if(pJson.isMember("credit_account_id"))
+    {
+        if(!validJsonOfField(8, "credit_account_id", pJson["credit_account_id"], err, false))
+            return false;
+    }
+    if(pJson.isMember("created_at"))
+    {
+        if(!validJsonOfField(9, "created_at", pJson["created_at"], err, false))
+            return false;
+    }
+    if(pJson.isMember("updated_at"))
+    {
+        if(!validJsonOfField(10, "updated_at", pJson["updated_at"], err, false))
             return false;
     }
     return true;
@@ -1387,7 +1878,7 @@ bool AccountingRules::validateMasqueradedJsonForUpdate(const Json::Value &pJson,
                                                        const std::vector<std::string> &pMasqueradingVector,
                                                        std::string &err)
 {
-    if(pMasqueradingVector.size() != 9)
+    if(pMasqueradingVector.size() != 11)
     {
         err = "Bad masquerading vector";
         return false;
@@ -1441,6 +1932,16 @@ bool AccountingRules::validateMasqueradedJsonForUpdate(const Json::Value &pJson,
       if(!pMasqueradingVector[8].empty() && pJson.isMember(pMasqueradingVector[8]))
       {
           if(!validJsonOfField(8, pMasqueradingVector[8], pJson[pMasqueradingVector[8]], err, false))
+              return false;
+      }
+      if(!pMasqueradingVector[9].empty() && pJson.isMember(pMasqueradingVector[9]))
+      {
+          if(!validJsonOfField(9, pMasqueradingVector[9], pJson[pMasqueradingVector[9]], err, false))
+              return false;
+      }
+      if(!pMasqueradingVector[10].empty() && pJson.isMember(pMasqueradingVector[10]))
+      {
+          if(!validJsonOfField(10, pMasqueradingVector[10], pJson[pMasqueradingVector[10]], err, false))
               return false;
       }
     }
@@ -1504,9 +2005,10 @@ bool AccountingRules::validJsonOfField(size_t index,
         case 3:
             if(pJson.isNull())
             {
-                return true;
+                err="The " + fieldName + " column cannot be null";
+                return false;
             }
-            if(!pJson.isInt())
+            if(!pJson.isBool())
             {
                 err="Type error in the "+fieldName+" field";
                 return false;
@@ -1529,9 +2031,17 @@ bool AccountingRules::validJsonOfField(size_t index,
             {
                 return true;
             }
-            if(!pJson.isInt())
+            if(!pJson.isString())
             {
                 err="Type error in the "+fieldName+" field";
+                return false;
+            }
+            if(pJson.isString() && std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>{}
+                .from_bytes(pJson.asCString()).size() > 500)
+            {
+                err="String length exceeds limit for the " +
+                    fieldName +
+                    " field (the maximum value is 500)";
                 return false;
             }
             break;
@@ -1557,22 +2067,37 @@ bool AccountingRules::validJsonOfField(size_t index,
                 err="Type error in the "+fieldName+" field";
                 return false;
             }
-            if(pJson.isString() && std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>{}
-                .from_bytes(pJson.asCString()).size() > 500)
+            break;
+        case 8:
+            if(pJson.isNull())
             {
-                err="String length exceeds limit for the " +
-                    fieldName +
-                    " field (the maximum value is 500)";
+                return true;
+            }
+            if(!pJson.isString())
+            {
+                err="Type error in the "+fieldName+" field";
                 return false;
             }
             break;
-        case 8:
+        case 9:
             if(pJson.isNull())
             {
                 err="The " + fieldName + " column cannot be null";
                 return false;
             }
-            if(!pJson.isBool())
+            if(!pJson.isString())
+            {
+                err="Type error in the "+fieldName+" field";
+                return false;
+            }
+            break;
+        case 10:
+            if(pJson.isNull())
+            {
+                err="The " + fieldName + " column cannot be null";
+                return false;
+            }
+            if(!pJson.isString())
             {
                 err="Type error in the "+fieldName+" field";
                 return false;
@@ -1583,4 +2108,90 @@ bool AccountingRules::validJsonOfField(size_t index,
             return false;
     }
     return true;
+}
+Accounts AccountingRules::getAccounts(const DbClientPtr &clientPtr) const {
+    static const std::string sql = "select * from accounts where id = $1";
+    Result r(nullptr);
+    {
+        auto binder = *clientPtr << sql;
+        binder << *debitAccountId_ << Mode::Blocking >>
+            [&r](const Result &result) { r = result; };
+        binder.exec();
+    }
+    if (r.size() == 0)
+    {
+        throw UnexpectedRows("0 rows found");
+    }
+    else if (r.size() > 1)
+    {
+        throw UnexpectedRows("Found more than one row");
+    }
+    return Accounts(r[0]);
+}
+
+void AccountingRules::getAccounts(const DbClientPtr &clientPtr,
+                                  const std::function<void(Accounts)> &rcb,
+                                  const ExceptionCallback &ecb) const
+{
+    static const std::string sql = "select * from accounts where id = $1";
+    *clientPtr << sql
+               << *debitAccountId_
+               >> [rcb = std::move(rcb), ecb](const Result &r){
+                    if (r.size() == 0)
+                    {
+                        ecb(UnexpectedRows("0 rows found"));
+                    }
+                    else if (r.size() > 1)
+                    {
+                        ecb(UnexpectedRows("Found more than one row"));
+                    }
+                    else
+                    {
+                        rcb(Accounts(r[0]));
+                    }
+               }
+               >> ecb;
+}
+Accounts AccountingRules::getAccounts(const DbClientPtr &clientPtr) const {
+    static const std::string sql = "select * from accounts where id = $1";
+    Result r(nullptr);
+    {
+        auto binder = *clientPtr << sql;
+        binder << *creditAccountId_ << Mode::Blocking >>
+            [&r](const Result &result) { r = result; };
+        binder.exec();
+    }
+    if (r.size() == 0)
+    {
+        throw UnexpectedRows("0 rows found");
+    }
+    else if (r.size() > 1)
+    {
+        throw UnexpectedRows("Found more than one row");
+    }
+    return Accounts(r[0]);
+}
+
+void AccountingRules::getAccounts(const DbClientPtr &clientPtr,
+                                  const std::function<void(Accounts)> &rcb,
+                                  const ExceptionCallback &ecb) const
+{
+    static const std::string sql = "select * from accounts where id = $1";
+    *clientPtr << sql
+               << *creditAccountId_
+               >> [rcb = std::move(rcb), ecb](const Result &r){
+                    if (r.size() == 0)
+                    {
+                        ecb(UnexpectedRows("0 rows found"));
+                    }
+                    else if (r.size() > 1)
+                    {
+                        ecb(UnexpectedRows("Found more than one row"));
+                    }
+                    else
+                    {
+                        rcb(Accounts(r[0]));
+                    }
+               }
+               >> ecb;
 }

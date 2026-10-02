@@ -3,6 +3,7 @@
 #include "services/ProvisioningService.h"
 #include "turbo/ApiResponse.h"
 #include "turbo/RequestContext.h"
+#include "turbo/TenantStatus.h"
 
 using provisioner::ApiError;
 using provisioner::ProvisioningService;
@@ -77,7 +78,8 @@ Task<HttpResponsePtr> TenantsController::activate(HttpRequestPtr req, std::strin
                                          "error.msg.provisioner.host.required");
     try {
         co_return ApiResponse::httpOk(
-            co_await ProvisioningService::instance().setStatus(id, "ACTIVE"), "Tenant activated");
+            co_await ProvisioningService::instance().setStatus(id, turbo::TenantStatus::Active),
+            "Tenant activated");
     } catch (const ApiError &e) {
         co_return ApiResponse::httpError(e.status(), e.what(), e.globalisationCode());
     } catch (const std::exception &e) {
@@ -94,7 +96,7 @@ Task<HttpResponsePtr> TenantsController::suspend(HttpRequestPtr req, std::string
                                          "error.msg.provisioner.host.required");
     try {
         co_return ApiResponse::httpOk(
-            co_await ProvisioningService::instance().setStatus(id, "SUSPENDED"),
+            co_await ProvisioningService::instance().setStatus(id, turbo::TenantStatus::Suspended),
             "Tenant suspended");
     } catch (const ApiError &e) {
         co_return ApiResponse::httpError(e.status(), e.what(), e.globalisationCode());
@@ -112,7 +114,8 @@ Task<HttpResponsePtr> TenantsController::close(HttpRequestPtr req, std::string i
                                          "error.msg.provisioner.host.required");
     try {
         co_return ApiResponse::httpOk(
-            co_await ProvisioningService::instance().setStatus(id, "CLOSED"), "Tenant closed");
+            co_await ProvisioningService::instance().setStatus(id, turbo::TenantStatus::Closed),
+            "Tenant closed");
     } catch (const ApiError &e) {
         co_return ApiResponse::httpError(e.status(), e.what(), e.globalisationCode());
     } catch (const std::exception &e) {

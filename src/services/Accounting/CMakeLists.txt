@@ -16,27 +16,14 @@ endif()
 add_compile_options("-include" "${CMAKE_CURRENT_SOURCE_DIR}/utils/codecvt_helper.h" "-Wno-deprecated-declarations")
 
 add_executable(${PROJECT_NAME} main.cc
-        services/accounts/GlAccountService.h
-        services/accounts/GlAccountService.cc
-        services/journal/JournalService.h
-        services/journal/JournalService.cc
-        dto/BaseApiResponse.h
-        dto/CreateGlAccountDto.h
-        dto/UpdateGlAccountDto.h
-        utils/codecvt_helper.h
-        services/identity/IdentityApi.h
-        services/identity/IdentityApi.cc
-        services/redis/RedisCacheManager.h
-        services/redis/RedisCacheManager.cc
-        services/accounting_rules/AccountingRuleService.h
-        services/accounting_rules/AccountingRuleService.cc
-        services/gl_closure/GlClosureService.h
-        services/financial_activity_accounts/FinancialActivityAccountService.h)
+        services/AccountingService.h
+        services/AccountingService.cc
+        utils/codecvt_helper.h)
 
 # ##############################################################################
 # If you include the drogon source code locally in your project, use this method
-# to add drogon 
-# add_subdirectory(drogon) 
+# to add drogon
+# add_subdirectory(drogon)
 # target_link_libraries(${PROJECT_NAME} PRIVATE drogon)
 #
 # and comment out the following lines
@@ -48,12 +35,10 @@ if(NOT TARGET turbo)
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../libs/turbo turbo_build)
 endif()
 
-# Shared external dependencies (Bcrypt / jwt-cpp with FetchContent fallback)
-include(${CMAKE_CURRENT_SOURCE_DIR}/../../../cmake/TurboExternalDeps.cmake)
-turbo_require_bcrypt(${PROJECT_NAME})
-turbo_require_jwt_cpp(${PROJECT_NAME})
+# turbo::turbo already publicly links Drogon::Drogon and OpenSSL::Crypto;
+# don't relist them here or the linker will see libdrogon.a twice.
+target_link_libraries(${PROJECT_NAME} PRIVATE turbo::turbo OpenSSL::SSL)
 
-target_link_libraries(${PROJECT_NAME} PRIVATE Drogon::Drogon turbo::turbo OpenSSL::SSL OpenSSL::Crypto)
 # ##############################################################################
 
 if (CMAKE_CXX_STANDARD LESS 17)
@@ -66,7 +51,6 @@ endif ()
 
 aux_source_directory(controllers CTL_SRC)
 aux_source_directory(filters FILTER_SRC)
-aux_source_directory(plugins PLUGIN_SRC)
 aux_source_directory(models MODEL_SRC)
 
 drogon_create_views(${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/views
@@ -80,25 +64,17 @@ drogon_create_views(${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/views
 #                     ${CMAKE_CURRENT_BINARY_DIR} TRUE CHANGE_ME)
 
 target_include_directories(${PROJECT_NAME}
-                           PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
-                                   ${CMAKE_CURRENT_SOURCE_DIR}/models)
+                           PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_sources(${PROJECT_NAME}
                PRIVATE
                ${SRC_DIR}
                ${CTL_SRC}
                ${FILTER_SRC}
-               ${PLUGIN_SRC}
                ${MODEL_SRC})
 # ##############################################################################
-# uncomment the following line for dynamically loading views 
+# uncomment the following line for dynamically loading views
 # set_property(TARGET ${PROJECT_NAME} PROPERTY ENABLE_EXPORTS ON)
 
 # ##############################################################################
 
-# External dependencies (Bcrypt / jwt-cpp) are resolved via
-# cmake/TurboExternalDeps.cmake above (vendored submodule or FetchContent).
-target_include_directories(${PROJECT_NAME}
-        PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}
-        ${CMAKE_CURRENT_SOURCE_DIR}/models
-)
+add_subdirectory(test)

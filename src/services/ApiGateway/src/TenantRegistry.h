@@ -19,13 +19,16 @@
 #include <string>
 #include <unordered_map>
 
+#include "turbo/TenantStatus.h"
+
 namespace gateway {
 
 struct TenantInfo {
     std::string id;
     std::string name;
-    std::string status;  // ACTIVE | SUSPENDED | CLOSED | PENDING | PROVISIONING | FAILED
-    bool isActive() const { return status == "ACTIVE"; }
+    turbo::TenantStatus status{turbo::TenantStatus::Pending};
+    bool isActive() const { return turbo::isServing(status); }
+    std::string statusLabel() const { return std::string(turbo::toString(status)); }
 };
 
 class TenantRegistry {

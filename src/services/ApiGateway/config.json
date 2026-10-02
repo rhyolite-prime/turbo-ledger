@@ -1,59 +1,460 @@
 {
-    "listeners": [
-        {
-            "address": "0.0.0.0",
-            "port": 7499,
-            "https": false
-        }
-    ],
-    "app": {
-        "number_of_threads": 2,
-        "log": {
-            "log_level": "INFO"
-        },
-        "enable_session": false,
-        "document_root": "",
-        "home_page": ""
-    },
-    "custom_config": {
-        "gateway": {
-            "context_secret": "dev-only-context-secret-change-me",
-            "jwt": {
-                "security_key": "TurboLedgerIdentity_ca01ca76-3866-4d44-9881-d9e365b81472",
-                "issuer": "TurboLedgerIdentity"
-            },
-            "upstream_timeout_seconds": 15.0,
-            "allowed_origins": [],
-            "rate_limit": {
-                "requests_per_second": 50.0,
-                "burst": 100.0
-            },
-  "services": {
-   "identity": "http://127.0.0.1:7500",
-   "accounting": "http://127.0.0.1:7501",
-   "provisioner": "http://127.0.0.1:7512"
-  },
-  "provisioner": {
-   "base_url": "http://127.0.0.1:7512",
-   "cache_ttl_seconds": 5.0
-  },
-            "routes": [
-                { "prefix": "/api/v1/auth/", "service": "identity", "public": true },
-                { "prefix": "/api/v1/users/", "service": "identity" },
-                { "prefix": "/api/v1/roles/", "service": "identity" },
-                { "prefix": "/api/v1/tenants/", "service": "provisioner" },
-                { "prefix": "/api/v1/permissions/", "service": "identity" },
-                { "prefix": "/api/v1/makercheckers/", "service": "identity" },
-                { "prefix": "/api/v1/api-keys/", "service": "identity" },
-                { "prefix": "/api/v1/self/", "service": "identity" },
-                { "prefix": "/api/v1/accounting/", "service": "accounting" }
-            ],
-            "tenants": [
-                { "id": "default", "name": "Default Tenant", "status": "ACTIVE" },
-                { "id": "demo_bank", "name": "Demo Bank", "status": "ACTIVE" },
-                { "id": "closed_bank", "name": "Closed Bank", "status": "SUSPENDED" },
-                { "id": "rhyolite_prime", "name": "RhyolitePrime", "status": "ACTIVE" }
-            ]
-        }
+  "listeners": [
+    {
+      "address": "0.0.0.0",
+      "port": 7499,
+      "https": false
     }
+  ],
+  "app": {
+    "number_of_threads": 2,
+    "log": {
+      "log_level": "INFO"
+    },
+    "enable_session": false,
+    "document_root": "",
+    "home_page": ""
+  },
+  "custom_config": {
+    "gateway": {
+      "context_secret": "dev-only-context-secret-change-me",
+      "jwt": {
+        "security_key": "TurboLedgerIdentity_ca01ca76-3866-4d44-9881-d9e365b81472",
+        "issuer": "TurboLedgerIdentity"
+      },
+      "upstream_timeout_seconds": 15.0,
+      "allowed_origins": [],
+      "rate_limit": {
+        "requests_per_second": 50.0,
+        "burst": 100.0
+      },
+      "services": {
+        "identity": "http://127.0.0.1:7500",
+        "accounting": "http://127.0.0.1:7501",
+        "organization": "http://127.0.0.1:7503",
+        "systemconfig": "http://127.0.0.1:7509",
+        "provisioner": "http://127.0.0.1:7512",
+        "customer": "http://127.0.0.1:7504",
+        "depositaccountmanagement": "http://127.0.0.1:7507",
+        "portfolio": "http://127.0.0.1:7502",
+        "group": "http://127.0.0.1:7506",
+        "teller": "http://127.0.0.1:7508",
+        "heartbeat": "http://127.0.0.1:7510",
+        "template": "http://127.0.0.1:7514",
+        "notification": "http://127.0.0.1:7515",
+        "selfservice": "http://127.0.0.1:7516",
+        "interoperation": "http://127.0.0.1:7517"
+      },
+      "provisioner": {
+        "base_url": "http://127.0.0.1:7512",
+        "cache_ttl_seconds": 5.0
+      },
+      "routes": [
+        {
+          "prefix": "/api/v1/auth/",
+          "service": "identity",
+          "public": true
+        },
+        {
+          "prefix": "/api/v1/users/",
+          "service": "identity"
+        },
+        {
+          "prefix": "/api/v1/roles/",
+          "service": "identity"
+        },
+        {
+          "prefix": "/api/v1/tenants/",
+          "service": "provisioner"
+        },
+        {
+          "prefix": "/api/v1/permissions/",
+          "service": "identity"
+        },
+        {
+          "prefix": "/api/v1/makercheckers/",
+          "service": "identity"
+        },
+        {
+          "prefix": "/api/v1/api-keys/",
+          "service": "identity"
+        },
+        {
+          "prefix": "/api/v1/self/",
+          "service": "selfservice"
+        },
+        {
+          "prefix": "/api/v1/glaccounts/",
+          "service": "accounting"
+        },
+        {
+          "prefix": "/api/v1/glclosures/",
+          "service": "accounting"
+        },
+        {
+          "prefix": "/api/v1/journalentries/",
+          "service": "accounting"
+        },
+        {
+          "prefix": "/api/v1/accountingrules/",
+          "service": "accounting"
+        },
+        {
+          "prefix": "/api/v1/financialactivityaccounts/",
+          "service": "accounting"
+        },
+        {
+          "prefix": "/api/v1/provisioningentries/",
+          "service": "accounting"
+        },
+        {
+          "prefix": "/api/v1/runaccruals/",
+          "service": "accounting"
+        },
+        {
+          "prefix": "/api/v1/offices/",
+          "service": "organization"
+        },
+        {
+          "prefix": "/api/v1/officetransactions/",
+          "service": "organization"
+        },
+        {
+          "prefix": "/api/v1/staff/",
+          "service": "organization"
+        },
+        {
+          "prefix": "/api/v1/holidays/",
+          "service": "organization"
+        },
+        {
+          "prefix": "/api/v1/workingdays/",
+          "service": "organization"
+        },
+        {
+          "prefix": "/api/v1/currencies/",
+          "service": "organization"
+        },
+        {
+          "prefix": "/api/v1/funds/",
+          "service": "organization"
+        },
+        {
+          "prefix": "/api/v1/paymenttypes/",
+          "service": "organization"
+        },
+        {
+          "prefix": "/api/v1/entity-to-entity-mapping/",
+          "service": "organization"
+        },
+        {
+          "prefix": "/api/v1/taxes/",
+          "service": "organization"
+        },
+        {
+          "prefix": "/api/v1/codes/",
+          "service": "systemconfig"
+        },
+        {
+          "prefix": "/api/v1/configurations/",
+          "service": "systemconfig"
+        },
+        {
+          "prefix": "/api/v1/externalservice/",
+          "service": "systemconfig"
+        },
+        {
+          "prefix": "/api/v1/audits/",
+          "service": "systemconfig"
+        },
+        {
+          "prefix": "/api/v1/hooks/",
+          "service": "systemconfig"
+        },
+        {
+          "prefix": "/api/v1/caches/",
+          "service": "systemconfig"
+        },
+        {
+          "prefix": "/api/v1/businessdate/",
+          "service": "systemconfig"
+        },
+        {
+          "prefix": "/api/v1/externalevents/",
+          "service": "systemconfig"
+        },
+        {
+          "prefix": "/api/v1/fieldconfiguration/",
+          "service": "systemconfig"
+        },
+        {
+          "prefix": "/api/v1/datatables/",
+          "service": "systemconfig"
+        },
+        {
+          "prefix": "/api/v1/entitydatatablechecks/",
+          "service": "systemconfig"
+        },
+        {
+          "prefix": "/api/v1/imports/",
+          "service": "systemconfig"
+        },
+        {
+          "prefix": "/api/v1/entity-documents/",
+          "service": "systemconfig"
+        },
+        {
+          "prefix": "/api/v1/entity-notes/",
+          "service": "systemconfig"
+        },
+        {
+          "prefix": "/api/v1/entity-images/",
+          "service": "systemconfig"
+        },
+        {
+          "prefix": "/api/v1/entity-calendars/",
+          "service": "systemconfig"
+        },
+        {
+          "prefix": "/api/v1/entity-meetings/",
+          "service": "systemconfig"
+        },
+        {
+          "prefix": "/api/v1/clients/",
+          "service": "customer"
+        },
+        {
+          "prefix": "/api/v1/client/",
+          "service": "customer"
+        },
+        {
+          "prefix": "/api/v1/collateral-management/",
+          "service": "customer"
+        },
+        {
+          "prefix": "/api/v2/clients/",
+          "service": "customer"
+        },
+        {
+          "prefix": "/api/v1/savingsaccounts/",
+          "service": "depositaccountmanagement"
+        },
+        {
+          "prefix": "/api/v1/savingsproducts/",
+          "service": "depositaccountmanagement"
+        },
+        {
+          "prefix": "/api/v1/fixeddepositaccounts/",
+          "service": "depositaccountmanagement"
+        },
+        {
+          "prefix": "/api/v1/fixeddepositproducts/",
+          "service": "depositaccountmanagement"
+        },
+        {
+          "prefix": "/api/v1/recurringdepositaccounts/",
+          "service": "depositaccountmanagement"
+        },
+        {
+          "prefix": "/api/v1/recurringdepositproducts/",
+          "service": "depositaccountmanagement"
+        },
+        {
+          "prefix": "/api/v1/interestratecharts/",
+          "service": "depositaccountmanagement"
+        },
+        {
+          "prefix": "/api/v1/accounttransfers/",
+          "service": "depositaccountmanagement"
+        },
+        {
+          "prefix": "/api/v1/standinginstructions/",
+          "service": "depositaccountmanagement"
+        },
+        {
+          "prefix": "/api/v1/standinginstructionrunhistory/",
+          "service": "depositaccountmanagement"
+        },
+        {
+          "prefix": "/api/v1/accountnumberformats/",
+          "service": "depositaccountmanagement"
+        },
+        {
+          "prefix": "/api/v1/charges/",
+          "service": "depositaccountmanagement"
+        },
+        {
+          "prefix": "/api/v1/loans/",
+          "service": "portfolio"
+        },
+        {
+          "prefix": "/api/v1/loanproducts/",
+          "service": "portfolio"
+        },
+        {
+          "prefix": "/api/v1/rescheduleloans/",
+          "service": "portfolio"
+        },
+        {
+          "prefix": "/api/v1/loan-collateral-management/",
+          "service": "portfolio"
+        },
+        {
+          "prefix": "/api/v1/floatingrates/",
+          "service": "portfolio"
+        },
+        {
+          "prefix": "/api/v1/rates/",
+          "service": "portfolio"
+        },
+        {
+          "prefix": "/api/v1/delinquency/",
+          "service": "portfolio"
+        },
+        {
+          "prefix": "/api/v1/provisioningcategory/",
+          "service": "portfolio"
+        },
+        {
+          "prefix": "/api/v1/provisioningcriteria/",
+          "service": "portfolio"
+        },
+        {
+          "prefix": "/api/v1/products/",
+          "service": "portfolio"
+        },
+        {
+          "prefix": "/api/v1/shareproduct/",
+          "service": "portfolio"
+        },
+        {
+          "prefix": "/api/v1/accounts/",
+          "service": "portfolio"
+        },
+        {
+          "prefix": "/api/v1/external-asset-owners/",
+          "service": "portfolio"
+        },
+        {
+          "prefix": "/api/v1/CreditBureauConfiguration/",
+          "service": "portfolio"
+        },
+        {
+          "prefix": "/api/v1/creditBureauIntegration/",
+          "service": "portfolio"
+        },
+        {
+          "prefix": "/api/v1/groups/",
+          "service": "group"
+        },
+        {
+          "prefix": "/api/v1/centers/",
+          "service": "group"
+        },
+        {
+          "prefix": "/api/v1/grouplevels/",
+          "service": "group"
+        },
+        {
+          "prefix": "/api/v1/collectionsheet/",
+          "service": "group"
+        },
+        {
+          "prefix": "/api/v1/tellers/",
+          "service": "teller"
+        },
+        {
+          "prefix": "/api/v1/cashiers/",
+          "service": "teller"
+        },
+        {
+          "prefix": "/api/v1/cashiersjournal/",
+          "service": "teller"
+        },
+        {
+          "prefix": "/api/v1/jobs/",
+          "service": "heartbeat"
+        },
+        {
+          "prefix": "/api/v1/scheduler/",
+          "service": "heartbeat"
+        },
+        {
+          "prefix": "/api/v1/batches",
+          "service": "batch"
+        },
+        {
+          "prefix": "/api/v1/templates",
+          "service": "template"
+        },
+        {
+          "prefix": "/api/v1/notifications",
+          "service": "notification"
+        },
+        {
+          "prefix": "/api/v1/smscampaigns",
+          "service": "notification"
+        },
+        {
+          "prefix": "/api/v1/sms",
+          "service": "notification"
+        },
+        {
+          "prefix": "/api/v1/email",
+          "service": "notification"
+        },
+        {
+          "prefix": "/api/v1/reportmailingjobrunhistory",
+          "service": "notification"
+        },
+        {
+          "prefix": "/api/v1/reportmailingjobs",
+          "service": "notification"
+        },
+        {
+          "prefix": "/api/v1/self/change-password",
+          "service": "identity"
+        },
+        {
+          "prefix": "/api/v1/self/userdetails",
+          "service": "identity"
+        },
+        {
+          "prefix": "/api/v1/self/registration/user",
+          "service": "selfservice"
+        },
+        {
+          "prefix": "/api/v1/self/registration",
+          "service": "selfservice",
+          "public": true
+        },
+        {
+          "prefix": "/api/v1/interoperation/",
+          "service": "interoperation"
+        }
+      ],
+      "tenants": [
+        {
+          "id": "default",
+          "name": "Default Tenant",
+          "status": "ACTIVE"
+        },
+        {
+          "id": "demo_bank",
+          "name": "Demo Bank",
+          "status": "ACTIVE"
+        },
+        {
+          "id": "closed_bank",
+          "name": "Closed Bank",
+          "status": "SUSPENDED"
+        },
+        {
+          "id": "rhyolite_prime",
+          "name": "RhyolitePrime",
+          "status": "ACTIVE"
+        }
+      ]
+    }
+  }
 }

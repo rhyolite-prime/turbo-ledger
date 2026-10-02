@@ -35,7 +35,9 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/../../../cmake/TurboExternalDeps.cmake)
 turbo_require_jwt_cpp(${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(${PROJECT_NAME} PRIVATE Drogon::Drogon turbo::turbo OpenSSL::SSL OpenSSL::Crypto)
+# turbo::turbo already publicly links Drogon::Drogon and OpenSSL::Crypto;
+# don't relist them here or the linker will see libdrogon.a twice.
+target_link_libraries(${PROJECT_NAME} PRIVATE turbo::turbo OpenSSL::SSL)
 
 aux_source_directory(test TEST_SRC)
 if(TEST_SRC)

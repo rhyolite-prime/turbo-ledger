@@ -20,12 +20,7 @@ add_executable(${PROJECT_NAME} main.cc
         constants/ErrorCodes.h
         services/users/UserService.h
         services/users/UserService.cc
-        services/roles/RoleService.h
-        services/roles/RoleService.cc
         services/api_keys/ApiKeyService.h
-        services/business_accounts/BusinessAccountService.h
-        services/business_accounts/BusinessAccountService.cc
-        dto/BusinessAccountDto.h
         constants/StatusType.h
         utils/JsonUtils.h
         services/audit_logs/AuditLogService.h
@@ -36,13 +31,10 @@ add_executable(${PROJECT_NAME} main.cc
         services/api_keys/ApiKeyService.cc
         utils/IdGeneratorUtils.h
         utils/IdGeneratorUtils.cc
-        dto/RoleDto.h
-        dto/UserDto.h
         dto/SigninDto.h
         utils/PasswordUtils.h
         utils/PasswordUtils.cc
         utils/codecvt_helper.h
-        dto/UserIdentityDto.h
         services/redis/RedisCacheManager.h
         services/redis/RedisCacheManager.cc
 )
@@ -67,7 +59,9 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/../../../cmake/TurboExternalDeps.cmake)
 turbo_require_bcrypt(${PROJECT_NAME})
 turbo_require_jwt_cpp(${PROJECT_NAME})
 
-target_link_libraries(${PROJECT_NAME} PRIVATE Drogon::Drogon turbo::turbo OpenSSL::SSL OpenSSL::Crypto)
+# turbo::turbo already publicly links Drogon::Drogon and OpenSSL::Crypto;
+# don't relist them here or the linker will see libdrogon.a twice.
+target_link_libraries(${PROJECT_NAME} PRIVATE turbo::turbo OpenSSL::SSL)
 
 # ##############################################################################
 

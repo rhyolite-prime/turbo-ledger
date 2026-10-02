@@ -8,8 +8,6 @@
 
 #include <drogon/plugins/Plugin.h>
 #include "services/users/UserService.h"
-#include "services/business_accounts/BusinessAccountService.h"
-#include "services/roles/RoleService.h"
 #include "services/api_keys/ApiKeyService.h"
 #include "services/redis/RedisCacheManager.h"
 
@@ -31,19 +29,14 @@ namespace turbo_ledger_identity::plugins {
         // Provide access to the service
         services::UserService& getUserService() { return userService_; }
         services::RedisCacheManager &getRedisCacheManager() { return redisCacheService_; }
-        services::BusinessAccountService& getBusinessAccountService() { return businessAccountService_; }
-        services::RoleService& getRoleService() { return roleService_; }
         services::ApiKeyService& getApiKeyService() { return apiKeyService_; }
 
 
     private:
         services::UserService userService_;
         services::RedisCacheManager redisCacheService_;
-        services::BusinessAccountService businessAccountService_;
-        services::RoleService roleService_;
         services::ApiKeyService apiKeyService_;
     };
 
 }
-
 

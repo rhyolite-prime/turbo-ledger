@@ -16,7 +16,14 @@ void TenantRegistry::loadFromConfig(const Json::Value &tenantsConfig) {
         TenantInfo info;
         info.id = t.get("id", "").asString();
         info.name = t.get("name", "").asString();
-        info.status = t.get("status", "ACTIVE").asString();
+        const std::string rawStatus = t.get("status", "ACTIVE").asString();
+        const auto status = turbo::tenantStatusFromString(rawStatus);
+        if (!status) {
+            LOG_WARN << "TenantRegistry: tenant '" << info.id << "' in config has unknown "
+                     << "status '" << rawStatus << "', skipping entry";
+            continue;
+        }
+        info.status = *status;
         if (!info.id.empty()) staticTenants_[info.id] = info;
     }
     LOG_INFO << "TenantRegistry loaded " << staticTenants_.size() << " tenant(s) from config";
@@ -74,7 +81,15 @@ drogon::Task<void> TenantRegistry::refreshIfStale() {
                     TenantInfo info;
                     info.id = t.get("id", "").asString();
                     info.name = t.get("name", "").asString();
-                    info.status = t.get("status", "ACTIVE").asString();
+                    const std::string rawStatus = t.get("status", "").asString();
+                    const auto status = turbo::tenantStatusFromString(rawStatus);
+                    if (!status) {
+                        LOG_WARN << "TenantRegistry: Provisioner returned unknown status '"
+                                 << rawStatus << "' for tenant '" << info.id
+                                 << "', skipping entry";
+                        continue;
+                    }
+                    info.status = *status;
                     if (!info.id.empty()) fresh[info.id] = info;
                 }
                 std::lock_guard<std::mutex> lock(mutex_);
