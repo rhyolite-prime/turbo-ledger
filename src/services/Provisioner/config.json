@@ -39,6 +39,28 @@
             "passwd": "postgres",
             "is_fast": false,
             "connection_number": 2
+        },
+        {
+            "name": "organization",
+            "rdbms": "postgresql",
+            "host": "127.0.0.1",
+            "port": 5432,
+            "dbname": "TlOrganizationDb",
+            "user": "postgres",
+            "passwd": "postgres",
+            "is_fast": false,
+            "connection_number": 2
+        },
+        {
+            "name": "systemconfig",
+            "rdbms": "postgresql",
+            "host": "127.0.0.1",
+            "port": 5432,
+            "dbname": "TlSystemConfigDb",
+            "user": "postgres",
+            "passwd": "postgres",
+            "is_fast": false,
+            "connection_number": 2
         }
     ],
     "app": {
@@ -76,6 +98,16 @@
                     "name": "Accounting",
                     "db_client": "accounting",
                     "migrations_dir": "../../Accounting/migrations"
+                },
+                {
+                    "name": "Organization",
+                    "db_client": "organization",
+                    "migrations_dir": "../../Organization/migrations"
+                },
+                {
+                    "name": "SystemConfig",
+                    "db_client": "systemconfig",
+                    "migrations_dir": "../../SystemConfig/migrations"
                 }
             ]
         }

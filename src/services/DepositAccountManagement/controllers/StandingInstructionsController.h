@@ -1,28 +1,42 @@
+//
+// Phase 5 — standinginstructions (5) + standinginstructionrunhistory (1) =
+// 6 endpoints in one controller (the run-history resource is a trivial
+// read-only sibling of standinginstructions, matching Fineract's own API
+// grouping). `update` also serves Fineract's "delete via PUT command=delete"
+// convention — see updateStandingInstruction's doc comment in the service
+// header for why there is no destructive DELETE route.
+//
 #pragma once
 
 #include <drogon/HttpController.h>
 
 using namespace drogon;
 
-class StandingInstructionsController : public drogon::HttpController<StandingInstructionsController>
-{
+class StandingInstructionsController
+    : public drogon::HttpController<StandingInstructionsController> {
   public:
-  static constexpr const char *PREFIX = "/api/v1/standing-instructions/";
-  METHOD_LIST_BEGIN
-  ADD_METHOD_TO(StandingInstructionsController::retrieveTemplate, std::string(PREFIX) + "template", Get);
-  ADD_METHOD_TO(StandingInstructionsController::getStandingInstructions, std::string(PREFIX) + "get-all", Get);
-  ADD_METHOD_TO(StandingInstructionsController::getStandingInstructionsLogHistory, std::string(PREFIX) + "get-history", Get);
-  ADD_METHOD_TO(StandingInstructionsController::retrieveStandingInstruction, std::string(PREFIX) + "{1}", Get);
-  ADD_METHOD_TO(StandingInstructionsController::createStandingInstruction, std::string(PREFIX) + "create", Post);
-  ADD_METHOD_TO(StandingInstructionsController::updateStandingInstruction, std::string(PREFIX) + "{1}/update", Put);
-  ADD_METHOD_TO(StandingInstructionsController::deleteStandingInstruction, std::string(PREFIX) + "{1}/delete", Delete);
-  METHOD_LIST_END
+    static constexpr const char *PREFIX = "/api/v1/standinginstructions/";
+    static constexpr const char *FILTER = "turbo::TrustedContextFilter";
 
-  void getStandingInstructions(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback);
-  void getStandingInstructionsLogHistory(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback);
-  void retrieveTemplate(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback);
-  void retrieveStandingInstruction(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback);
-  void createStandingInstruction(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback);
-  void updateStandingInstruction(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback);
-  void deleteStandingInstruction(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback);
+    METHOD_LIST_BEGIN
+        ADD_METHOD_TO(StandingInstructionsController::getAll, std::string(PREFIX) + "get-all", Get,
+                     Options, FILTER);
+        ADD_METHOD_TO(StandingInstructionsController::create, std::string(PREFIX) + "create", Post,
+                     Options, FILTER);
+        ADD_METHOD_TO(StandingInstructionsController::getDetails,
+                     std::string(PREFIX) + "get-detail/{1}", Get, Options, FILTER);
+        ADD_METHOD_TO(StandingInstructionsController::update, std::string(PREFIX) + "{1}/update", Put,
+                     Options, FILTER);
+        ADD_METHOD_TO(StandingInstructionsController::templateEndpoint,
+                     std::string(PREFIX) + "template", Get, Options, FILTER);
+        ADD_METHOD_TO(StandingInstructionsController::runHistory,
+                     "/api/v1/standinginstructionrunhistory/get-all", Get, Options, FILTER);
+    METHOD_LIST_END
+
+    Task<HttpResponsePtr> getAll(HttpRequestPtr req);
+    Task<HttpResponsePtr> create(HttpRequestPtr req);
+    Task<HttpResponsePtr> getDetails(HttpRequestPtr req, std::string id);
+    Task<HttpResponsePtr> update(HttpRequestPtr req, std::string id);
+    Task<HttpResponsePtr> templateEndpoint(HttpRequestPtr req);
+    Task<HttpResponsePtr> runHistory(HttpRequestPtr req);
 };

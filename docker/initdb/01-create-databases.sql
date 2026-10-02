@@ -7,3 +7,7 @@ CREATE DATABASE "TlGroupDb";
 CREATE DATABASE "TlOrganizationDb";
 CREATE DATABASE "TlPortfolio";
 CREATE DATABASE "TlSystemConfigDb";
+CREATE DATABASE "TlTellerDb";
+CREATE DATABASE "TlHeartBeatDb";
+CREATE DATABASE "TlTemplateDb";
+CREATE DATABASE "TlNotificationDb";

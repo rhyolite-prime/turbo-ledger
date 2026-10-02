@@ -1,0 +1,504 @@
+/**
+ *  ProvisioningCriteria.cc
+ *
+ *  See ProvisioningCriteria.h for the hand-authored-subset note.
+ *
+ */
+
+#include "ProvisioningCriteria.h"
+#include <drogon/utils/Utilities.h>
+#include <string>
+
+using namespace drogon;
+using namespace drogon::orm;
+using namespace drogon_model::TlPortfolioDb;
+
+const std::string ProvisioningCriteria::Cols::_id = "\"id\"";
+const std::string ProvisioningCriteria::Cols::_criteria_name = "\"criteria_name\"";
+const std::string ProvisioningCriteria::Cols::_created_by = "\"created_by\"";
+const std::string ProvisioningCriteria::Cols::_created_at = "\"created_at\"";
+const std::string ProvisioningCriteria::Cols::_updated_by = "\"updated_by\"";
+const std::string ProvisioningCriteria::Cols::_updated_at = "\"updated_at\"";
+const std::string ProvisioningCriteria::primaryKeyName = "id";
+const bool ProvisioningCriteria::hasPrimaryKey = true;
+const std::string ProvisioningCriteria::tableName = "\"provisioning_criteria\"";
+
+const std::vector<typename ProvisioningCriteria::MetaData> ProvisioningCriteria::metaData_={
+{"id","std::string","uuid",0,0,1,1},
+{"criteria_name","std::string","character varying",100,0,0,1},
+{"created_by","std::string","uuid",0,0,0,0},
+{"created_at","::trantor::Date","timestamp with time zone",0,0,0,1},
+{"updated_by","std::string","uuid",0,0,0,0},
+{"updated_at","::trantor::Date","timestamp with time zone",0,0,0,1}
+};
+const std::string &ProvisioningCriteria::getColumnName(size_t index) noexcept(false)
+{
+    assert(index < metaData_.size());
+    return metaData_[index].colName_;
+}
+ProvisioningCriteria::ProvisioningCriteria(const Row &r, const ssize_t indexOffset) noexcept
+{
+    if(indexOffset < 0)
+    {
+        if(!r["id"].isNull())
+        {
+            id_=std::make_shared<std::string>(r["id"].as<std::string>());
+        }
+        if(!r["criteria_name"].isNull())
+        {
+            criteriaName_=std::make_shared<std::string>(r["criteria_name"].as<std::string>());
+        }
+        if(!r["created_by"].isNull())
+        {
+            createdBy_=std::make_shared<std::string>(r["created_by"].as<std::string>());
+        }
+        if(!r["created_at"].isNull())
+        {
+            auto timeStr = r["created_at"].as<std::string>();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
+            time_t t = mktime(&stm);
+            size_t decimalNum = 0;
+            if(p)
+            {
+                if(*p=='.')
+                {
+                    std::string decimals(p+1,&timeStr[timeStr.length()]);
+                    while(decimals.length()<6)
+                    {
+                        decimals += "0";
+                    }
+                    decimalNum = (size_t)atol(decimals.c_str());
+                }
+                createdAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+            }
+        }
+        if(!r["updated_by"].isNull())
+        {
+            updatedBy_=std::make_shared<std::string>(r["updated_by"].as<std::string>());
+        }
+        if(!r["updated_at"].isNull())
+        {
+            auto timeStr = r["updated_at"].as<std::string>();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
+            time_t t = mktime(&stm);
+            size_t decimalNum = 0;
+            if(p)
+            {
+                if(*p=='.')
+                {
+                    std::string decimals(p+1,&timeStr[timeStr.length()]);
+                    while(decimals.length()<6)
+                    {
+                        decimals += "0";
+                    }
+                    decimalNum = (size_t)atol(decimals.c_str());
+                }
+                updatedAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+            }
+        }
+    }
+    else
+    {
+        size_t offset = (size_t)indexOffset;
+        if(offset + 6 > r.size())
+        {
+            LOG_FATAL << "Invalid SQL result for this model";
+            return;
+        }
+        size_t index;
+        index = offset + 0;
+        if(!r[index].isNull())
+        {
+            id_=std::make_shared<std::string>(r[index].as<std::string>());
+        }
+        index = offset + 1;
+        if(!r[index].isNull())
+        {
+            criteriaName_=std::make_shared<std::string>(r[index].as<std::string>());
+        }
+        index = offset + 2;
+        if(!r[index].isNull())
+        {
+            createdBy_=std::make_shared<std::string>(r[index].as<std::string>());
+        }
+        index = offset + 3;
+        if(!r[index].isNull())
+        {
+            auto timeStr = r[index].as<std::string>();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
+            time_t t = mktime(&stm);
+            size_t decimalNum = 0;
+            if(p)
+            {
+                if(*p=='.')
+                {
+                    std::string decimals(p+1,&timeStr[timeStr.length()]);
+                    while(decimals.length()<6)
+                    {
+                        decimals += "0";
+                    }
+                    decimalNum = (size_t)atol(decimals.c_str());
+                }
+                createdAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+            }
+        }
+        index = offset + 4;
+        if(!r[index].isNull())
+        {
+            updatedBy_=std::make_shared<std::string>(r[index].as<std::string>());
+        }
+        index = offset + 5;
+        if(!r[index].isNull())
+        {
+            auto timeStr = r[index].as<std::string>();
+            struct tm stm;
+            memset(&stm,0,sizeof(stm));
+            auto p = strptime(timeStr.c_str(),"%Y-%m-%d %H:%M:%S",&stm);
+            time_t t = mktime(&stm);
+            size_t decimalNum = 0;
+            if(p)
+            {
+                if(*p=='.')
+                {
+                    std::string decimals(p+1,&timeStr[timeStr.length()]);
+                    while(decimals.length()<6)
+                    {
+                        decimals += "0";
+                    }
+                    decimalNum = (size_t)atol(decimals.c_str());
+                }
+                updatedAt_=std::make_shared<::trantor::Date>(t*1000000+decimalNum);
+            }
+        }
+    }
+
+}
+const std::string &ProvisioningCriteria::getValueOfId() const noexcept
+{
+    static const std::string defaultValue = std::string();
+    if(id_)
+        return *id_;
+    return defaultValue;
+}
+const std::shared_ptr<std::string> &ProvisioningCriteria::getId() const noexcept
+{
+    return id_;
+}
+void ProvisioningCriteria::setId(const std::string &pId) noexcept
+{
+    id_ = std::make_shared<std::string>(pId);
+    dirtyFlag_[0] = true;
+}
+void ProvisioningCriteria::setId(std::string &&pId) noexcept
+{
+    id_ = std::make_shared<std::string>(std::move(pId));
+    dirtyFlag_[0] = true;
+}
+const typename ProvisioningCriteria::PrimaryKeyType & ProvisioningCriteria::getPrimaryKey() const
+{
+    assert(id_);
+    return *id_;
+}
+
+const std::string &ProvisioningCriteria::getValueOfCriteriaName() const noexcept
+{
+    static const std::string defaultValue = std::string();
+    if(criteriaName_)
+        return *criteriaName_;
+    return defaultValue;
+}
+const std::shared_ptr<std::string> &ProvisioningCriteria::getCriteriaName() const noexcept
+{
+    return criteriaName_;
+}
+void ProvisioningCriteria::setCriteriaName(const std::string &pCriteriaName) noexcept
+{
+    criteriaName_ = std::make_shared<std::string>(pCriteriaName);
+    dirtyFlag_[1] = true;
+}
+void ProvisioningCriteria::setCriteriaName(std::string &&pCriteriaName) noexcept
+{
+    criteriaName_ = std::make_shared<std::string>(std::move(pCriteriaName));
+    dirtyFlag_[1] = true;
+}
+
+const std::string &ProvisioningCriteria::getValueOfCreatedBy() const noexcept
+{
+    static const std::string defaultValue = std::string();
+    if(createdBy_)
+        return *createdBy_;
+    return defaultValue;
+}
+const std::shared_ptr<std::string> &ProvisioningCriteria::getCreatedBy() const noexcept
+{
+    return createdBy_;
+}
+void ProvisioningCriteria::setCreatedBy(const std::string &pCreatedBy) noexcept
+{
+    createdBy_ = std::make_shared<std::string>(pCreatedBy);
+    dirtyFlag_[2] = true;
+}
+void ProvisioningCriteria::setCreatedBy(std::string &&pCreatedBy) noexcept
+{
+    createdBy_ = std::make_shared<std::string>(std::move(pCreatedBy));
+    dirtyFlag_[2] = true;
+}
+void ProvisioningCriteria::setCreatedByToNull() noexcept
+{
+    createdBy_.reset();
+    dirtyFlag_[2] = true;
+}
+
+const ::trantor::Date &ProvisioningCriteria::getValueOfCreatedAt() const noexcept
+{
+    static const ::trantor::Date defaultValue = ::trantor::Date();
+    if(createdAt_)
+        return *createdAt_;
+    return defaultValue;
+}
+const std::shared_ptr<::trantor::Date> &ProvisioningCriteria::getCreatedAt() const noexcept
+{
+    return createdAt_;
+}
+void ProvisioningCriteria::setCreatedAt(const ::trantor::Date &pCreatedAt) noexcept
+{
+    createdAt_ = std::make_shared<::trantor::Date>(pCreatedAt);
+    dirtyFlag_[3] = true;
+}
+
+const std::string &ProvisioningCriteria::getValueOfUpdatedBy() const noexcept
+{
+    static const std::string defaultValue = std::string();
+    if(updatedBy_)
+        return *updatedBy_;
+    return defaultValue;
+}
+const std::shared_ptr<std::string> &ProvisioningCriteria::getUpdatedBy() const noexcept
+{
+    return updatedBy_;
+}
+void ProvisioningCriteria::setUpdatedBy(const std::string &pUpdatedBy) noexcept
+{
+    updatedBy_ = std::make_shared<std::string>(pUpdatedBy);
+    dirtyFlag_[4] = true;
+}
+void ProvisioningCriteria::setUpdatedBy(std::string &&pUpdatedBy) noexcept
+{
+    updatedBy_ = std::make_shared<std::string>(std::move(pUpdatedBy));
+    dirtyFlag_[4] = true;
+}
+void ProvisioningCriteria::setUpdatedByToNull() noexcept
+{
+    updatedBy_.reset();
+    dirtyFlag_[4] = true;
+}
+
+const ::trantor::Date &ProvisioningCriteria::getValueOfUpdatedAt() const noexcept
+{
+    static const ::trantor::Date defaultValue = ::trantor::Date();
+    if(updatedAt_)
+        return *updatedAt_;
+    return defaultValue;
+}
+const std::shared_ptr<::trantor::Date> &ProvisioningCriteria::getUpdatedAt() const noexcept
+{
+    return updatedAt_;
+}
+void ProvisioningCriteria::setUpdatedAt(const ::trantor::Date &pUpdatedAt) noexcept
+{
+    updatedAt_ = std::make_shared<::trantor::Date>(pUpdatedAt);
+    dirtyFlag_[5] = true;
+}
+
+void ProvisioningCriteria::updateId(const uint64_t id)
+{
+}
+
+const std::vector<std::string> &ProvisioningCriteria::insertColumns() noexcept
+{
+    static const std::vector<std::string> inCols={
+        "id",
+        "criteria_name",
+        "created_by",
+        "created_at",
+        "updated_by",
+        "updated_at"
+    };
+    return inCols;
+}
+
+void ProvisioningCriteria::outputArgs(drogon::orm::internal::SqlBinder &binder) const
+{
+    if(dirtyFlag_[0])
+    {
+        if(getId())
+        {
+            binder << getValueOfId();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[1])
+    {
+        if(getCriteriaName())
+        {
+            binder << getValueOfCriteriaName();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[2])
+    {
+        if(getCreatedBy())
+        {
+            binder << getValueOfCreatedBy();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[3])
+    {
+        if(getCreatedAt())
+        {
+            binder << getValueOfCreatedAt();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[4])
+    {
+        if(getUpdatedBy())
+        {
+            binder << getValueOfUpdatedBy();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[5])
+    {
+        if(getUpdatedAt())
+        {
+            binder << getValueOfUpdatedAt();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+}
+
+const std::vector<std::string> ProvisioningCriteria::updateColumns() const
+{
+    std::vector<std::string> ret;
+    if(dirtyFlag_[0])
+    {
+        ret.push_back(getColumnName(0));
+    }
+    if(dirtyFlag_[1])
+    {
+        ret.push_back(getColumnName(1));
+    }
+    if(dirtyFlag_[2])
+    {
+        ret.push_back(getColumnName(2));
+    }
+    if(dirtyFlag_[3])
+    {
+        ret.push_back(getColumnName(3));
+    }
+    if(dirtyFlag_[4])
+    {
+        ret.push_back(getColumnName(4));
+    }
+    if(dirtyFlag_[5])
+    {
+        ret.push_back(getColumnName(5));
+    }
+    return ret;
+}
+
+void ProvisioningCriteria::updateArgs(drogon::orm::internal::SqlBinder &binder) const
+{
+    if(dirtyFlag_[0])
+    {
+        if(getId())
+        {
+            binder << getValueOfId();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[1])
+    {
+        if(getCriteriaName())
+        {
+            binder << getValueOfCriteriaName();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[2])
+    {
+        if(getCreatedBy())
+        {
+            binder << getValueOfCreatedBy();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[3])
+    {
+        if(getCreatedAt())
+        {
+            binder << getValueOfCreatedAt();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[4])
+    {
+        if(getUpdatedBy())
+        {
+            binder << getValueOfUpdatedBy();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[5])
+    {
+        if(getUpdatedAt())
+        {
+            binder << getValueOfUpdatedAt();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+}

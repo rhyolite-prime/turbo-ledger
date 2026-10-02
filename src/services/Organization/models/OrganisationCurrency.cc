@@ -20,6 +20,7 @@ const std::string OrganisationCurrency::Cols::_currency_multiplesof = "\"currenc
 const std::string OrganisationCurrency::Cols::_name = "\"name\"";
 const std::string OrganisationCurrency::Cols::_display_symbol = "\"display_symbol\"";
 const std::string OrganisationCurrency::Cols::_internationalized_name_code = "\"internationalized_name_code\"";
+const std::string OrganisationCurrency::Cols::_is_enabled = "\"is_enabled\"";
 const std::string OrganisationCurrency::primaryKeyName = "id";
 const bool OrganisationCurrency::hasPrimaryKey = true;
 const std::string OrganisationCurrency::tableName = "\"organisation_currency\"";
@@ -31,7 +32,8 @@ const std::vector<typename OrganisationCurrency::MetaData> OrganisationCurrency:
 {"currency_multiplesof","short","smallint",2,0,0,0},
 {"name","std::string","character varying",50,0,0,1},
 {"display_symbol","std::string","character varying",10,0,0,0},
-{"internationalized_name_code","std::string","character varying",50,0,0,1}
+{"internationalized_name_code","std::string","character varying",50,0,0,1},
+{"is_enabled","bool","boolean",1,0,0,1}
 };
 const std::string &OrganisationCurrency::getColumnName(size_t index) noexcept(false)
 {
@@ -70,11 +72,15 @@ OrganisationCurrency::OrganisationCurrency(const Row &r, const ssize_t indexOffs
         {
             internationalizedNameCode_=std::make_shared<std::string>(r["internationalized_name_code"].as<std::string>());
         }
+        if(!r["is_enabled"].isNull())
+        {
+            isEnabled_=std::make_shared<bool>(r["is_enabled"].as<bool>());
+        }
     }
     else
     {
         size_t offset = (size_t)indexOffset;
-        if(offset + 7 > r.size())
+        if(offset + 8 > r.size())
         {
             LOG_FATAL << "Invalid SQL result for this model";
             return;
@@ -114,6 +120,11 @@ OrganisationCurrency::OrganisationCurrency(const Row &r, const ssize_t indexOffs
         if(!r[index].isNull())
         {
             internationalizedNameCode_=std::make_shared<std::string>(r[index].as<std::string>());
+        }
+        index = offset + 7;
+        if(!r[index].isNull())
+        {
+            isEnabled_=std::make_shared<bool>(r[index].as<bool>());
         }
     }
 
@@ -527,6 +538,23 @@ void OrganisationCurrency::setInternationalizedNameCode(std::string &&pInternati
     dirtyFlag_[6] = true;
 }
 
+const bool &OrganisationCurrency::getValueOfIsEnabled() const noexcept
+{
+    static const bool defaultValue = bool();
+    if(isEnabled_)
+        return *isEnabled_;
+    return defaultValue;
+}
+const std::shared_ptr<bool> &OrganisationCurrency::getIsEnabled() const noexcept
+{
+    return isEnabled_;
+}
+void OrganisationCurrency::setIsEnabled(const bool &pIsEnabled) noexcept
+{
+    isEnabled_ = std::make_shared<bool>(pIsEnabled);
+    dirtyFlag_[7] = true;
+}
+
 void OrganisationCurrency::updateId(const uint64_t id)
 {
 }
@@ -540,7 +568,8 @@ const std::vector<std::string> &OrganisationCurrency::insertColumns() noexcept
         "currency_multiplesof",
         "name",
         "display_symbol",
-        "internationalized_name_code"
+        "internationalized_name_code",
+        "is_enabled"
     };
     return inCols;
 }
@@ -624,6 +653,17 @@ void OrganisationCurrency::outputArgs(drogon::orm::internal::SqlBinder &binder) 
             binder << nullptr;
         }
     }
+    if(dirtyFlag_[7])
+    {
+        if(getIsEnabled())
+        {
+            binder << getValueOfIsEnabled();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
 }
 
 const std::vector<std::string> OrganisationCurrency::updateColumns() const
@@ -656,6 +696,10 @@ const std::vector<std::string> OrganisationCurrency::updateColumns() const
     if(dirtyFlag_[6])
     {
         ret.push_back(getColumnName(6));
+    }
+    if(dirtyFlag_[7])
+    {
+        ret.push_back(getColumnName(7));
     }
     return ret;
 }
@@ -733,6 +777,17 @@ void OrganisationCurrency::updateArgs(drogon::orm::internal::SqlBinder &binder) 
         if(getInternationalizedNameCode())
         {
             binder << getValueOfInternationalizedNameCode();
+        }
+        else
+        {
+            binder << nullptr;
+        }
+    }
+    if(dirtyFlag_[7])
+    {
+        if(getIsEnabled())
+        {
+            binder << getValueOfIsEnabled();
         }
         else
         {
@@ -1238,14 +1293,14 @@ bool OrganisationCurrency::validJsonOfField(size_t index,
                 err="Type error in the "+fieldName+" field";
                 return false;
             }
-            if(pJson.isString() && std::strlen(pJson.asCString()) > 3)
+            if(pJson.isString() && std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>{}
+                .from_bytes(pJson.asCString()).size() > 3)
             {
                 err="String length exceeds limit for the " +
                     fieldName +
                     " field (the maximum value is 3)";
                 return false;
             }
-
             break;
         case 2:
             if(pJson.isNull())
@@ -1281,14 +1336,14 @@ bool OrganisationCurrency::validJsonOfField(size_t index,
                 err="Type error in the "+fieldName+" field";
                 return false;
             }
-            if(pJson.isString() && std::strlen(pJson.asCString()) > 50)
+            if(pJson.isString() && std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>{}
+                .from_bytes(pJson.asCString()).size() > 50)
             {
                 err="String length exceeds limit for the " +
                     fieldName +
                     " field (the maximum value is 50)";
                 return false;
             }
-
             break;
         case 5:
             if(pJson.isNull())
@@ -1300,14 +1355,14 @@ bool OrganisationCurrency::validJsonOfField(size_t index,
                 err="Type error in the "+fieldName+" field";
                 return false;
             }
-            if(pJson.isString() && std::strlen(pJson.asCString()) > 10)
+            if(pJson.isString() && std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>{}
+                .from_bytes(pJson.asCString()).size() > 10)
             {
                 err="String length exceeds limit for the " +
                     fieldName +
                     " field (the maximum value is 10)";
                 return false;
             }
-
             break;
         case 6:
             if(pJson.isNull())
@@ -1320,14 +1375,14 @@ bool OrganisationCurrency::validJsonOfField(size_t index,
                 err="Type error in the "+fieldName+" field";
                 return false;
             }
-            if(pJson.isString() && std::strlen(pJson.asCString()) > 50)
+            if(pJson.isString() && std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>{}
+                .from_bytes(pJson.asCString()).size() > 50)
             {
                 err="String length exceeds limit for the " +
                     fieldName +
                     " field (the maximum value is 50)";
                 return false;
             }
-
             break;
         default:
             err="Internal error in the server";

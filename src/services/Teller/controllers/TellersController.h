@@ -1,47 +1,95 @@
+//
+// Phase 7 — tellers (19 endpoints: teller core CRUD + teller-level
+// transaction/journal views + nested cashier management + cashier
+// transactions/allocate/settle). Completes Phase 7 alongside the Group
+// retrofit and the standalone `cashiers`/`cashiersjournal` top-level
+// resources (CashiersController / CashiersJournalController).
+//
+// Routing uses explicit action-suffix paths (get-all/create/get-detail/
+// {id}/update/...), matching every other controller in this codebase
+// (ClientsController, GroupsController, ...) rather than Fineract's single
+// path + HTTP-verb-overload style.
+//
 #pragma once
 
 #include <drogon/HttpController.h>
 
 using namespace drogon;
 
-class TellersController : public drogon::HttpController<TellersController>
-{
+class TellersController : public drogon::HttpController<TellersController> {
   public:
     static constexpr const char *PREFIX = "/api/v1/tellers/";
+    static constexpr const char *FILTER = "turbo::TrustedContextFilter";
+
     METHOD_LIST_BEGIN
-    ADD_METHOD_TO(TellersController::getTellers, std::string(PREFIX) + "get-all", Get);
-    ADD_METHOD_TO(TellersController::createTeller, std::string(PREFIX) + "create", Post);
-    ADD_METHOD_TO(TellersController::retrieveTellerDetails, std::string(PREFIX) + "{1}", Get);
-    ADD_METHOD_TO(TellersController::updateTeller, std::string(PREFIX) + "{1}", Put);
-    ADD_METHOD_TO(TellersController::deleteTeller, std::string(PREFIX) + "{1}", Delete);
-    //cashiers
-    ADD_METHOD_TO(TellersController::getCashiers, std::string(PREFIX) + "{1}/cashiers", Get);
-    ADD_METHOD_TO(TellersController::createCashier, std::string(PREFIX) + "{1}/cashiers", Post);
-    ADD_METHOD_TO(TellersController::updateCashier, std::string(PREFIX) + "{1}/cashiers/{2}", Put);
-    ADD_METHOD_TO(TellersController::getCashierDetails, std::string(PREFIX) + "{1}/cashiers/{2}", Get);
-    ADD_METHOD_TO(TellersController::getCashierTransactions, std::string(PREFIX) + "{1}/cashiers/{2}/transactions", Get);
-    ADD_METHOD_TO(TellersController::retrieveCashierTransactionTemplate, std::string(PREFIX) + "{1}/cashiers/{2}/transactions/template", Get);
-    ADD_METHOD_TO(TellersController::getCashierTransactionsWithSummary, std::string(PREFIX) + "{1}/cashiers/{2}/summary-and-transactions", Get);
-    ADD_METHOD_TO(TellersController::allocateCashToCashier, std::string(PREFIX) + "{1}/cashiers/{2}/allocate", Post);
-    ADD_METHOD_TO(TellersController::settleCashToCashier, std::string(PREFIX) + "{1}/cashiers/{2}/settle", Post);
-    ADD_METHOD_TO(TellersController::deleteCashier, std::string(PREFIX) + "{1}/cashiers/{2}", Delete);
-    //
+        // ---- tellers: core CRUD ---------------------------------------------
+        ADD_METHOD_TO(TellersController::getAll, std::string(PREFIX) + "get-all", Get, Options, FILTER);
+        ADD_METHOD_TO(TellersController::create, std::string(PREFIX) + "create", Post, Options, FILTER);
+        ADD_METHOD_TO(TellersController::getDetails, std::string(PREFIX) + "get-detail/{1}", Get, Options,
+                     FILTER);
+        ADD_METHOD_TO(TellersController::update, std::string(PREFIX) + "{1}/update", Put, Options, FILTER);
+        ADD_METHOD_TO(TellersController::remove, std::string(PREFIX) + "{1}/delete", Delete, Options, FILTER);
+
+        // ---- teller-level views ----------------------------------------------
+        ADD_METHOD_TO(TellersController::transactionsGetAll,
+                     std::string(PREFIX) + "{1}/transactions/get-all", Get, Options, FILTER);
+        ADD_METHOD_TO(TellersController::transactionsGetDetail,
+                     std::string(PREFIX) + "{1}/transactions/{2}/get-detail", Get, Options, FILTER);
+        ADD_METHOD_TO(TellersController::journalsGetAll, std::string(PREFIX) + "{1}/journals/get-all", Get,
+                     Options, FILTER);
+
+        // ---- cashiers (nested) -------------------------------------------------
+        ADD_METHOD_TO(TellersController::cashiersGetAll, std::string(PREFIX) + "{1}/cashiers/get-all", Get,
+                     Options, FILTER);
+        ADD_METHOD_TO(TellersController::cashiersCreate, std::string(PREFIX) + "{1}/cashiers/create", Post,
+                     Options, FILTER);
+        ADD_METHOD_TO(TellersController::cashiersTemplate, std::string(PREFIX) + "{1}/cashiers/template", Get,
+                     Options, FILTER);
+        ADD_METHOD_TO(TellersController::cashiersGetDetail,
+                     std::string(PREFIX) + "{1}/cashiers/{2}/get-detail", Get, Options, FILTER);
+        ADD_METHOD_TO(TellersController::cashiersUpdate, std::string(PREFIX) + "{1}/cashiers/{2}/update", Put,
+                     Options, FILTER);
+        ADD_METHOD_TO(TellersController::cashiersDelete, std::string(PREFIX) + "{1}/cashiers/{2}/delete",
+                     Delete, Options, FILTER);
+
+        // ---- cashier transactions ---------------------------------------------
+        ADD_METHOD_TO(TellersController::cashierTransactionsGetAll,
+                     std::string(PREFIX) + "{1}/cashiers/{2}/transactions/get-all", Get, Options, FILTER);
+        ADD_METHOD_TO(TellersController::cashierTransactionsTemplate,
+                     std::string(PREFIX) + "{1}/cashiers/{2}/transactions/template", Get, Options, FILTER);
+        ADD_METHOD_TO(TellersController::cashierSummaryAndTransactions,
+                     std::string(PREFIX) + "{1}/cashiers/{2}/summaryandtransactions", Get, Options, FILTER);
+        ADD_METHOD_TO(TellersController::allocateCashToCashier,
+                     std::string(PREFIX) + "{1}/cashiers/{2}/allocate", Post, Options, FILTER);
+        ADD_METHOD_TO(TellersController::settleCashToCashier,
+                     std::string(PREFIX) + "{1}/cashiers/{2}/settle", Post, Options, FILTER);
     METHOD_LIST_END
 
-    void getTellers(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback);
-    void createTeller(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback);
-    void retrieveTellerDetails(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback);
-    void updateTeller(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback);
-    void deleteTeller(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback);
-    void getCashiers(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback);
-    void createCashier(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback);
-    void updateCashier(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback);
-    void getCashierDetails(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback);
-    void getCashierTransactions(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback);
-    void retrieveCashierTransactionTemplate(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback);
-    void getCashierTransactionsWithSummary(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback);
-    void allocateCashToCashier(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback);
-    void settleCashToCashier(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback);
-    void deleteCashier(const HttpRequestPtr &req, std::function<void(const HttpResponsePtr &)> &&callback);
+    Task<HttpResponsePtr> getAll(HttpRequestPtr req);
+    Task<HttpResponsePtr> create(HttpRequestPtr req);
+    Task<HttpResponsePtr> getDetails(HttpRequestPtr req, std::string tellerId);
+    Task<HttpResponsePtr> update(HttpRequestPtr req, std::string tellerId);
+    Task<HttpResponsePtr> remove(HttpRequestPtr req, std::string tellerId);
 
+    Task<HttpResponsePtr> transactionsGetAll(HttpRequestPtr req, std::string tellerId);
+    Task<HttpResponsePtr> transactionsGetDetail(HttpRequestPtr req, std::string tellerId,
+                                                std::string transactionId);
+    Task<HttpResponsePtr> journalsGetAll(HttpRequestPtr req, std::string tellerId);
+
+    Task<HttpResponsePtr> cashiersGetAll(HttpRequestPtr req, std::string tellerId);
+    Task<HttpResponsePtr> cashiersCreate(HttpRequestPtr req, std::string tellerId);
+    Task<HttpResponsePtr> cashiersTemplate(HttpRequestPtr req, std::string tellerId);
+    Task<HttpResponsePtr> cashiersGetDetail(HttpRequestPtr req, std::string tellerId, std::string cashierId);
+    Task<HttpResponsePtr> cashiersUpdate(HttpRequestPtr req, std::string tellerId, std::string cashierId);
+    Task<HttpResponsePtr> cashiersDelete(HttpRequestPtr req, std::string tellerId, std::string cashierId);
+
+    Task<HttpResponsePtr> cashierTransactionsGetAll(HttpRequestPtr req, std::string tellerId,
+                                                    std::string cashierId);
+    Task<HttpResponsePtr> cashierTransactionsTemplate(HttpRequestPtr req, std::string tellerId,
+                                                      std::string cashierId);
+    Task<HttpResponsePtr> cashierSummaryAndTransactions(HttpRequestPtr req, std::string tellerId,
+                                                        std::string cashierId);
+    Task<HttpResponsePtr> allocateCashToCashier(HttpRequestPtr req, std::string tellerId,
+                                                std::string cashierId);
+    Task<HttpResponsePtr> settleCashToCashier(HttpRequestPtr req, std::string tellerId, std::string cashierId);
 };

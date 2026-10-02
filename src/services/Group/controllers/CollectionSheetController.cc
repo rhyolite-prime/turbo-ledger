@@ -1,6 +1,11 @@
 #include "CollectionSheetController.h"
 
-void CollectionSheetController::asyncHandleHttpRequest(const HttpRequestPtr& req, std::function<void (const HttpResponsePtr &)> &&callback)
-{
-    // write your application logic here
+#include "turbo/ApiResponse.h"
+
+using turbo::ApiResponse;
+
+Task<HttpResponsePtr> CollectionSheetController::submit(HttpRequestPtr) {
+    co_return ApiResponse::httpNotImplemented(
+        "collectionsheet (needs Portfolio repayment schedules + DepositAccountManagement savings-due "
+        "amounts + attendance/calendar data this phase doesn't own)");
 }

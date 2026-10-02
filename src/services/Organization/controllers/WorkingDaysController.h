@@ -1,15 +1,24 @@
+//
+// Phase 2 — working days (3 endpoints, singleton config).
+//
 #pragma once
 
-#include <drogon/HttpSimpleController.h>
+#include <drogon/HttpController.h>
 
 using namespace drogon;
 
-class WorkingDaysController : public drogon::HttpSimpleController<WorkingDaysController>
-{
+class WorkingDaysController : public drogon::HttpController<WorkingDaysController> {
   public:
-    void asyncHandleHttpRequest(const HttpRequestPtr& req, std::function<void (const HttpResponsePtr &)> &&callback) override;
-    PATH_LIST_BEGIN
-    // list path definitions here;
-    // PATH_ADD("/path", "filter1", "filter2", HttpMethod1, HttpMethod2...);
-    PATH_LIST_END
+    static constexpr const char *PREFIX = "/api/v1/workingdays/";
+    static constexpr const char *FILTER = "turbo::TrustedContextFilter";
+
+    METHOD_LIST_BEGIN
+        ADD_METHOD_TO(WorkingDaysController::get,          std::string(PREFIX) + "get", Get, Options, FILTER);
+        ADD_METHOD_TO(WorkingDaysController::getTemplate,  std::string(PREFIX) + "template", Get, Options, FILTER);
+        ADD_METHOD_TO(WorkingDaysController::update,       std::string(PREFIX) + "update", Put, Options, FILTER);
+    METHOD_LIST_END
+
+    Task<HttpResponsePtr> get(HttpRequestPtr req);
+    Task<HttpResponsePtr> getTemplate(HttpRequestPtr req);
+    Task<HttpResponsePtr> update(HttpRequestPtr req);
 };

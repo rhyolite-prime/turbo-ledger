@@ -6,7 +6,7 @@
             //address: Ip address,0.0.0.0 by default
             "address": "0.0.0.0",
             //port: Port number
-            "port": 7508,
+            "port": 7509,
             //https: If true, use https for security,false by default
             "https": false
         }
@@ -322,18 +322,14 @@
     ],
     //custom_config: custom configuration for users. This object can be get by the app().getCustomConfig() method.
     "custom_config": {
-        "JwtBearer": {
-            "JwtSecurityKey" : "TurboLedgerIdentity_ca01ca76-3866-4d44-9881-d9e365b81472",
-            "JwtIssuer" : "TurboLedgerIdentity",
-            "JwtAudience" : "TurboLedgerIdentity",
-            "JwtExpirationTime" : 3600
+        "turbo": {
+            "context_secret": "dev-only-context-secret-change-me"
         },
-        "PrivateKey": "ca01ca76-3866-4d44-9881-d9e365b81473",
         "ServiceIdentity": {
-            "Name" : "system-config",
-            "Alias" : "",
+            "Name" : "systemconfig",
+            "Alias" : "seshat",
             "Version" : "0.1",
-            "Description" : "System Configuration"
+            "Description" : "codes, configurations, datatables, entityDatatableChecks, audits, hooks, caches, businessdate, externalevents, externalservice, fieldconfiguration, imports, generic entity attachments"
         }
     }
 }
