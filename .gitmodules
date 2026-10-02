@@ -1,21 +1,6 @@
-[submodule "src/services/Accounting/external_deps/Bcrypt"]
-	path = src/services/Accounting/external_deps/Bcrypt
-	url = https://github.com/hilch/Bcrypt.cpp
-[submodule "src/services/Customer/external_deps/jwt-cpp"]
-	path = src/services/Customer/external_deps/jwt-cpp
-	url = https://github.com/kay-smith/jwt-cpp
-[submodule "src/services/Customer/external_deps/Bcrypt"]
-	path = src/services/Customer/external_deps/Bcrypt
-	url = https://github.com/kay-smith/Bcrypt.cpp
-[submodule "src/services/Accounting/external_deps/jwt-cpp"]
-	path = src/services/Accounting/external_deps/jwt-cpp
-	url = https://github.com/kay-smith/Bcrypt.cpp
-[submodule "src/services/Accounting/external_deps/Bcrypt.cpp"]
-	path = src/services/Accounting/external_deps/Bcrypt.cpp
-	url = https://github.com/hilch/Bcrypt.cpp
 [submodule "src/services/external_deps/Bcrypt"]
 	path = src/services/external_deps/Bcrypt
 	url = https://github.com/hilch/Bcrypt.cpp
 [submodule "src/services/external_deps/jwt-cpp"]
 	path = src/services/external_deps/jwt-cpp
-	url = https://github.com/kay-smith/Bcrypt.cpp
+	url = https://github.com/Thalhammer/jwt-cpp
