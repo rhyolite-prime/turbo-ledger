@@ -33,10 +33,10 @@ function(_turbo_ensure_bcrypt)
                          "${CMAKE_BINARY_DIR}/external_deps/Bcrypt")
     else()
         message(STATUS "external_deps/Bcrypt not checked out - fetching Bcrypt.cpp")
+        # Same fork + commit the src/services/external_deps/Bcrypt submodule pins.
         FetchContent_Declare(turbo_bcrypt
-            GIT_REPOSITORY https://github.com/hilch/Bcrypt.cpp
-            GIT_TAG master
-            GIT_SHALLOW TRUE)
+            GIT_REPOSITORY https://github.com/kay-smith/Bcrypt.cpp
+            GIT_TAG 0d18b6a99e8c57627910db4ef9a7706c009b12ad)
         FetchContent_MakeAvailable(turbo_bcrypt)
     endif()
 endfunction()
@@ -64,10 +64,10 @@ function(_turbo_ensure_jwt_cpp)
             message(STATUS "external_deps/jwt-cpp not checked out - fetching jwt-cpp")
         endif()
         set(JWT_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+        # Same fork + commit the src/services/external_deps/jwt-cpp submodule pins.
         FetchContent_Declare(turbo_jwt_cpp
-            GIT_REPOSITORY https://github.com/Thalhammer/jwt-cpp
-            GIT_TAG v0.7.1
-            GIT_SHALLOW TRUE)
+            GIT_REPOSITORY https://github.com/kay-smith/jwt-cpp
+            GIT_TAG 0a503e75084cfdb48cc2186e6b961444eb819007)
         FetchContent_MakeAvailable(turbo_jwt_cpp)
     endif()
 endfunction()
