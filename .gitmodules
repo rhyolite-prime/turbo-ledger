@@ -1,6 +1,6 @@
 [submodule "src/services/external_deps/Bcrypt"]
 	path = src/services/external_deps/Bcrypt
-	url = https://github.com/hilch/Bcrypt.cpp
+	url = https://github.com/kay-smith/Bcrypt.cpp
 [submodule "src/services/external_deps/jwt-cpp"]
 	path = src/services/external_deps/jwt-cpp
-	url = https://github.com/Thalhammer/jwt-cpp
+	url = https://github.com/kay-smith/jwt-cpp
